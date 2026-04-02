@@ -3,6 +3,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.Instantiate;
+using BovineLabs.Timeline.Instantiate.Data;
 using BovineLabs.Timeline.Physics;
 using Unity.Burst;
 using Unity.Collections;

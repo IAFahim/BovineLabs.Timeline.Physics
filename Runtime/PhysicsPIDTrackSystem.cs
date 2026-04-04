@@ -1,5 +1,4 @@
 using BovineLabs.Core.Jobs;
-using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -31,21 +30,20 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             var dt = SystemAPI.Time.DeltaTime;
-            if (dt <= 0f) return; // Prevent divide by zero in Derivative math
+            if (dt <= 0.0001f) return;
 
-            // 1. Copy authored data to the Value property so the Blend system can read it
+            // 1. Prepare Authored data for blending
             state.Dependency = new PreparePIDDataJob().ScheduleParallel(state.Dependency);
 
-            // 2. Blend overlapping timeline clips automatically and thread-safely
+            // 2. Thread-safe blend resolution
             var blendData = _blendImpl.Update(ref state);
 
-            // 3. Apply the final PID math to the physics bodies
+            // 3. Apply physics math
             state.Dependency = new ApplyPIDVelocityJob
             {
                 BlendData = blendData,
                 DeltaTime = dt,
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
-                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true),
                 PhysicsVelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(false),
                 PIDStateLookup = SystemAPI.GetComponentLookup<PhysicsPIDState>(false)
             }.ScheduleParallel(blendData, 64, state.Dependency);
@@ -68,57 +66,22 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public float DeltaTime;
             
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            
             [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsPIDState> PIDStateLookup;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                this.Read(BlendData, entryIndex, out var missileEntity, out var mixData);
+                this.Read(BlendData, entryIndex, out var entity, out var mixData);
 
-                if (!PhysicsVelocityLookup.TryGetComponent(missileEntity, out var velocity)) return;
-                if (!LocalTransformLookup.TryGetComponent(missileEntity, out var missileTransform)) return;
-                if (!PIDStateLookup.TryGetComponent(missileEntity, out var pidState)) return;
+                if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
+                if (!LocalTransformLookup.TryGetComponent(entity, out var transform)) return;
+                if (!PIDStateLookup.TryGetComponent(entity, out var pidState)) return;
 
-                // Grab the winning clip's animated component data to know WHICH target to look at
-                // (Since target Entity isn't easily blendable, we assume the highest weight clip dictates the target)
-                var activeTargetEntity = Entity.Null;
-                var useReactionTarget = false;
-                var isLocalOffset = false;
-
-                // Extract targeting logic from the highest weight clip (Value1)
-                // Note: In a production environment with complex targeting blends, you might want to 
-                // handle this via a dedicated TargetTrack.
-                // For simplicity, we just seek the active target.
-
-                // Resolve blended PID values
                 var blendedPID = JobHelpers.Blend<PhysicsPIDData, PhysicsPIDMixer>(ref mixData, default);
 
-                // --- RESOLVE TARGET POSITION ---
-                // We need the raw Authored data for non-blendable flags (like Target Entity).
-                // We can't easily extract it from MixData, so we will look for the target from Targets.
-                var finalTargetEntity = Entity.Null;
-                if (TargetsLookup.TryGetComponent(missileEntity, out var reactionTargets))
-                {
-                    finalTargetEntity = reactionTargets.Target;
-                }
-
-                if (finalTargetEntity == Entity.Null || !LocalTransformLookup.TryGetComponent(finalTargetEntity, out var targetTransform))
-                {
-                    return; // No valid target to seek
-                }
-
-                // Calculate Desired Position
-                var desiredPosition = targetTransform.Position;
-                
-                // Assume Local Offset is standard for missiles (e.g. "go 10 units behind the target")
-                // A more advanced system would fetch the exact IsLocalOffset flag from the clip.
-                var worldOffset = math.rotate(targetTransform.Rotation, blendedPID.Offset);
-                desiredPosition += worldOffset;
-
-                // --- PID MATH ---
-                var error = desiredPosition - missileTransform.Position;
+                // Target is simply X units away from our current rotation (The "Carrot")
+                var targetPosition = transform.Position + math.rotate(transform.Rotation, blendedPID.LocalTargetOffset);
+                var error = targetPosition - transform.Position;
 
                 if (!pidState.IsInitialized)
                 {
@@ -127,31 +90,27 @@ namespace BovineLabs.Timeline.Physics
                     pidState.IsInitialized = true;
                 }
 
-                // Integral (Builds up over time if blocked)
+                // PID Math
                 pidState.IntegralAccumulator += error * DeltaTime;
-
-                // Derivative (Dampens speed as it approaches)
                 var derivative = (error - pidState.PreviousError) / DeltaTime;
                 pidState.PreviousError = error;
 
-                // Calculate Force
                 var force = (blendedPID.Proportional * error) 
                           + (blendedPID.Integral * pidState.IntegralAccumulator) 
                           + (blendedPID.Derivative * derivative);
 
-                // Clamp Force
-                var forceMag = math.length(force);
-                if (forceMag > blendedPID.MaxForce)
+                // Clamp Force to Max
+                var forceMagSq = math.lengthsq(force);
+                if (forceMagSq > (blendedPID.MaxForce * blendedPID.MaxForce))
                 {
-                    force = (force / forceMag) * blendedPID.MaxForce;
+                    force = math.normalize(force) * blendedPID.MaxForce;
                 }
 
-                // Apply Force as acceleration (dv = F * dt)
+                // Apply to Linear Velocity
                 velocity.Linear += force * DeltaTime;
 
-                // Write back states
-                PhysicsVelocityLookup[missileEntity] = velocity;
-                PIDStateLookup[missileEntity] = pidState;
+                PhysicsVelocityLookup[entity] = velocity;
+                PIDStateLookup[entity] = pidState;
             }
         }
     }

@@ -1,5 +1,6 @@
 using BovineLabs.Core;
 using BovineLabs.Quill;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -24,15 +25,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer<PhysicsPIDDebugSystem>();
-            if (!drawer.IsEnabled) return;
+            var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
 
             state.Dependency = new DrawPIDJob
             {
                 Drawer = drawer,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
-                VelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true)
-            }.Schedule(state.Dependency); // Schedule single due to Quill drawer
+                VelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true),
+                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true)
+            }.Schedule(state.Dependency); 
         }
 
         [BurstCompile]
@@ -42,24 +43,37 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public ComponentLookup<PhysicsVelocity> VelocityLookup;
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
             private void Execute(in TrackBinding binding, in PhysicsPIDAnimated animated)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                // Predict the "Carrot" target position
-                var targetPos = transform.Position + math.rotate(transform.Rotation, animated.AuthoredData.LocalTargetOffset);
+                var data = animated.AuthoredData;
 
-                // Draw Line to Target
-                Drawer.Line(transform.Position, targetPos, Color.green);
-                Drawer.Point(targetPos, 0.1f, Color.red);
-                Drawer.Text32(targetPos + new float3(0, 0.2f, 0), "PID Target", Color.green, 12f);
+                // Predict Destination
+                var selfGoal = transform.Position + math.rotate(transform.Rotation, data.LocalTargetOffset);
+                var finalGoal = selfGoal;
 
-                // Draw Current Velocity Vector
+                if (data.ChaseTargetBlend > 0.001f && TargetsLookup.TryGetComponent(entity, out var targets))
+                {
+                    if (TransformLookup.TryGetComponent(targets.Target, out var enemyTransform))
+                    {
+                        var enemyGoal = enemyTransform.Position + math.rotate(enemyTransform.Rotation, data.LocalTargetOffset);
+                        finalGoal = math.lerp(selfGoal, enemyGoal, data.ChaseTargetBlend);
+                    }
+                }
+
+                // Draw Path & Target
+                Drawer.Line(transform.Position, finalGoal, Color.yellow);
+                Drawer.Point(finalGoal, 0.2f, Color.red);
+                Drawer.Text32(finalGoal + new float3(0, 0.4f, 0), "PID Goal", Color.yellow, 12f);
+
+                // Draw Current Trajectory (Velocity Vector)
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
                 {
-                    Drawer.Arrow(transform.Position, velocity.Linear * 0.5f, Color.cyan);
+                    Drawer.Arrow(transform.Position, velocity.Linear, Color.cyan);
                 }
             }
         }

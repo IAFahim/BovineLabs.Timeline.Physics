@@ -5,42 +5,26 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
-    [RequireMatchingQueriesForUpdate]
     public partial struct PhysicsPIDBakingSystem : ISystem
     {
-        public void OnCreate(ref SystemState state)
-        {
-            state.RequireForUpdate<PhysicsPIDAnimated>();
-        }
-
         public void OnUpdate(ref SystemState state)
         {
-            var targetsToAdd = new NativeList<Entity>(16, Allocator.Temp);
+            var query = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, PhysicsPIDAnimated>()
+                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
+                .Build();
 
-            foreach (var trackBinding in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsPIDAnimated>()
-                .WithOptions(
-                    EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            var bindings = query.ToComponentDataArray<TrackBinding>(Allocator.Temp);
+            
+            foreach (var binding in bindings)
             {
-                var target = trackBinding.ValueRO.Value;
-                if (target == Entity.Null)
+                if (binding.Value != Entity.Null && !state.EntityManager.HasComponent<PhysicsPIDState>(binding.Value))
                 {
-                    continue;
-                }
-
-                if (!state.EntityManager.HasComponent<PhysicsPIDState>(target))
-                {
-                    targetsToAdd.Add(target);
+                    state.EntityManager.AddComponent<PhysicsPIDState>(binding.Value);
                 }
             }
-
-            var em = state.EntityManager;
-            for (var i = 0; i < targetsToAdd.Length; i++)
-            {
-                em.AddComponent<PhysicsPIDState>(targetsToAdd[i]);
-            }
-
-            targetsToAdd.Dispose();
+            
+            bindings.Dispose();
         }
     }
 }

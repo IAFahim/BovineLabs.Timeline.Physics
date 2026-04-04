@@ -1,25 +1,30 @@
 {
-  "name": "BovineLabs.Timeline.Physics.Debug",
-  "rootNamespace": "BovineLabs.Timeline.Physics.Debug",
-  "references": [
-    "BovineLabs.Core",
-    "BovineLabs.Timeline.Data",
-    "BovineLabs.Timeline.Physics",
-    "BovineLabs.Quill",
-    "Unity.Burst",
-    "Unity.Collections",
-    "Unity.Entities",
-    "Unity.Mathematics",
-    "Unity.Physics",
-    "Unity.Transforms"
-  ],
-  "includePlatforms": ["Editor"],
-  "excludePlatforms": [],
-  "allowUnsafeCode": true,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": false,
-  "defineConstraints": ["UNITY_EDITOR || BL_DEBUG"],
-  "versionDefines": [],
-  "noEngineReferences": false
+    "name": "BovineLabs.Timeline.Physics.Debug",
+    "rootNamespace": "BovineLabs.Timeline.Physics.Debug",
+    "references": [
+        "BovineLabs.Core",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Quill",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Entities",
+        "Unity.Mathematics",
+        "Unity.Physics",
+        "Unity.Transforms",
+        "BovineLabs.Reaction.Data"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_EDITOR || BL_DEBUG"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

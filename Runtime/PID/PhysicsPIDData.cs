@@ -10,7 +10,10 @@ namespace BovineLabs.Timeline.Physics
         public float3 Proportional;
         public float3 Integral;
         public float3 Derivative;
-        public float3 LocalTargetOffset; // The "Carrot" dangled relative to the entity
+        public float3 LocalTargetOffset; 
+        
+        // 0.0 = Chase our own LocalTargetOffset. 1.0 = Chase Reaction Target's location.
+        public float ChaseTargetBlend; 
         public float MaxForce;
     }
 

@@ -8,18 +8,16 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsPIDClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Targeting (Local Carrot)")]
-        [Tooltip("Where the entity wants to go relative to its CURRENT position and rotation. E.g., (0,0,10) means 'Drive forward'.")]
+        [Header("Destination")]
+        [Tooltip("0 = Fly relative to self. 1 = Chase Reaction Target entity.")]
+        [Range(0f, 1f)] public float ChaseTargetBlend = 0f;
+        [Tooltip("The offset from either self (if blend=0) or target (if blend=1).")]
         public Vector3 LocalTargetOffset = new Vector3(0, 0, 10f);
 
         [Header("PID Tuning")]
-        [Tooltip("P: Immediate force towards the target point.")]
         public Vector3 Proportional = new Vector3(10f, 10f, 10f);
-        [Tooltip("I: Builds up force over time if blocked by a wall or drag.")]
         public Vector3 Integral = new Vector3(2f, 2f, 2f);
-        [Tooltip("D: Dampens speed as it approaches the target to prevent overshoot.")]
         public Vector3 Derivative = new Vector3(1f, 1f, 1f);
-        
         public float MaxForce = 100f;
 
         public override double duration => 1;
@@ -35,10 +33,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Integral = Integral,
                     Derivative = Derivative,
                     LocalTargetOffset = LocalTargetOffset,
+                    ChaseTargetBlend = ChaseTargetBlend,
                     MaxForce = MaxForce
                 }
             });
 
+            // We DO NOT touch the boundTarget here. The Baking System handles it.
             base.Bake(clipEntity, context);
         }
     }

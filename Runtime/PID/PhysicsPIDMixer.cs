@@ -12,6 +12,7 @@ namespace BovineLabs.Timeline.Physics
                 Integral = math.lerp(a.Integral, b.Integral, s),
                 Derivative = math.lerp(a.Derivative, b.Derivative, s),
                 LocalTargetOffset = math.lerp(a.LocalTargetOffset, b.LocalTargetOffset, s),
+                ChaseTargetBlend = math.lerp(a.ChaseTargetBlend, b.ChaseTargetBlend, s),
                 MaxForce = math.lerp(a.MaxForce, b.MaxForce, s)
             };
         }
@@ -24,6 +25,7 @@ namespace BovineLabs.Timeline.Physics
                 Integral = a.Integral + b.Integral,
                 Derivative = a.Derivative + b.Derivative,
                 LocalTargetOffset = a.LocalTargetOffset + b.LocalTargetOffset,
+                ChaseTargetBlend = a.ChaseTargetBlend + b.ChaseTargetBlend,
                 MaxForce = a.MaxForce + b.MaxForce
             };
         }

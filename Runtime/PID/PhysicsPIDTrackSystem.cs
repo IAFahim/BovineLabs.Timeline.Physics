@@ -1,4 +1,5 @@
 using BovineLabs.Core.Jobs;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -32,18 +33,15 @@ namespace BovineLabs.Timeline.Physics
             var dt = SystemAPI.Time.DeltaTime;
             if (dt <= 0.0001f) return;
 
-            // 1. Prepare Authored data for blending
             state.Dependency = new PreparePIDDataJob().ScheduleParallel(state.Dependency);
-
-            // 2. Thread-safe blend resolution
             var blendData = _blendImpl.Update(ref state);
 
-            // 3. Apply physics math
             state.Dependency = new ApplyPIDVelocityJob
             {
                 BlendData = blendData,
                 DeltaTime = dt,
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
+                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true),
                 PhysicsVelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(false),
                 PIDStateLookup = SystemAPI.GetComponentLookup<PhysicsPIDState>(false)
             }.ScheduleParallel(blendData, 64, state.Dependency);
@@ -64,8 +62,9 @@ namespace BovineLabs.Timeline.Physics
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsPIDData>>.ReadOnly BlendData;
             [ReadOnly] public float DeltaTime;
-            
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            
             [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsPIDState> PIDStateLookup;
 
@@ -79,9 +78,21 @@ namespace BovineLabs.Timeline.Physics
 
                 var blendedPID = JobHelpers.Blend<PhysicsPIDData, PhysicsPIDMixer>(ref mixData, default);
 
-                // Target is simply X units away from our current rotation (The "Carrot")
-                var targetPosition = transform.Position + math.rotate(transform.Rotation, blendedPID.LocalTargetOffset);
-                var error = targetPosition - transform.Position;
+                // --- DETERMINE DESTINATION ---
+                var selfGoal = transform.Position + math.rotate(transform.Rotation, blendedPID.LocalTargetOffset);
+                var finalGoal = selfGoal;
+
+                // Smoothly blend to Enemy target if requested
+                if (blendedPID.ChaseTargetBlend > 0.001f && TargetsLookup.TryGetComponent(entity, out var targets))
+                {
+                    if (LocalTransformLookup.TryGetComponent(targets.Target, out var enemyTransform))
+                    {
+                        var enemyGoal = enemyTransform.Position + math.rotate(enemyTransform.Rotation, blendedPID.LocalTargetOffset);
+                        finalGoal = math.lerp(selfGoal, enemyGoal, blendedPID.ChaseTargetBlend);
+                    }
+                }
+
+                var error = finalGoal - transform.Position;
 
                 if (!pidState.IsInitialized)
                 {

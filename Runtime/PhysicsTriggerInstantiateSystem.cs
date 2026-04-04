@@ -56,10 +56,8 @@ namespace BovineLabs.Timeline.Physics
                     var otherEntity = triggerEvent.EntityB;
                     if (!TargetsLookup.HasComponent(otherEntity)) continue;
 
-                    // 1. Spawn independent prefab
                     var instance = ECB.Instantiate(chunkIndex, instantiateData.Prefab);
 
-                    // 2. Forward target tracking data
                     var trackBindingTargets = TargetsLookup[statefulSelf];
                     var otherBindingTargets = TargetsLookup[otherEntity];
                     
@@ -70,7 +68,6 @@ namespace BovineLabs.Timeline.Physics
                         Target = otherBindingTargets.Source
                     });
 
-                    // 3. Snap to transform seamlessly
                     if (instantiateData.SnapToTransform && LocalToWorldLookup.TryGetComponent(statefulSelf, out var ltw))
                     {
                         ltw.Value.ExtractLocalTransform(out var localTransform);

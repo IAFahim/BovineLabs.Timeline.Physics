@@ -12,8 +12,7 @@
         "com.unity.timeline": "1.8.12",
         "com.bovinelabs.core": "1.6.1",
         "com.bovinelabs.timeline": "1.0.0",
-        "com.bovinelabs.timeline.core": "1.0.0",
-        "com.bovinelabs.timeline.instantiate": "1.0.0"
+        "com.bovinelabs.timeline.core": "1.0.0"
     },
     "unity": "2022.3",
     "author": {

@@ -8,7 +8,7 @@ using UnityEngine.Timeline;
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [Serializable]
-    [TrackClipType(typeof(StatefulTriggerTrackInstantiateClip))]
+    [TrackClipType(typeof(PhysicsTriggerInstantiateClip))]
     [TrackColor(0.8f, 0.8f, 0.1f)]
     [DisplayName("BovineLabs/Timeline/Physics/Stateful Trigger")]
     [TrackBindingType(typeof(StatefulTriggerEventAuthoring))]

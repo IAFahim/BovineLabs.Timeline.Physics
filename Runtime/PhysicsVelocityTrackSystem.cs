@@ -1,6 +1,5 @@
+using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Physics;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -13,54 +12,86 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct PhysicsVelocityTrackSystem : ISystem
     {
+        private TrackBlendImpl<PhysicsVelocityData, PhysicsVelocityAnimated> _blendImpl;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            var builder = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<PhysicsVelocityComponent, TrackBinding>()
-                .WithAny<ClipActive, ClipActivePrevious>();
-            state.RequireForUpdate(state.GetEntityQuery(builder));
+            _blendImpl.OnCreate(ref state);
+        }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            _blendImpl.OnDestroy(ref state);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            new PhysicsVelocityTrackSystemJob
+            // 1. Process Local Space transforms into World Space Data (Before blending)
+            state.Dependency = new PrepareWorldVelocityJob
             {
-                PhysicsVelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(),
-                LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
-                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true),
-                DeltaTime = SystemAPI.Time.DeltaTime,
-            }.ScheduleParallel();
+                LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true)
+            }.ScheduleParallel(state.Dependency);
+
+            // 2. Safely compute overlapping timeline clip weights
+            var blendData = _blendImpl.Update(ref state);
+
+            // 3. Apply final blended velocities linearly over time to the PhysicsBody
+            state.Dependency = new ApplyVelocityJob
+            {
+                BlendData = blendData,
+                PhysicsVelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(false),
+                DeltaTime = SystemAPI.Time.DeltaTime
+            }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
         [BurstCompile]
-        [WithAny(typeof(ClipActive), typeof(ClipActivePrevious))]
-        public partial struct PhysicsVelocityTrackSystemJob : IJobEntity
+        [WithAll(typeof(ClipActive))]
+        private partial struct PrepareWorldVelocityJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public float DeltaTime;
 
-            public void Execute(in PhysicsVelocityComponent physicsVelocityComponent, in TrackBinding trackBinding)
+            private void Execute(ref PhysicsVelocityAnimated animated, in TrackBinding binding)
             {
-                if (!PhysicsVelocityLookup.HasComponent(trackBinding.Value)) return;
+                var linear = animated.AuthoredVelocity.Linear;
+                var angular = animated.AuthoredVelocity.Angular;
 
-                var velocity = PhysicsVelocityLookup.GetRefRW(trackBinding.Value);
-
-                var linear = physicsVelocityComponent.PhysicsVelocity.Linear;
-                var angular = physicsVelocityComponent.PhysicsVelocity.Angular;
-
-                if (physicsVelocityComponent.IsLocalSpace && LocalTransformLookup.HasComponent(trackBinding.Value))
+                if (animated.IsLocalSpace && LocalTransformLookup.TryGetComponent(binding.Value, out var transform))
                 {
-                    var rot = LocalTransformLookup[trackBinding.Value].Rotation;
-                    linear = math.rotate(rot, linear);
-                    angular = math.rotate(rot, angular);
+                    linear = math.rotate(transform.Rotation, linear);
+                    angular = math.rotate(transform.Rotation, angular);
                 }
 
-                velocity.ValueRW.Linear += linear * DeltaTime;
-                velocity.ValueRW.Angular += angular * DeltaTime;
+                animated.Value = new PhysicsVelocityData
+                {
+                    Linear = linear,
+                    Angular = angular
+                };
+            }
+        }
+
+        [BurstCompile]
+        private struct ApplyVelocityJob : IJobParallelHashMapDefer
+        {
+            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityData>>.ReadOnly BlendData;
+            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
+            public float DeltaTime;
+
+            public void ExecuteNext(int entryIndex, int jobIndex)
+            {
+                this.Read(BlendData, entryIndex, out var entity, out var mixData);
+                if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
+
+                // Resolve blended velocity using our custom physics mixer
+                var blendedVelocity = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default);
+
+                // Add to body's velocity as an acceleration over time
+                velocity.Linear += blendedVelocity.Linear * DeltaTime;
+                velocity.Angular += blendedVelocity.Angular * DeltaTime;
+
+                PhysicsVelocityLookup[entity] = velocity;
             }
         }
     }

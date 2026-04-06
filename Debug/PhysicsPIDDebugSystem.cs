@@ -19,7 +19,6 @@ namespace BovineLabs.Timeline.Physics.Debug
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<DrawSystem.Singleton>();
         }
 
         [BurstCompile]

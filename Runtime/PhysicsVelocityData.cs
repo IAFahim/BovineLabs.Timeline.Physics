@@ -15,7 +15,6 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsVelocityData AuthoredVelocity;
         public bool IsLocalSpace;
 
-        // The processed value consumed by TrackBlendImpl
         [CreateProperty] public PhysicsVelocityData Value { get; set; }
     }
 }

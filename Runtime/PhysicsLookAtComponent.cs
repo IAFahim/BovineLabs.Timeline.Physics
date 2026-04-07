@@ -10,7 +10,6 @@ namespace BovineLabs.Timeline.Physics
         public float DerivativeGain;
         public float MaxAngularVelocity;
 
-        // PID state — written back each frame
         public float3 Integral;
         public float3 PreviousError;
     }

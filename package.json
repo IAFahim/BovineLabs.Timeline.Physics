@@ -1,8 +1,8 @@
 {
     "name": "com.bovinelabs.timeline.physics",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "displayName": "BovineLabs Timeline Physics",
-    "description": "Physics velocity and stateful trigger instantiation timeline tracks.",
+    "description": "Physics-oriented Timeline tracks for velocity control and stateful trigger-driven prefab instantiation in DOTS projects.",
     "dependencies": {
         "com.unity.burst": "1.8.11",
         "com.unity.collections": "6.5.0",
@@ -14,7 +14,7 @@
         "com.bovinelabs.timeline": "1.0.0",
         "com.bovinelabs.timeline.core": "1.0.0"
     },
-    "unity": "2022.3",
+    "unity": "6000.0",
     "author": {
         "name": "BovineLabs",
         "url": "https://bovinelabs.com"
@@ -23,6 +23,17 @@
         "dots",
         "timeline",
         "ecs",
-        "physics"
-    ]
+        "physics",
+        "unity physics"
+    ],
+    "samples": [
+        {
+            "displayName": "Physics",
+            "description": "Physics timeline sample content for validating velocity and stateful trigger tracks.",
+            "path": "Sample~/Physics"
+        }
+    ],
+    "documentationUrl": "Documentation~/com.bovinelabs.timeline.physics.md",
+    "changelogUrl": "CHANGELOG.md",
+    "licensesUrl": "LICENSE.md"
 }

@@ -1,14 +1,14 @@
-using UnityEngine;
-using BovineLabs.Timeline.Authoring;
 using System;
 using System.ComponentModel;
 using BovineLabs.Core.Authoring.PhysicsStates;
+using BovineLabs.Timeline.Authoring;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [Serializable]
     [TrackClipType(typeof(PhysicsTriggerInstantiateClip))]
+    [TrackClipType(typeof(PhysicsTriggerTeleportClip))] // <-- Added Teleport Clip Support
     [TrackColor(0.8f, 0.8f, 0.1f)]
     [DisplayName("BovineLabs/Timeline/Physics/Stateful Trigger")]
     [TrackBindingType(typeof(StatefulTriggerEventAuthoring))]

@@ -29,16 +29,13 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // 1. Process Local Space transforms into World Space Data (Before blending)
             state.Dependency = new PrepareWorldVelocityJob
             {
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true)
             }.ScheduleParallel(state.Dependency);
 
-            // 2. Safely compute overlapping timeline clip weights
             var blendData = _blendImpl.Update(ref state);
 
-            // 3. Apply final blended velocities linearly over time to the PhysicsBody
             state.Dependency = new ApplyVelocityJob
             {
                 BlendData = blendData,
@@ -84,10 +81,8 @@ namespace BovineLabs.Timeline.Physics
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
 
-                // Resolve blended velocity using our custom physics mixer
                 var blendedVelocity = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default);
 
-                // Add to body's velocity as an acceleration over time
                 velocity.Linear += blendedVelocity.Linear * DeltaTime;
                 velocity.Angular += blendedVelocity.Angular * DeltaTime;
 

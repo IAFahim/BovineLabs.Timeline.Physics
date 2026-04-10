@@ -1,6 +1,6 @@
 {
   "name": "BovineLabs.Timeline.Physics.Authoring",
-  "rootNamespace": "BovineLabs.Timeline.Physics.Authoring",
+  "rootNamespace": "",
   "references": [
     "BovineLabs.Core.Authoring",
     "BovineLabs.Core.Extensions",

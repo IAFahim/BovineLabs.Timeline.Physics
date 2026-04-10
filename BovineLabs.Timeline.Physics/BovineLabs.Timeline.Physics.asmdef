@@ -1,6 +1,6 @@
 {
   "name": "BovineLabs.Timeline.Physics",
-  "rootNamespace": "BovineLabs.Timeline.Physics",
+  "rootNamespace": "",
   "references": [
     "BovineLabs.Core",
     "BovineLabs.Core.Extensions",

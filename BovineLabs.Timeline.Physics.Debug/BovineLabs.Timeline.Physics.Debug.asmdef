@@ -1,26 +1,18 @@
 {
-    "name": "Scripts.Editor",
+    "name": "BovineLabs.Timeline.Physics.Debug",
     "rootNamespace": "",
     "references": [
         "BovineLabs.Core",
-        "BovineLabs.Core.Editor",
-        "BovineLabs.Core.Extensions",
-        "BovineLabs.Core.Extensions.Editor",
-        "Scripts",
-        "Scripts.Authoring",
-        "Scripts.Data",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Quill",
         "Unity.Burst",
         "Unity.Collections",
         "Unity.Entities",
-        "Unity.Entities.Graphics",
-        "Unity.Entities.Hybrid",
-        "Unity.InputSystem",
         "Unity.Mathematics",
-        "Unity.Mathematics.Extensions",
         "Unity.Physics",
         "Unity.Transforms",
-        "Unity.Tutorials.Core",
-        "Unity.Tutorials.Core.Editor"
+        "BovineLabs.Reaction.Data"
     ],
     "includePlatforms": [
         "Editor"
@@ -30,7 +22,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": false,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "UNITY_EDITOR || BL_DEBUG"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

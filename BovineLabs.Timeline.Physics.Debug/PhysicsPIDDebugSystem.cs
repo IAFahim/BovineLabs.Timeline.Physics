@@ -1,4 +1,7 @@
+#if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
@@ -16,9 +19,16 @@ namespace BovineLabs.Timeline.Physics.Debug
     [UpdateInGroup(typeof(DebugSystemGroup))]
     public partial struct PhysicsPIDDebugSystem : ISystem
     {
+        private UnsafeComponentLookup<LocalTransform> localTransformLookup;
+        private UnsafeComponentLookup<PhysicsVelocity> velocityLookup;
+        private UnsafeComponentLookup<Targets> targetsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            this.localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            this.velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
+            this.targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
         }
 
         [BurstCompile]
@@ -26,12 +36,16 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             var drawer = SystemAPI.GetSingleton<DrawSystem.Singleton>().CreateDrawer();
 
+            this.localTransformLookup.Update(ref state);
+            this.velocityLookup.Update(ref state);
+            this.targetsLookup.Update(ref state);
+
             state.Dependency = new DrawPIDJob
             {
                 Drawer = drawer,
-                TransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
-                VelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true),
-                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true)
+                TransformLookup = this.localTransformLookup,
+                VelocityLookup = this.velocityLookup,
+                TargetsLookup = this.targetsLookup
             }.Schedule(state.Dependency); 
         }
 
@@ -40,41 +54,39 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawPIDJob : IJobEntity
         {
             public Drawer Drawer;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
-            [ReadOnly] public ComponentLookup<PhysicsVelocity> VelocityLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private void Execute(in TrackBinding binding, in PhysicsPIDAnimated animated)
             {
                 var entity = binding.Value;
-                if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
+                if (!this.TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 var data = animated.AuthoredData;
 
-                // Predict Destination
                 var selfGoal = transform.Position + math.rotate(transform.Rotation, data.LocalTargetOffset);
                 var finalGoal = selfGoal;
 
-                if (data.ChaseTargetBlend > 0.001f && TargetsLookup.TryGetComponent(entity, out var targets))
+                if (data.ChaseTargetBlend > 0.001f && this.TargetsLookup.TryGetComponent(entity, out var targets))
                 {
-                    if (TransformLookup.TryGetComponent(targets.Target, out var enemyTransform))
+                    if (this.TransformLookup.TryGetComponent(targets.Target, out var enemyTransform))
                     {
                         var enemyGoal = enemyTransform.Position + math.rotate(enemyTransform.Rotation, data.LocalTargetOffset);
                         finalGoal = math.lerp(selfGoal, enemyGoal, data.ChaseTargetBlend);
                     }
                 }
 
-                // Draw Path & Target
-                Drawer.Line(transform.Position, finalGoal, Color.yellow);
-                Drawer.Point(finalGoal, 0.2f, Color.red);
-                Drawer.Text32(finalGoal + new float3(0, 0.4f, 0), "PID Goal", Color.yellow, 12f);
+                this.Drawer.Line(transform.Position, finalGoal, Color.yellow);
+                this.Drawer.Point(finalGoal, 0.2f, Color.red);
+                this.Drawer.Text32(finalGoal + new float3(0, 0.4f, 0), "PID Goal", Color.yellow, 12f);
 
-                // Draw Current Trajectory (Velocity Vector)
-                if (VelocityLookup.TryGetComponent(entity, out var velocity))
+                if (this.VelocityLookup.TryGetComponent(entity, out var velocity))
                 {
-                    Drawer.Arrow(transform.Position, velocity.Linear, Color.cyan);
+                    this.Drawer.Arrow(transform.Position, velocity.Linear, Color.cyan);
                 }
             }
         }
     }
 }
+#endif

@@ -1,6 +1,5 @@
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -38,7 +37,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 }
             });
 
-            // We DO NOT touch the boundTarget here. The Baking System handles it.
             base.Bake(clipEntity, context);
         }
     }

@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -7,24 +8,25 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     public partial struct PhysicsPIDBakingSystem : ISystem
     {
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsPIDAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
-                .Build();
-
-            var bindings = query.ToComponentDataArray<TrackBinding>(Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
             
-            foreach (var binding in bindings)
+            // Zero-allocation iteration through bindings during baking
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsPIDAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
-                if (binding.Value != Entity.Null && !state.EntityManager.HasComponent<PhysicsPIDState>(binding.Value))
+                var target = binding.ValueRO.Value;
+                if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsPIDState>(target))
                 {
-                    state.EntityManager.AddComponent<PhysicsPIDState>(binding.Value);
+                    ecb.AddComponent<PhysicsPIDState>(target);
                 }
             }
             
-            bindings.Dispose();
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }

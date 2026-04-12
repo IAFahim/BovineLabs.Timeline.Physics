@@ -20,7 +20,8 @@
     "Unity.Entities.Hybrid",
     "Unity.Physics",
     "Unity.Physics.Custom",
-    "Unity.Timeline"
+    "Unity.Timeline",
+    "Unity.Burst"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

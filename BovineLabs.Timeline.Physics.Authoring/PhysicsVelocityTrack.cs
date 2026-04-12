@@ -14,8 +14,5 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [DisplayName("BovineLabs/Timeline/Physics/Velocity")]
     public class PhysicsVelocityTrack : DOTSTrack
     {
-        protected override void Bake(BakingContext context)
-        {
-        }
     }
 }

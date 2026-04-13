@@ -1,5 +1,6 @@
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core;
@@ -13,45 +14,44 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
-        private UnsafeComponentLookup<LocalTransform> localTransformLookup;
-        private UnsafeComponentLookup<LocalToWorld> localToWorldLookup;
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private UnsafeBufferLookup<StatefulTriggerEvent> triggerEventsLookup;
-        private UnsafeBufferLookup<StatefulCollisionEvent> collisionEventsLookup;
+        private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
+        private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
-
-            this.localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            this.localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            this.targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            this.triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
-            this.collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
+            state.RequireForUpdate<ObjectDefinitionRegistry>();
+            this._localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            this._localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            this._targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            this._triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            this._collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            this.localTransformLookup.Update(ref state);
-            this.localToWorldLookup.Update(ref state);
-            this.targetsLookup.Update(ref state);
-            this.triggerEventsLookup.Update(ref state);
-            this.collisionEventsLookup.Update(ref state);
+            this._localTransformLookup.Update(ref state);
+            this._localToWorldLookup.Update(ref state);
+            this._targetsLookup.Update(ref state);
+            this._triggerEventsLookup.Update(ref state);
+            this._collisionEventsLookup.Update(ref state);
 
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
             state.Dependency = new PhysicsInstantiateJob
             {
                 ECB = ecb,
-                LocalTransformLookup = this.localTransformLookup,
-                LocalToWorldLookup = this.localToWorldLookup,
-                TargetsLookup = this.targetsLookup,
-                TriggerEventsLookup = this.triggerEventsLookup,
-                CollisionEventsLookup = this.collisionEventsLookup
+                ObjectDefinitionRegistry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
+                LocalToWorldLookup = this._localToWorldLookup,
+                TargetsLookup = this._targetsLookup,
+                TriggerEventsLookup = this._triggerEventsLookup,
+                CollisionEventsLookup = this._collisionEventsLookup
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -59,8 +59,8 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(ClipActive))]
         private partial struct PhysicsInstantiateJob : IJobEntity
         {
-            public EntityCommandBuffer.ParallelWriter ECB;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
+            [WriteOnly] public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ObjectDefinitionRegistry ObjectDefinitionRegistry;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
@@ -72,9 +72,8 @@ namespace BovineLabs.Timeline.Physics
 
                 if (this.TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                 {
-                    for (int i = 0; i < triggers.Length; i++)
+                    foreach (var evt in triggers)
                     {
-                        var evt = triggers[i];
                         if (evt.State == cfg.EventState)
                             ProcessSpawn(chunkIndex, self, evt.EntityB, cfg, float3.zero, float3.zero, false);
                     }
@@ -82,9 +81,8 @@ namespace BovineLabs.Timeline.Physics
 
                 if (this.CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                 {
-                    for (int i = 0; i < collisions.Length; i++)
+                    foreach (var evt in collisions)
                     {
-                        var evt = collisions[i];
                         if (evt.State == cfg.EventState)
                         {
                             var isValid = evt.TryGetDetails(out var details);
@@ -115,7 +113,6 @@ namespace BovineLabs.Timeline.Physics
                     InstantiateRotationMode.AlignToContactNormal => hasContactData 
                         ? quaternion.LookRotationSafe(contactNormal, math.up()) 
                         : quaternion.LookRotationSafe(math.normalize(selfLtw.Position - otherLtw.Position), math.up()),
-                    InstantiateRotationMode.Identity => quaternion.identity,
                     _ => quaternion.identity
                 };
 
@@ -129,7 +126,7 @@ namespace BovineLabs.Timeline.Physics
                     spawnRot = math.mul(spawnRot, quaternion.Euler(cfg.RotationOffsetEuler));
                 }
 
-                var instance = this.ECB.Instantiate(chunkIndex, cfg.Prefab);
+                var instance = this.ECB.Instantiate(chunkIndex, ObjectDefinitionRegistry[cfg.ObjectId]);
 
                 this.ECB.SetComponent(chunkIndex, instance, LocalTransform.FromPositionRotation(spawnPos, spawnRot));
 

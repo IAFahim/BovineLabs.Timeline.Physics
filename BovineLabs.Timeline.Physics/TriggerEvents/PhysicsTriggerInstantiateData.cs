@@ -1,3 +1,4 @@
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -6,7 +7,7 @@ namespace BovineLabs.Timeline.Physics
 {
     public struct PhysicsTriggerInstantiateData : IComponentData
     {
-        public Entity Prefab;
+        public ObjectId ObjectId;
         public StatefulEventState EventState;
 
         public InstantiatePositionMode PositionMode;

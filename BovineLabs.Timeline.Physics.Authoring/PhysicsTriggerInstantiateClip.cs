@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
@@ -10,18 +11,18 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Spawn Configuration")]
-        public GameObject Prefab;
-        public StatefulEventState TriggerState = StatefulEventState.Enter;
+        public ObjectDefinition objectDefinition;
+        public StatefulEventState triggerState = StatefulEventState.Enter;
 
         [Header("Position")]
-        public InstantiatePositionMode PositionMode = InstantiatePositionMode.MatchContactPoint;
-        public Vector3 PositionOffset = Vector3.zero;
-        public bool IsPositionOffsetLocal = true;
+        public InstantiatePositionMode positionMode = InstantiatePositionMode.MatchContactPoint;
+        public Vector3 positionOffset = Vector3.zero;
+        public bool isPositionOffsetLocal = true;
 
         [Header("Rotation")]
-        public InstantiateRotationMode RotationMode = InstantiateRotationMode.AlignToContactNormal;
+        public InstantiateRotationMode rotationMode = InstantiateRotationMode.AlignToContactNormal;
         [Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
-        public Vector3 RotationOffset = Vector3.zero;
+        public Vector3 rotationOffset = Vector3.zero;
 
         [Header("Hierarchy")]
         public InstantiateParentMode ParentMode = InstantiateParentMode.None;
@@ -33,13 +34,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
         {
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
             {
-                Prefab = context.Baker.GetEntity(Prefab, TransformUsageFlags.None),
-                EventState = TriggerState,
-                PositionMode = PositionMode,
-                PositionOffset = PositionOffset,
-                IsPositionOffsetLocal = IsPositionOffsetLocal,
-                RotationMode = RotationMode,
-                RotationOffsetEuler = math.radians(RotationOffset),
+                ObjectId = objectDefinition,
+                EventState = triggerState,
+                PositionMode = positionMode,
+                PositionOffset = positionOffset,
+                IsPositionOffsetLocal = isPositionOffsetLocal,
+                RotationMode = rotationMode,
+                RotationOffsetEuler = math.radians(rotationOffset),
                 ParentMode = ParentMode
             });
 

@@ -22,7 +22,8 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             state.Dependency = new TeleportJob
             {
@@ -46,39 +47,39 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            private void Execute([ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerTeleportData cfg)
+            private void Execute([ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
+                in PhysicsTriggerTeleportData cfg)
             {
                 var self = binding.Value;
 
                 if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                {
                     foreach (var evt in triggers)
                         if (evt.State == cfg.EventState)
                             ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, float3.zero, float3.zero, false);
-                }
 
                 if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                {
                     foreach (var evt in collisions)
                         if (evt.State == cfg.EventState)
-                            ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, evt.CollisionDetails.AverageContactPointPosition, evt.Normal, true);
-                }
+                            ProcessTeleport(chunkIndex, self, evt.EntityB, cfg,
+                                evt.CollisionDetails.AverageContactPointPosition, evt.Normal, true);
             }
 
-            private void ProcessTeleport(int chunkIndex, Entity self, Entity other, in PhysicsTriggerTeleportData cfg, float3 contactPoint, float3 contactNormal, bool hasContactData)
+            private void ProcessTeleport(int chunkIndex, Entity self, Entity other, in PhysicsTriggerTeleportData cfg,
+                float3 contactPoint, float3 contactNormal, bool hasContactData)
             {
-                if (!LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
+                if (!LocalToWorldLookup.TryGetComponent(self, out var selfLtw) ||
+                    !LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
 
                 // 1. Identify who to teleport
-                Entity targetToMove = cfg.EntityToMove switch
+                var targetToMove = cfg.EntityToMove switch
                 {
                     PhysicsTriggerTargetMode.Self => self,
                     PhysicsTriggerTargetMode.CollidedEntity => other,
                     _ => Entity.Null
                 };
 
-                if (cfg.EntityToMove >= PhysicsTriggerTargetMode.ReactionOwner && TargetsLookup.TryGetComponent(self, out var targets))
-                {
+                if (cfg.EntityToMove >= PhysicsTriggerTargetMode.ReactionOwner &&
+                    TargetsLookup.TryGetComponent(self, out var targets))
                     targetToMove = cfg.EntityToMove switch
                     {
                         PhysicsTriggerTargetMode.ReactionOwner => targets.Owner,
@@ -86,32 +87,36 @@ namespace BovineLabs.Timeline.Physics
                         PhysicsTriggerTargetMode.ReactionTarget => targets.Target,
                         _ => targetToMove
                     };
-                }
 
-                if (targetToMove == Entity.Null || !LocalTransformLookup.TryGetComponent(targetToMove, out var targetLt)) return;
+                if (targetToMove == Entity.Null ||
+                    !LocalTransformLookup.TryGetComponent(targetToMove, out var targetLt)) return;
 
                 // 2. Calculate Destination
-                float3 destPos = cfg.PositionMode switch
+                var destPos = cfg.PositionMode switch
                 {
                     PhysicsTriggerPositionMode.MatchSelf => selfLtw.Position,
                     PhysicsTriggerPositionMode.MatchCollidedEntity => otherLtw.Position,
-                    PhysicsTriggerPositionMode.MatchContactPoint => hasContactData ? contactPoint : (selfLtw.Position + otherLtw.Position) * 0.5f,
+                    PhysicsTriggerPositionMode.MatchContactPoint => hasContactData
+                        ? contactPoint
+                        : (selfLtw.Position + otherLtw.Position) * 0.5f,
                     _ => selfLtw.Position
                 };
 
-                quaternion destRot = cfg.RotationMode switch
+                var destRot = cfg.RotationMode switch
                 {
                     PhysicsTriggerRotationMode.MatchSelf => math.quaternion(selfLtw.Value),
                     PhysicsTriggerRotationMode.MatchCollidedEntity => math.quaternion(otherLtw.Value),
-                    PhysicsTriggerRotationMode.AlignToContactNormal => hasContactData 
-                        ? quaternion.LookRotationSafe(contactNormal, math.up()) 
+                    PhysicsTriggerRotationMode.AlignToContactNormal => hasContactData
+                        ? quaternion.LookRotationSafe(contactNormal, math.up())
                         : quaternion.LookRotationSafe(math.normalize(selfLtw.Position - otherLtw.Position), math.up()),
                     PhysicsTriggerRotationMode.Identity => quaternion.identity,
                     _ => targetLt.Rotation
                 };
 
                 if (math.lengthsq(cfg.PositionOffset) > 0)
-                    destPos += cfg.IsPositionOffsetLocal ? math.rotate(destRot, cfg.PositionOffset) : cfg.PositionOffset;
+                    destPos += cfg.IsPositionOffsetLocal
+                        ? math.rotate(destRot, cfg.PositionOffset)
+                        : cfg.PositionOffset;
 
                 if (math.lengthsq(cfg.RotationOffsetEuler) > 0)
                     destRot = math.mul(destRot, quaternion.Euler(cfg.RotationOffsetEuler));
@@ -123,9 +128,8 @@ namespace BovineLabs.Timeline.Physics
 
                 // 4. Kill momentum if requested
                 if (cfg.ResetVelocity)
-                {
-                    ECB.SetComponent(chunkIndex, targetToMove, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
-                }
+                    ECB.SetComponent(chunkIndex, targetToMove,
+                        new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
             }
         }
     }

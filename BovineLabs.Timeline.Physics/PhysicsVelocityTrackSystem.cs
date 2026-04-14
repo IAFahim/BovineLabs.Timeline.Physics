@@ -22,8 +22,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            this.localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            this.physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(false); // Read-Write
+            localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(); // Read-Write
         }
 
         [BurstCompile]
@@ -35,12 +35,12 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            this.localTransformLookup.Update(ref state);
-            this.physicsVelocityLookup.Update(ref state);
+            localTransformLookup.Update(ref state);
+            physicsVelocityLookup.Update(ref state);
 
             state.Dependency = new PrepareWorldVelocityJob
             {
-                LocalTransformLookup = this.localTransformLookup
+                LocalTransformLookup = localTransformLookup
             }.ScheduleParallel(state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
@@ -48,7 +48,7 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new ApplyVelocityJob
             {
                 BlendData = blendData,
-                PhysicsVelocityLookup = this.physicsVelocityLookup,
+                PhysicsVelocityLookup = physicsVelocityLookup,
                 DeltaTime = SystemAPI.Time.DeltaTime
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
@@ -64,7 +64,7 @@ namespace BovineLabs.Timeline.Physics
                 var linear = animated.AuthoredVelocity.Linear;
                 var angular = animated.AuthoredVelocity.Angular;
 
-                if (animated.IsLocalSpace && this.LocalTransformLookup.TryGetComponent(binding.Value, out var transform))
+                if (animated.IsLocalSpace && LocalTransformLookup.TryGetComponent(binding.Value, out var transform))
                 {
                     linear = math.rotate(transform.Rotation, linear);
                     angular = math.rotate(transform.Rotation, angular);
@@ -87,16 +87,16 @@ namespace BovineLabs.Timeline.Physics
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                this.Read(this.BlendData, entryIndex, out var entity, out var mixData);
-                
-                if (!this.PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
+                this.Read(BlendData, entryIndex, out var entity, out var mixData);
+
+                if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
 
                 var blendedVelocity = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default);
 
-                velocity.Linear += blendedVelocity.Linear * this.DeltaTime;
-                velocity.Angular += blendedVelocity.Angular * this.DeltaTime;
+                velocity.Linear += blendedVelocity.Linear * DeltaTime;
+                velocity.Angular += blendedVelocity.Angular * DeltaTime;
 
-                this.PhysicsVelocityLookup[entity] = velocity;
+                PhysicsVelocityLookup[entity] = velocity;
             }
         }
     }

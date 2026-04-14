@@ -12,7 +12,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
-            
+
             // Zero-allocation iteration through bindings during baking
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsPIDAnimated>()
@@ -20,11 +20,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsPIDState>(target))
-                {
                     ecb.AddComponent<PhysicsPIDState>(target);
-                }
             }
-            
+
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
         }

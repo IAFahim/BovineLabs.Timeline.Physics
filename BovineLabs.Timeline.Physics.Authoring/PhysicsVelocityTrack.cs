@@ -1,7 +1,6 @@
-using UnityEngine;
-using BovineLabs.Timeline.Authoring;
 using System;
 using System.ComponentModel;
+using BovineLabs.Timeline.Authoring;
 using Unity.Physics.Authoring;
 using UnityEngine.Timeline;
 

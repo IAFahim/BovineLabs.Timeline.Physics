@@ -1,5 +1,4 @@
 using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.Physics;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;

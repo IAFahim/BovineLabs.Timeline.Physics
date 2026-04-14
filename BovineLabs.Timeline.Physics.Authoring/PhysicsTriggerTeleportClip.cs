@@ -9,8 +9,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsTriggerTeleportClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Teleport Configuration")] 
-        public StatefulEventState TriggerState = StatefulEventState.Enter;
+        [Header("Teleport Configuration")] public StatefulEventState TriggerState = StatefulEventState.Enter;
 
         [Tooltip("Who should be teleported?")]
         public PhysicsTriggerTargetMode EntityToMove = PhysicsTriggerTargetMode.ReactionOwner;
@@ -20,11 +19,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         [Header("Destination")]
         public PhysicsTriggerPositionMode PositionMode = PhysicsTriggerPositionMode.MatchContactPoint;
+
         public Vector3 PositionOffset = Vector3.zero;
         public bool IsPositionOffsetLocal = true;
 
         [Header("Facing Direction")]
         public PhysicsTriggerRotationMode RotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
+
         public Vector3 RotationOffset = Vector3.zero;
 
         public override double duration => 1;

@@ -1,6 +1,6 @@
+using BovineLabs.Timeline.Data;
 using Unity.Mathematics;
 using Unity.Properties;
-using BovineLabs.Timeline.Data;
 
 namespace BovineLabs.Timeline.Physics
 {

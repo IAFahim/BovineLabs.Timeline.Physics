@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,11 +10,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsAngularPIDClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Destination")]
-        [Tooltip("0 = Self rotation offset. 1 = Reaction Target entity rotation. Blend for partial.")]
-        [Range(0f, 1f)]
-        public float chaseTargetBlend;
-
-        public Vector3 localTargetRotationEuler = Vector3.zero;
+        public Target trackingTarget = Target.Target;
+        public PidAngularTargetMode targetMode = PidAngularTargetMode.LookAtTarget;
+        public Vector3 targetRotationEuler = Vector3.zero;
 
         [Header("Angular Tuning")]
         public bool uniformAxes = true;
@@ -35,8 +34,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Integral     = integral,
                     Derivative   = derivative,
                     MaxTorque = maxTorque,
-                    LocalTargetRotationEuler = math.radians(localTargetRotationEuler),
-                    ChaseTargetBlend = chaseTargetBlend,
+                    TrackingTarget = trackingTarget,
+                    TargetMode = targetMode,
+                    TargetRotationEuler = math.radians(targetRotationEuler),
                 }
             });
 

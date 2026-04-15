@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,8 +12,10 @@ namespace BovineLabs.Timeline.Physics
         public float3 Integral;
         public float3 Derivative;
         public float MaxForce;
-        public float3 LocalTargetOffset;
-        public float ChaseTargetBlend;
+        
+        public Target TrackingTarget;
+        public PidLinearTargetMode TargetMode;
+        public float3 TargetOffset;
     }
 
     public struct PhysicsLinearPIDAnimated : IAnimatedComponent<PhysicsLinearPIDData>
@@ -36,8 +39,9 @@ namespace BovineLabs.Timeline.Physics
             Integral = math.lerp(a.Integral, b.Integral, s),
             Derivative = math.lerp(a.Derivative, b.Derivative, s),
             MaxForce = math.lerp(a.MaxForce, b.MaxForce, s),
-            LocalTargetOffset = math.lerp(a.LocalTargetOffset, b.LocalTargetOffset, s),
-            ChaseTargetBlend = math.lerp(a.ChaseTargetBlend, b.ChaseTargetBlend, s)
+            TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
+            TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
+            TargetOffset = math.lerp(a.TargetOffset, b.TargetOffset, s)
         };
 
         public PhysicsLinearPIDData Add(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b) => new()
@@ -46,8 +50,9 @@ namespace BovineLabs.Timeline.Physics
             Integral = a.Integral + b.Integral,
             Derivative = a.Derivative + b.Derivative,
             MaxForce = a.MaxForce + b.MaxForce,
-            LocalTargetOffset = a.LocalTargetOffset + b.LocalTargetOffset,
-            ChaseTargetBlend = a.ChaseTargetBlend + b.ChaseTargetBlend
+            TrackingTarget = a.TrackingTarget,
+            TargetMode = a.TargetMode,
+            TargetOffset = a.TargetOffset + b.TargetOffset
         };
     }
 }

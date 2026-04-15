@@ -41,8 +41,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             {
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Destination", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.chaseTargetBlend)));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.localTargetRotationEuler)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.trackingTarget)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetMode)));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.maxTorque)));
                 
                 EditorGUILayout.Space(2);

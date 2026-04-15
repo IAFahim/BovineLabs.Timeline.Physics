@@ -18,11 +18,12 @@ namespace BovineLabs.Timeline.Physics.Debug
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
-    public partial struct PhysicsLinearPIDDebugSystem : ISystem
+    public partial struct PhysicsAngularPIDDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalTransform> localTransformLookup;
         private UnsafeComponentLookup<PhysicsVelocity> velocityLookup;
         private UnsafeComponentLookup<Targets> targetsLookup;
+        private ComponentLookup<TargetsCustom> targetsCustomsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -30,6 +31,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
         }
 
         [BurstCompile]
@@ -40,13 +42,15 @@ namespace BovineLabs.Timeline.Physics.Debug
             localTransformLookup.Update(ref state);
             velocityLookup.Update(ref state);
             targetsLookup.Update(ref state);
+            targetsCustomsLookup.Update(ref state);
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
                 TransformLookup = localTransformLookup,
                 VelocityLookup = velocityLookup,
-                TargetsLookup = targetsLookup
+                TargetsLookup = targetsLookup,
+                TargetsCustomLookup = targetsCustomsLookup
             }.Schedule(state.Dependency);
         }
 
@@ -58,20 +62,22 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsLinearPIDAnimated animated)
+            private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                if (!PhysicsMath.TryResolveLinearPidTarget(transform, animated.AuthoredData, entity, TargetsLookup, TransformLookup, out var finalPos)) return;
-
-                Drawer.Line(transform.Position, finalPos, Color.yellow);
-                Drawer.Point(finalPos, 0.2f, Color.red);
-                Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", Color.yellow, 12f);
+                if (!PhysicsMath.TryResolveAngularPidTarget(transform, animated.AuthoredData, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var finalRot)) return;
+                
+                var forward = math.mul(finalRot, math.forward());
+                var up = math.mul(finalRot, math.up());
+                Drawer.Arrow(transform.Position, forward, Color.blue);
+                Drawer.Arrow(transform.Position, up, Color.green);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(transform.Position, velocity.Linear, Color.cyan);
+                    Drawer.Arrow(transform.Position, velocity.Angular, Color.magenta);
             }
         }
     }

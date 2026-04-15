@@ -13,11 +13,12 @@ namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(PhysicsLinearPIDTrackSystem))]
-    public partial struct PhysicsAngularPidTrackSystem : ISystem
+    public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> blendImpl;
         private UnsafeComponentLookup<LocalTransform> localTransformLookup;
         private UnsafeComponentLookup<Targets> targetsLookup;
+        private ComponentLookup<TargetsCustom> targetsCustomLookup;
         private UnsafeComponentLookup<PhysicsVelocity> physicsVelocityLookup;
         private UnsafeComponentLookup<PhysicsMass> physicsMassLookup;
         private UnsafeComponentLookup<PhysicsAngularPIDState> pidStateLookup;
@@ -28,6 +29,7 @@ namespace BovineLabs.Timeline.Physics
             blendImpl.OnCreate(ref state);
             localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
             physicsMassLookup = state.GetUnsafeComponentLookup<PhysicsMass>(true);
             pidStateLookup = state.GetUnsafeComponentLookup<PhysicsAngularPIDState>();
@@ -44,6 +46,7 @@ namespace BovineLabs.Timeline.Physics
 
             localTransformLookup.Update(ref state);
             targetsLookup.Update(ref state);
+            targetsCustomLookup.Update(ref state);
             physicsVelocityLookup.Update(ref state);
             physicsMassLookup.Update(ref state);
             pidStateLookup.Update(ref state);
@@ -57,9 +60,10 @@ namespace BovineLabs.Timeline.Physics
                 DeltaTime = dt,
                 LocalTransformLookup = localTransformLookup,
                 TargetsLookup = targetsLookup,
+                TargetsCustomLookup = targetsCustomLookup,
                 PhysicsVelocityLookup = physicsVelocityLookup,
                 PhysicsMassLookup = physicsMassLookup,
-                PidStateLookup = pidStateLookup
+                PIDStateLookup = pidStateLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -76,9 +80,10 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsAngularPIDData>>.ReadOnly BlendData;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsMass> PhysicsMassLookup;
             public UnsafeComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
-            public UnsafeComponentLookup<PhysicsAngularPIDState> PidStateLookup;
+            public UnsafeComponentLookup<PhysicsAngularPIDState> PIDStateLookup;
             public float DeltaTime;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
@@ -88,20 +93,16 @@ namespace BovineLabs.Timeline.Physics
                 if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
                 if (!PhysicsMassLookup.TryGetComponent(entity, out var mass)) return;
                 if (!LocalTransformLookup.TryGetComponent(entity, out var transform)) return;
-                if (!PidStateLookup.TryGetComponent(entity, out var pidState)) return;
+                if (!PIDStateLookup.TryGetComponent(entity, out var pidState)) return;
 
                 var blended = JobHelpers.Blend<PhysicsAngularPIDData, PhysicsAngularPIDMixer>(ref mixData, default);
 
-                PhysicsMath.TryResolveAngularPidTarget(transform, blended, entity, TargetsLookup, LocalTransformLookup,
-                    out var targetRotation);
-                PhysicsMath.TryCalculateAngularPidTorque(transform.Rotation, targetRotation, blended, pidState,
-                    DeltaTime, out var torque, out var nextIntegral, out var nextPrevError);
-
-                if (PhysicsMath.TryApplyAngularTorque(velocity, mass, transform, torque, DeltaTime,
-                        out var nextVelocity))
+                if (PhysicsMath.TryResolveAngularPidTarget(transform, blended, entity, TargetsLookup, TargetsCustomLookup, LocalTransformLookup, out var targetRotation) &&
+                    PhysicsMath.TryCalculateAngularPidTorque(transform.Rotation, targetRotation, blended, pidState, DeltaTime, out var torque, out var nextIntegral, out var nextPrevError) &&
+                    PhysicsMath.TryApplyAngularTorque(velocity, mass, transform, torque, DeltaTime, out var nextVelocity))
                 {
                     PhysicsVelocityLookup[entity] = nextVelocity;
-                    PidStateLookup[entity] = new PhysicsAngularPIDState
+                    PIDStateLookup[entity] = new PhysicsAngularPIDState
                     {
                         IntegralAccumulator = nextIntegral,
                         PreviousError = nextPrevError,

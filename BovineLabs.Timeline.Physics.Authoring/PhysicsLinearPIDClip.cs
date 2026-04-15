@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using UnityEngine;
@@ -8,11 +9,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsLinearPIDClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Destination")]
-        [Tooltip("0 = Self offset. 1 = Reaction Target entity. Blend for partial.")]
-        [Range(0f, 1f)]
-        public float chaseTargetBlend;
-
-        public Vector3 localTargetOffset = new(0, 0, 10f);
+        public Target trackingTarget = Target.Target;
+        public PidLinearTargetMode targetMode = PidLinearTargetMode.TargetLocal;
+        public Vector3 targetOffset = new(0, 0, 0);
 
         [Header("Linear Tuning")]
         public bool uniformAxes = true;
@@ -34,8 +33,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Integral     = integral,
                     Derivative   = derivative,
                     MaxForce = maxForce,
-                    LocalTargetOffset = localTargetOffset,
-                    ChaseTargetBlend = chaseTargetBlend,
+                    TrackingTarget = trackingTarget,
+                    TargetMode = targetMode,
+                    TargetOffset = targetOffset,
                 }
             });
 

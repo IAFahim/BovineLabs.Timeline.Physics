@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,8 +12,10 @@ namespace BovineLabs.Timeline.Physics
         public float3 Integral;
         public float3 Derivative;
         public float MaxTorque;
-        public float3 LocalTargetRotationEuler;
-        public float ChaseTargetBlend;
+
+        public Target TrackingTarget;
+        public PidAngularTargetMode TargetMode;
+        public float3 TargetRotationEuler;
     }
 
     public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>
@@ -36,8 +39,9 @@ namespace BovineLabs.Timeline.Physics
             Integral = math.lerp(a.Integral, b.Integral, s),
             Derivative = math.lerp(a.Derivative, b.Derivative, s),
             MaxTorque = math.lerp(a.MaxTorque, b.MaxTorque, s),
-            LocalTargetRotationEuler = math.lerp(a.LocalTargetRotationEuler, b.LocalTargetRotationEuler, s),
-            ChaseTargetBlend = math.lerp(a.ChaseTargetBlend, b.ChaseTargetBlend, s)
+            TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
+            TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
+            TargetRotationEuler = math.lerp(a.TargetRotationEuler, b.TargetRotationEuler, s)
         };
 
         public PhysicsAngularPIDData Add(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b) => new()
@@ -46,8 +50,9 @@ namespace BovineLabs.Timeline.Physics
             Integral = a.Integral + b.Integral,
             Derivative = a.Derivative + b.Derivative,
             MaxTorque = a.MaxTorque + b.MaxTorque,
-            LocalTargetRotationEuler = a.LocalTargetRotationEuler + b.LocalTargetRotationEuler,
-            ChaseTargetBlend = a.ChaseTargetBlend + b.ChaseTargetBlend
+            TrackingTarget = a.TrackingTarget,
+            TargetMode = a.TargetMode,
+            TargetRotationEuler = a.TargetRotationEuler + b.TargetRotationEuler
         };
     }
 }

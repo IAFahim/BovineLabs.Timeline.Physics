@@ -17,6 +17,7 @@ namespace BovineLabs.Timeline.Physics
         private TrackBlendImpl<PhysicsLinearPIDData, PhysicsLinearPIDAnimated> blendImpl;
         private UnsafeComponentLookup<LocalTransform> localTransformLookup;
         private UnsafeComponentLookup<Targets> targetsLookup;
+        private ComponentLookup<TargetsCustom> targetsCustomLookup;
         private UnsafeComponentLookup<PhysicsVelocity> physicsVelocityLookup;
         private UnsafeComponentLookup<PhysicsMass> physicsMassLookup;
         private UnsafeComponentLookup<PhysicsLinearPIDState> pidStateLookup;
@@ -27,6 +28,7 @@ namespace BovineLabs.Timeline.Physics
             blendImpl.OnCreate(ref state);
             localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
             physicsMassLookup = state.GetUnsafeComponentLookup<PhysicsMass>(true);
             pidStateLookup = state.GetUnsafeComponentLookup<PhysicsLinearPIDState>();
@@ -43,6 +45,7 @@ namespace BovineLabs.Timeline.Physics
 
             localTransformLookup.Update(ref state);
             targetsLookup.Update(ref state);
+            targetsCustomLookup.Update(ref state);
             physicsVelocityLookup.Update(ref state);
             physicsMassLookup.Update(ref state);
             pidStateLookup.Update(ref state);
@@ -56,6 +59,7 @@ namespace BovineLabs.Timeline.Physics
                 DeltaTime = dt,
                 LocalTransformLookup = localTransformLookup,
                 TargetsLookup = targetsLookup,
+                TargetsCustomLookup = targetsCustomLookup,
                 PhysicsVelocityLookup = physicsVelocityLookup,
                 PhysicsMassLookup = physicsMassLookup,
                 PIDStateLookup = pidStateLookup
@@ -75,6 +79,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsLinearPIDData>>.ReadOnly BlendData;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsMass> PhysicsMassLookup;
             public UnsafeComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             public UnsafeComponentLookup<PhysicsLinearPIDState> PIDStateLookup;
@@ -91,7 +96,7 @@ namespace BovineLabs.Timeline.Physics
 
                 var blended = JobHelpers.Blend<PhysicsLinearPIDData, PhysicsLinearPIDMixer>(ref mixData, default);
 
-                if (PhysicsMath.TryResolveLinearPidTarget(transform, blended, entity, TargetsLookup, LocalTransformLookup, out var targetPosition) &&
+                if (PhysicsMath.TryResolveLinearPidTarget(transform, blended, entity, TargetsLookup, TargetsCustomLookup, LocalTransformLookup, out var targetPosition) &&
                     PhysicsMath.TryCalculateLinearPidForce(transform.Position, targetPosition, blended, pidState, DeltaTime, out var force, out var nextIntegral, out var nextPrevError) &&
                     PhysicsMath.TryApplyLinearForce(velocity, mass, force, DeltaTime, out var nextVelocity))
                 {

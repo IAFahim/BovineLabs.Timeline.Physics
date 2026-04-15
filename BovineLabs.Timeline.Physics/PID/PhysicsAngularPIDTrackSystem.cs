@@ -12,14 +12,15 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    public partial struct PhysicsPIDTrackSystem : ISystem
+    [UpdateAfter(typeof(PhysicsLinearPIDTrackSystem))]
+    public partial struct PhysicsAngularPidTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsPIDData, PhysicsPIDAnimated> blendImpl;
+        private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> blendImpl;
         private UnsafeComponentLookup<LocalTransform> localTransformLookup;
         private UnsafeComponentLookup<Targets> targetsLookup;
         private UnsafeComponentLookup<PhysicsVelocity> physicsVelocityLookup;
         private UnsafeComponentLookup<PhysicsMass> physicsMassLookup;
-        private UnsafeComponentLookup<PhysicsPIDState> pidStateLookup;
+        private UnsafeComponentLookup<PhysicsAngularPIDState> pidStateLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,7 +30,7 @@ namespace BovineLabs.Timeline.Physics
             targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
             physicsMassLookup = state.GetUnsafeComponentLookup<PhysicsMass>(true);
-            pidStateLookup = state.GetUnsafeComponentLookup<PhysicsPIDState>();
+            pidStateLookup = state.GetUnsafeComponentLookup<PhysicsAngularPIDState>();
         }
 
         [BurstCompile]
@@ -47,10 +48,10 @@ namespace BovineLabs.Timeline.Physics
             physicsMassLookup.Update(ref state);
             pidStateLookup.Update(ref state);
 
-            state.Dependency = new PreparePIDDataJob().ScheduleParallel(state.Dependency);
+            state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
             var blendData = blendImpl.Update(ref state);
 
-            state.Dependency = new ApplyPIDForceJob
+            state.Dependency = new ApplyJob
             {
                 BlendData = blendData,
                 DeltaTime = dt,
@@ -58,26 +59,26 @@ namespace BovineLabs.Timeline.Physics
                 TargetsLookup = targetsLookup,
                 PhysicsVelocityLookup = physicsVelocityLookup,
                 PhysicsMassLookup = physicsMassLookup,
-                PIDStateLookup = pidStateLookup
+                PidStateLookup = pidStateLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
-        private partial struct PreparePIDDataJob : IJobEntity
+        private partial struct PrepareJob : IJobEntity
         {
-            private void Execute(ref PhysicsPIDAnimated animated) => animated.Value = animated.AuthoredData;
+            private void Execute(ref PhysicsAngularPIDAnimated animated) => animated.Value = animated.AuthoredData;
         }
 
         [BurstCompile]
-        private struct ApplyPIDForceJob : IJobParallelHashMapDefer
+        private struct ApplyJob : IJobParallelHashMapDefer
         {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsPIDData>>.ReadOnly BlendData;
+            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsAngularPIDData>>.ReadOnly BlendData;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsMass> PhysicsMassLookup;
             public UnsafeComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
-            public UnsafeComponentLookup<PhysicsPIDState> PIDStateLookup;
+            public UnsafeComponentLookup<PhysicsAngularPIDState> PidStateLookup;
             public float DeltaTime;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
@@ -87,17 +88,25 @@ namespace BovineLabs.Timeline.Physics
                 if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
                 if (!PhysicsMassLookup.TryGetComponent(entity, out var mass)) return;
                 if (!LocalTransformLookup.TryGetComponent(entity, out var transform)) return;
-                if (!PIDStateLookup.TryGetComponent(entity, out var pidState)) return;
+                if (!PidStateLookup.TryGetComponent(entity, out var pidState)) return;
 
-                var blended = JobHelpers.Blend<PhysicsPIDData, PhysicsPIDMixer>(ref mixData, default);
+                var blended = JobHelpers.Blend<PhysicsAngularPIDData, PhysicsAngularPIDMixer>(ref mixData, default);
 
-                if (PhysicsMath.TryResolvePIDTarget(transform, blended, entity, TargetsLookup, LocalTransformLookup, out var targetPosition) &&
-                    PhysicsMath.TryCalculatePIDForce(transform.Position, targetPosition, blended, pidState, DeltaTime, out var force, out var nextState))
+                PhysicsMath.TryResolveAngularPidTarget(transform, blended, entity, TargetsLookup, LocalTransformLookup,
+                    out var targetRotation);
+                PhysicsMath.TryCalculateAngularPidTorque(transform.Rotation, targetRotation, blended, pidState,
+                    DeltaTime, out var torque, out var nextIntegral, out var nextPrevError);
+
+                if (PhysicsMath.TryApplyAngularTorque(velocity, mass, transform, torque, DeltaTime,
+                        out var nextVelocity))
                 {
-                    velocity.Linear += force * mass.InverseMass * DeltaTime;
-                    
-                    PhysicsVelocityLookup[entity] = velocity;
-                    PIDStateLookup[entity] = nextState;
+                    PhysicsVelocityLookup[entity] = nextVelocity;
+                    PidStateLookup[entity] = new PhysicsAngularPIDState
+                    {
+                        IntegralAccumulator = nextIntegral,
+                        PreviousError = nextPrevError,
+                        IsInitialized = true
+                    };
                 }
             }
         }

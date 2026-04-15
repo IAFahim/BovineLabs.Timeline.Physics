@@ -7,11 +7,11 @@ using UnityEngine.Timeline;
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [Serializable]
-    [TrackClipType(typeof(PhysicsPIDClip))]
+    [TrackClipType(typeof(PhysicsLinearPIDClip))]
     [TrackColor(0.9f, 0.2f, 0.4f)]
     [TrackBindingType(typeof(PhysicsBodyAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Physics/PID Controller")]
-    public class PhysicsPIDTrack : DOTSTrack
+    [DisplayName("BovineLabs/Timeline/Physics/Linear PID")]
+    public class PhysicsLinearPIDTrack : DOTSTrack
     {
     }
 }

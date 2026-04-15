@@ -4,18 +4,17 @@ namespace BovineLabs.Timeline.Physics
     {
         MatchSelf,
         MatchCollidedEntity,
-        MatchContactPoint // Fallbacks to midpoint if using Triggers instead of Collisions
+        MatchContactPoint
     }
 
     public enum PhysicsTriggerRotationMode : byte
     {
         MatchSelf,
         MatchCollidedEntity,
-        AlignToContactNormal, // Fallbacks to LookAt(Collided) if using Triggers
+        AlignToContactNormal,
         Identity
     }
 
-    // Used to identify WHO to Parent to (Instantiate) or WHO to Teleport
     public enum PhysicsTriggerTargetMode : byte
     {
         Self,

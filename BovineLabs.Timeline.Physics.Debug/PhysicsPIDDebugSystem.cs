@@ -18,7 +18,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
-    public partial struct PhysicsPIDDebugSystem : ISystem
+    public partial struct PhysicsLinearPIDDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalTransform> localTransformLookup;
         private UnsafeComponentLookup<PhysicsVelocity> velocityLookup;
@@ -41,7 +41,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             velocityLookup.Update(ref state);
             targetsLookup.Update(ref state);
 
-            state.Dependency = new DrawPIDJob
+            state.Dependency = new DrawJob
             {
                 Drawer = drawer,
                 TransformLookup = localTransformLookup,
@@ -52,34 +52,23 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
-        private partial struct DrawPIDJob : IJobEntity
+        private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsPIDAnimated animated)
+            private void Execute(in TrackBinding binding, in PhysicsLinearPIDAnimated animated)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                var data = animated.AuthoredData;
+                if (!PhysicsMath.TryResolveLinearPidTarget(transform, animated.AuthoredData, entity, TargetsLookup, TransformLookup, out var finalPos)) return;
 
-                var selfGoal = transform.Position + math.rotate(transform.Rotation, data.LocalTargetOffset);
-                var finalGoal = selfGoal;
-
-                if (data.ChaseTargetBlend > 0.001f && TargetsLookup.TryGetComponent(entity, out var targets))
-                    if (TransformLookup.TryGetComponent(targets.Target, out var enemyTransform))
-                    {
-                        var enemyGoal = enemyTransform.Position +
-                                        math.rotate(enemyTransform.Rotation, data.LocalTargetOffset);
-                        finalGoal = math.lerp(selfGoal, enemyGoal, data.ChaseTargetBlend);
-                    }
-
-                Drawer.Line(transform.Position, finalGoal, Color.yellow);
-                Drawer.Point(finalGoal, 0.2f, Color.red);
-                Drawer.Text32(finalGoal + new float3(0, 0.4f, 0), "PID Goal", Color.yellow, 12f);
+                Drawer.Line(transform.Position, finalPos, Color.yellow);
+                Drawer.Point(finalPos, 0.2f, Color.red);
+                Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", Color.yellow, 12f);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
                     Drawer.Arrow(transform.Position, velocity.Linear, Color.cyan);

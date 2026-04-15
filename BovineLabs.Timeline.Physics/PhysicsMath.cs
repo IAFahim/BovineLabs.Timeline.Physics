@@ -1,6 +1,5 @@
 using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Timeline.Core;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,12 +10,28 @@ namespace BovineLabs.Timeline.Physics
 {
     public static class PhysicsMath
     {
-        public static bool TryCalculatePIDForce(in float3 currentPosition, in float3 targetPosition, in PhysicsPIDData config, in PhysicsPIDState state, in float deltaTime, out float3 force, out PhysicsPIDState nextState)
+        public static bool TryResolveLinearPidTarget(LocalTransform transform, PhysicsLinearPIDData config, Entity entity, UnsafeComponentLookup<Targets> targetsLookup, UnsafeComponentLookup<LocalTransform> transformLookup, out float3 targetPosition)
+        {
+            var selfGoalPos = transform.Position + math.rotate(transform.Rotation, config.LocalTargetOffset);
+
+            if (config.ChaseTargetBlend > 0.001f && targetsLookup.TryGetComponent(entity, out var targets) && transformLookup.TryGetComponent(targets.Target, out var enemyTransform))
+            {
+                var enemyGoalPos = enemyTransform.Position + math.rotate(enemyTransform.Rotation, config.LocalTargetOffset);
+                targetPosition = math.lerp(selfGoalPos, enemyGoalPos, config.ChaseTargetBlend);
+                return true;
+            }
+
+            targetPosition = selfGoalPos;
+            return true;
+        }
+
+        public static bool TryCalculateLinearPidForce(float3 currentPosition, float3 targetPosition, PhysicsLinearPIDData config, PhysicsLinearPIDState state, float deltaTime, out float3 force, out float3 nextIntegral, out float3 nextPrevError)
         {
             if (deltaTime <= 0f)
             {
                 force = float3.zero;
-                nextState = state;
+                nextIntegral = state.IntegralAccumulator;
+                nextPrevError = state.PreviousError;
                 return false;
             }
 
@@ -26,7 +41,7 @@ namespace BovineLabs.Timeline.Physics
             var prevError = math.select(error, state.PreviousError, isInitialized);
             var integral = math.select(float3.zero, state.IntegralAccumulator, isInitialized);
 
-            var nextIntegral = integral + (error * deltaTime);
+            nextIntegral = integral + (error * deltaTime);
             var derivative = (error - prevError) / deltaTime;
 
             var rawForce = (config.Proportional * error)
@@ -36,134 +51,117 @@ namespace BovineLabs.Timeline.Physics
             var forceMagSq = math.lengthsq(rawForce);
             var maxForceSq = config.MaxForce * config.MaxForce;
 
-            force = forceMagSq > maxForceSq
-                ? math.normalize(rawForce) * config.MaxForce
-                : rawForce;
-
-            nextState = new PhysicsPIDState
-            {
-                IntegralAccumulator = nextIntegral,
-                PreviousError = error,
-                IsInitialized = true
-            };
-
+            force = forceMagSq > maxForceSq ? math.normalize(rawForce) * config.MaxForce : rawForce;
+            nextPrevError = error;
             return true;
         }
 
-        public static bool TryResolvePIDTarget(in LocalTransform transform, in PhysicsPIDData config, in Entity entity, in UnsafeComponentLookup<Targets> targetsLookup, in UnsafeComponentLookup<LocalTransform> transformLookup, out float3 targetPosition)
+        public static bool TryResolveAngularPidTarget(LocalTransform transform, PhysicsAngularPIDData config, Entity entity, UnsafeComponentLookup<Targets> targetsLookup, UnsafeComponentLookup<LocalTransform> transformLookup, out quaternion targetRotation)
         {
-            var selfGoal = transform.Position + math.rotate(transform.Rotation, config.LocalTargetOffset);
+            var selfGoalRot = math.mul(transform.Rotation, quaternion.Euler(config.LocalTargetRotationEuler));
 
             if (config.ChaseTargetBlend > 0.001f && targetsLookup.TryGetComponent(entity, out var targets) && transformLookup.TryGetComponent(targets.Target, out var enemyTransform))
             {
-                var enemyGoal = enemyTransform.Position + math.rotate(enemyTransform.Rotation, config.LocalTargetOffset);
-                targetPosition = math.lerp(selfGoal, enemyGoal, config.ChaseTargetBlend);
+                var enemyGoalRot = math.mul(enemyTransform.Rotation, quaternion.Euler(config.LocalTargetRotationEuler));
+                targetRotation = math.slerp(selfGoalRot, enemyGoalRot, config.ChaseTargetBlend);
                 return true;
             }
 
-            targetPosition = selfGoal;
+            targetRotation = selfGoalRot;
+            return true;
+        }
+
+        public static bool TryCalculateAngularPidTorque(quaternion currentRot, quaternion targetRot, PhysicsAngularPIDData config, PhysicsAngularPIDState state, float deltaTime, out float3 torque, out float3 nextIntegral, out float3 nextPrevError)
+        {
+            if (deltaTime <= 0f || !TryCalculateAngularError(currentRot, targetRot, out var error))
+            {
+                torque = float3.zero;
+                nextIntegral = state.IntegralAccumulator;
+                nextPrevError = state.PreviousError;
+                return false;
+            }
+
+            var isInitialized = state.IsInitialized;
+            var prevError = math.select(error, state.PreviousError, isInitialized);
+            var integral = math.select(float3.zero, state.IntegralAccumulator, isInitialized);
+
+            nextIntegral = integral + (error * deltaTime);
+            var derivative = (error - prevError) / deltaTime;
+
+            var rawTorque = (config.Proportional * error)
+                          + (config.Integral * nextIntegral)
+                          + (config.Derivative * derivative);
+
+            var torqueMagSq = math.lengthsq(rawTorque);
+            var maxTorqueSq = config.MaxTorque * config.MaxTorque;
+
+            torque = torqueMagSq > maxTorqueSq ? math.normalize(rawTorque) * config.MaxTorque : rawTorque;
+            nextPrevError = error;
+            return true;
+        }
+
+        private static bool TryCalculateAngularError(quaternion current, quaternion target, out float3 error)
+        {
+            var delta = math.mul(target, math.inverse(current));
+            var q = delta.value;
+            if (q.w < 0f) q = -q;
+            
+            var dot = math.lengthsq(q.xyz);
+            if (dot < 1e-6f)
+            {
+                error = float3.zero;
+                return true;
+            }
+            
+            var angle = 2.0f * math.acos(math.clamp(q.w, -1f, 1f));
+            error = (q.xyz / math.sqrt(dot)) * angle;
+            return true;
+        }
+
+        public static bool TryApplyLinearForce(PhysicsVelocity velocityIn, PhysicsMass mass, float3 force, float deltaTime, out PhysicsVelocity velocityOut)
+        {
+            velocityOut = velocityIn;
+            var invMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
+            velocityOut.Linear += force * invMass * deltaTime;
+            return true;
+        }
+
+        public static bool TryApplyAngularTorque(PhysicsVelocity velocityIn, PhysicsMass mass, LocalTransform transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
+        {
+            velocityOut = velocityIn;
+            var invInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
+            var localTorque = math.rotate(math.inverse(transform.Rotation), torque);
+            var localAngularVelocityChange = localTorque * invInertia * deltaTime;
+            velocityOut.Angular += math.rotate(transform.Rotation, localAngularVelocityChange);
             return true;
         }
     }
 
     public static class TriggerResolution
     {
-        public static bool TryResolvePosition(in InstantiatePositionMode mode, in LocalToWorld self, in LocalToWorld other, in float3 contactPoint, in bool hasContact, out float3 position)
+        private static void TryResolvePosition(InstantiatePositionMode mode, LocalToWorld self, LocalToWorld other,
+            float3 contactPoint, bool hasContact, out float3 position)
         {
             position = mode switch
             {
-                InstantiatePositionMode.MatchSelf => self.Position,
                 InstantiatePositionMode.MatchCollidedEntity => other.Position,
                 InstantiatePositionMode.MatchContactPoint => hasContact ? contactPoint : (self.Position + other.Position) * 0.5f,
                 _ => self.Position
             };
-            return true;
         }
 
-        public static bool TryResolveRotation(in InstantiateRotationMode mode, in LocalToWorld self, in LocalToWorld other, in float3 contactNormal, in bool hasContact, out quaternion rotation)
+        private static void TryResolveRotation(InstantiateRotationMode mode, LocalToWorld self, LocalToWorld other,
+            float3 contactNormal, bool hasContact, out quaternion rotation)
         {
-            var diff = math.normalize(self.Position - other.Position);
-            var fallbackNormal = math.lengthsq(diff) > 0 ? diff : math.forward();
-
             rotation = mode switch
             {
                 InstantiateRotationMode.MatchSelf => math.quaternion(self.Value),
                 InstantiateRotationMode.MatchCollidedEntity => math.quaternion(other.Value),
                 InstantiateRotationMode.AlignToContactNormal => hasContact
                     ? quaternion.LookRotationSafe(contactNormal, math.up())
-                    : quaternion.LookRotationSafe(fallbackNormal, math.up()),
-                InstantiateRotationMode.Identity => quaternion.identity,
+                    : quaternion.LookRotationSafe(math.normalize(self.Position - other.Position), math.up()),
                 _ => quaternion.identity
             };
-            return true;
-        }
-
-        public static bool TryResolveLocalTransform(in PhysicsTriggerInstantiateData cfg, in LocalToWorld self, in LocalToWorld other, in float3 contactPoint, in float3 contactNormal, in bool hasContact, out LocalTransform transform)
-        {
-            TryResolvePosition(cfg.PositionMode, self, other, contactPoint, hasContact, out var position);
-            TryResolveRotation(cfg.RotationMode, self, other, contactNormal, hasContact, out var rotation);
-
-            var positionOffset = cfg.IsPositionOffsetLocal
-                ? math.rotate(rotation, cfg.PositionOffset)
-                : cfg.PositionOffset;
-
-            var finalPosition = position + positionOffset;
-            var finalRotation = math.mul(rotation, quaternion.Euler(cfg.RotationOffsetEuler));
-
-            transform = LocalTransform.FromPositionRotation(finalPosition, finalRotation);
-            return true;
-        }
-
-        public static bool TryResolveParent(in InstantiateParentMode mode, in Entity self, in Entity other, in UnsafeComponentLookup<Targets> targetsLookup, out Entity parent)
-        {
-            parent = mode switch
-            {
-                InstantiateParentMode.ParentToCollidedEntity => other,
-                _ => Entity.Null
-            };
-
-            if (mode >= InstantiateParentMode.ParentToReactionOwner && targetsLookup.TryGetComponent(self, out var targets))
-            {
-                parent = mode switch
-                {
-                    InstantiateParentMode.ParentToReactionOwner => targets.Owner,
-                    InstantiateParentMode.ParentToReactionSource => targets.Source,
-                    InstantiateParentMode.ParentToReactionTarget => targets.Target,
-                    _ => parent
-                };
-            }
-
-            return parent != Entity.Null;
-        }
-
-        public static bool TryResolveRelativeTransform(in LocalTransform worldTransform, in Entity parent, in UnsafeComponentLookup<LocalToWorld> ltwLookup, out LocalTransform localTransform)
-        {
-            if (ltwLookup.TryGetComponent(parent, out var parentLtw))
-            {
-                var worldMatrix = float4x4.TRS(worldTransform.Position, worldTransform.Rotation, worldTransform.Scale);
-                var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
-                localMatrix.ExtractLocalTransform(out localTransform);
-                return true;
-            }
-
-            localTransform = default;
-            return false;
-        }
-
-        public static bool TryResolveTargets(in Entity self, in Entity other, in UnsafeComponentLookup<Targets> targetsLookup, out Targets targets)
-        {
-            if (targetsLookup.TryGetComponent(self, out var selfTargets) && targetsLookup.TryGetComponent(other, out var otherTargets))
-            {
-                targets = new Targets
-                {
-                    Owner = selfTargets.Owner,
-                    Source = selfTargets.Source,
-                    Target = otherTargets.Source
-                };
-                return true;
-            }
-            targets = default;
-            return false;
         }
     }
 }

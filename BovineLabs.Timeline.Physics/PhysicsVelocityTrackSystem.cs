@@ -23,7 +23,7 @@ namespace BovineLabs.Timeline.Physics
         {
             _blendImpl.OnCreate(ref state);
             localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(); // Read-Write
+            physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
         }
 
         [BurstCompile]

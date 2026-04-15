@@ -1,3 +1,5 @@
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
@@ -13,10 +15,20 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct PhysicsTriggerTeleportSystem : ISystem
     {
+        private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
+        private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
@@ -25,14 +37,20 @@ namespace BovineLabs.Timeline.Physics
             var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
+            _localTransformLookup.Update(ref state);
+            _localToWorldLookup.Update(ref state);
+            _targetsLookup.Update(ref state);
+            _triggerEventsLookup.Update(ref state);
+            _collisionEventsLookup.Update(ref state);
+            
             state.Dependency = new TeleportJob
             {
                 ECB = ecb,
-                LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
-                LocalToWorldLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
-                TargetsLookup = SystemAPI.GetComponentLookup<Targets>(true),
-                TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
-                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
+                LocalTransformLookup = _localTransformLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                TargetsLookup = _targetsLookup,
+                TriggerEventsLookup = _triggerEventsLookup,
+                CollisionEventsLookup = _collisionEventsLookup
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -41,11 +59,11 @@ namespace BovineLabs.Timeline.Physics
         private partial struct TeleportJob : IJobEntity
         {
             public EntityCommandBuffer.ParallelWriter ECB;
-            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [ReadOnly] public ComponentLookup<LocalToWorld> LocalToWorldLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
-            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
             private void Execute([ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
                 in PhysicsTriggerTeleportData cfg)
@@ -70,7 +88,6 @@ namespace BovineLabs.Timeline.Physics
                 if (!LocalToWorldLookup.TryGetComponent(self, out var selfLtw) ||
                     !LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
 
-                // 1. Identify who to teleport
                 var targetToMove = cfg.EntityToMove switch
                 {
                     PhysicsTriggerTargetMode.Self => self,
@@ -91,7 +108,6 @@ namespace BovineLabs.Timeline.Physics
                 if (targetToMove == Entity.Null ||
                     !LocalTransformLookup.TryGetComponent(targetToMove, out var targetLt)) return;
 
-                // 2. Calculate Destination
                 var destPos = cfg.PositionMode switch
                 {
                     PhysicsTriggerPositionMode.MatchSelf => selfLtw.Position,
@@ -121,12 +137,10 @@ namespace BovineLabs.Timeline.Physics
                 if (math.lengthsq(cfg.RotationOffsetEuler) > 0)
                     destRot = math.mul(destRot, quaternion.Euler(cfg.RotationOffsetEuler));
 
-                // 3. Apply Teleport (Modify LocalTransform directly via ECB)
                 targetLt.Position = destPos;
                 targetLt.Rotation = destRot;
                 ECB.SetComponent(chunkIndex, targetToMove, targetLt);
 
-                // 4. Kill momentum if requested
                 if (cfg.ResetVelocity)
                     ECB.SetComponent(chunkIndex, targetToMove,
                         new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });

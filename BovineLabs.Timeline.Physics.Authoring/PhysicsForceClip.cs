@@ -1,0 +1,30 @@
+using BovineLabs.Timeline.Authoring;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
+namespace BovineLabs.Timeline.Physics.Authoring
+{
+    public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
+    {
+        public Vector3 LinearForce;
+        public Vector3 AngularForce;
+
+        public override double duration => 1;
+        public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
+
+        public override void Bake(Entity clipEntity, BakingContext context)
+        {
+            context.Baker.AddComponent(clipEntity, new PhysicsForceAnimated
+            {
+                AuthoredData = new PhysicsForceData
+                {
+                    Linear = LinearForce,
+                    Angular = AngularForce
+                }
+            });
+
+            base.Bake(clipEntity, context);
+        }
+    }
+}

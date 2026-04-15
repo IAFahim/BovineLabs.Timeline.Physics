@@ -1,9 +1,11 @@
+using System.Runtime.CompilerServices;
 using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Physics
 {
     public readonly struct PhysicsPIDMixer : IMixer<PhysicsPIDData>
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public PhysicsPIDData Lerp(in PhysicsPIDData a, in PhysicsPIDData b, in float s)
         {
             return new PhysicsPIDData
@@ -17,6 +19,7 @@ namespace BovineLabs.Timeline.Physics
             };
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public PhysicsPIDData Add(in PhysicsPIDData a, in PhysicsPIDData b)
         {
             return new PhysicsPIDData

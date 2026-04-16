@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/PhysicsVelocityTrackSystem.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -17,27 +18,31 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            blendImpl.OnCreate(ref state);
-            activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
+            this.blendImpl.OnCreate(ref state);
+            this.activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
         }
 
         [BurstCompile]
-        public void OnDestroy(ref SystemState state) => blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state) => this.blendImpl.OnDestroy(ref state);
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            activeLookup.Update(ref state);
+            this.activeLookup.Update(ref state);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
-            state.Dependency = new DisableStaleJob().ScheduleParallel(state.Dependency);
             
-            var blendData = blendImpl.Update(ref state);
+            state.Dependency = new DisableStaleJob
+            {
+                ActiveLookup = this.activeLookup
+            }.ScheduleParallel(state.Dependency);
+            
+            var blendData = this.blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActiveLookup = activeLookup
+                ActiveLookup = this.activeLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -45,7 +50,7 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(ClipActive))]
         private partial struct PrepareJob : IJobEntity
         {
-            private void Execute(ref PhysicsVelocityAnimated animated) => animated.Value = animated.AuthoredVelocity;
+            private void Execute(ref PhysicsVelocityAnimated animated) => animated.Value = animated.AuthoredData;
         }
 
         [BurstCompile]
@@ -53,22 +58,31 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(TimelineActivePrevious))]
         private partial struct DisableStaleJob : IJobEntity
         {
-            private void Execute(in TrackBinding binding, ref PhysicsVelocityAnimated anim) { }
+            [NativeDisableParallelForRestriction]
+            public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+
+            private void Execute(in TrackBinding binding)
+            {
+                if (this.ActiveLookup.HasComponent(binding.Value))
+                {
+                    this.ActiveLookup.SetComponentEnabled(binding.Value, false);
+                }
+            }
         }
 
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityData>>.ReadOnly BlendData;
-            public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
+                this.Read(this.BlendData, entryIndex, out var entity, out var mixData);
+                if (!this.ActiveLookup.HasComponent(entity)) return;
 
-                ActiveLookup.SetComponentEnabled(entity, true);
-                ActiveLookup[entity] = new ActiveVelocity
+                this.ActiveLookup.SetComponentEnabled(entity, true);
+                this.ActiveLookup[entity] = new ActiveVelocity
                 {
                     Config = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default)
                 };

@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/PhysicsMath.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
@@ -151,19 +152,19 @@ namespace BovineLabs.Timeline.Physics
 
         public static bool TryCalculateAngularError(quaternion current, quaternion target, out float3 error)
         {
-            var delta = math.mul(target, math.inverse(current));
+            var delta = math.mul(target, math.conjugate(current));
             var q = delta.value;
-            if (q.w < 0f) q = -q;
+            var qPositive = math.select(q, -q, q.w < 0f);
 
-            var dot = math.lengthsq(q.xyz);
+            var dot = math.lengthsq(qPositive.xyz);
             if (dot < 1e-6f)
             {
                 error = float3.zero;
                 return true;
             }
 
-            var angle = 2.0f * math.acos(math.clamp(q.w, -1f, 1f));
-            error = (q.xyz / math.sqrt(dot)) * angle;
+            var angle = 2.0f * math.acos(math.clamp(qPositive.w, -1f, 1f));
+            error = (qPositive.xyz / math.sqrt(dot)) * angle;
             return true;
         }
 

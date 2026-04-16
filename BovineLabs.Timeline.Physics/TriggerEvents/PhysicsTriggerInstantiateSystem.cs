@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerInstantiateSystem.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.ObjectManagement;
@@ -25,31 +26,31 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ObjectDefinitionRegistry>();
-            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
-            _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
+            this._localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            this._targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            this._triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            this._collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            _localToWorldLookup.Update(ref state);
-            _targetsLookup.Update(ref state);
-            _triggerEventsLookup.Update(ref state);
-            _collisionEventsLookup.Update(ref state);
+            this._localToWorldLookup.Update(ref state);
+            this._targetsLookup.Update(ref state);
+            this._triggerEventsLookup.Update(ref state);
+            this._collisionEventsLookup.Update(ref state);
 
             state.Dependency = new InstantiateJob
             {
                 ECB = ecb,
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
-                LocalToWorldLookup = _localToWorldLookup,
-                TargetsLookup = _targetsLookup,
-                TriggerEventsLookup = _triggerEventsLookup,
-                CollisionEventsLookup = _collisionEventsLookup
+                LocalToWorldLookup = this._localToWorldLookup,
+                TargetsLookup = this._targetsLookup,
+                TriggerEventsLookup = this._triggerEventsLookup,
+                CollisionEventsLookup = this._collisionEventsLookup
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -67,10 +68,10 @@ namespace BovineLabs.Timeline.Physics
             private void Execute([ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerInstantiateData cfg)
             {
                 var self = binding.Value;
-                var prefab = Registry[cfg.ObjectId];
+                var prefab = this.Registry[cfg.ObjectId];
                 if (prefab == Entity.Null) return;
 
-                if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                if (this.TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                 {
                     var i = 0;
                     while (i < triggers.Length)
@@ -78,15 +79,15 @@ namespace BovineLabs.Timeline.Physics
                         var evt = triggers[i];
                         if (evt.State == cfg.EventState)
                         {
-                            var midpoint = (LocalToWorldLookup[self].Position + LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var dir = math.normalizesafe(LocalToWorldLookup[self].Position - LocalToWorldLookup[evt.EntityB].Position);
-                            Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, midpoint, dir);
+                            var midpoint = (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
+                            var dir = math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
+                            this.Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, midpoint, dir);
                         }
                         i++;
                     }
                 }
 
-                if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                if (this.CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                 {
                     var i = 0;
                     while (i < collisions.Length)
@@ -95,9 +96,9 @@ namespace BovineLabs.Timeline.Physics
                         if (evt.State == cfg.EventState)
                         {
                             var hasContact = evt.TryGetDetails(out var details);
-                            var pt = hasContact ? details.AverageContactPointPosition : (LocalToWorldLookup[self].Position + LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var normal = hasContact ? evt.Normal : math.normalizesafe(LocalToWorldLookup[self].Position - LocalToWorldLookup[evt.EntityB].Position);
-                            Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, pt, normal);
+                            var pt = hasContact ? details.AverageContactPointPosition : (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
+                            var normal = hasContact ? evt.Normal : math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
+                            this.Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, pt, normal);
                         }
                         i++;
                     }
@@ -106,17 +107,17 @@ namespace BovineLabs.Timeline.Physics
 
             private void Spawn(int chunkIndex, Entity self, Entity other, Entity prefab, in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal)
             {
-                if (!LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
+                if (!this.LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !this.LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
 
                 var transform = PhysicsTriggerResolution.CalculateTransform(
                     cfg.PositionMode, cfg.PositionOffset, cfg.IsPositionOffsetLocal,
                     cfg.RotationMode, cfg.RotationOffsetEuler,
                     selfLtw, otherLtw, contactPoint, contactNormal);
 
-                var instance = ECB.Instantiate(chunkIndex, prefab);
-                ECB.SetComponent(chunkIndex, instance, transform);
+                var instance = this.ECB.Instantiate(chunkIndex, prefab);
+                this.ECB.SetComponent(chunkIndex, instance, transform);
 
-                var selfTargets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
+                var selfTargets = this.TargetsLookup.TryGetComponent(self, out var t) ? t : default;
                 
                 var newTargets = new Targets
                 {
@@ -124,17 +125,17 @@ namespace BovineLabs.Timeline.Physics
                     Source = self,
                     Target = other
                 };
-                ECB.SetComponent(chunkIndex, instance, newTargets);
+                this.ECB.SetComponent(chunkIndex, instance, newTargets);
 
                 if (cfg.AssignParent)
                 {
                     var parentEntity = PhysicsTriggerResolution.ResolveTarget(cfg.ParentTarget, self, other, selfTargets);
-                    if (parentEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
+                    if (parentEntity != Entity.Null && this.LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
                     {
-                        ECB.AddComponent(chunkIndex, instance, new Parent { Value = parentEntity });
+                        this.ECB.AddComponent(chunkIndex, instance, new Parent { Value = parentEntity });
                         var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
                         var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
-                        ECB.SetComponent(chunkIndex, instance, LocalTransform.FromMatrix(localMatrix));
+                        this.ECB.SetComponent(chunkIndex, instance, LocalTransform.FromMatrix(localMatrix));
                     }
                 }
             }

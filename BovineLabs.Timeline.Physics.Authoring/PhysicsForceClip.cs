@@ -8,8 +8,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
-        public Vector3 LinearForce;
-        public Vector3 AngularForce;
+        public Vector3 linearForce;
+        public Vector3 angularForce;
         public Target space = Target.None;
 
         public override double duration => 1;
@@ -21,8 +21,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsForceData
                 {
-                    Linear = LinearForce,
-                    Angular = AngularForce,
+                    Linear = linearForce,
+                    Angular = angularForce,
                     Space = space
                 }
             });

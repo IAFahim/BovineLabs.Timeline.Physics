@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics.Data/PhysicsVelocityData.cs
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
@@ -15,7 +16,7 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>
     {
-        public PhysicsVelocityData AuthoredVelocity;
+        public PhysicsVelocityData AuthoredData;
         [CreateProperty] public PhysicsVelocityData Value { get; set; }
     }
 

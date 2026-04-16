@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/Smear/UpdateSmearVelocitySystem.cs
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Physics;
@@ -6,17 +7,22 @@ using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Physics.Smear
 {
-    [BurstCompile]                          // add this
+    [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
     public partial struct UpdateSmearVelocitySystem : ISystem
     {
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Query all entities that have both PhysicsVelocity and our Shader Component
-            foreach (var (physicsVel, smearVel) in SystemAPI.Query<RefRO<PhysicsVelocity>, RefRW<SmearVelocity>>())
+            state.Dependency = new UpdateSmearJob().ScheduleParallel(state.Dependency);
+        }
+
+        [BurstCompile]
+        private partial struct UpdateSmearJob : IJobEntity
+        {
+            private void Execute(ref SmearVelocity smearVel, in PhysicsVelocity physicsVel)
             {
-                // Physics velocity is a float3, we pack it into a float4 for the shader
-                smearVel.ValueRW.Value = new float4(physicsVel.ValueRO.Linear, 0f);
+                smearVel.Value = new float4(physicsVel.Linear, 0f);
             }
         }
     }

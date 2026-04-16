@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerTeleportSystem.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
@@ -24,33 +25,33 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
-            _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
+            this._localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            this._localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            this._targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            this._triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            this._collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            _localTransformLookup.Update(ref state);
-            _localToWorldLookup.Update(ref state);
-            _targetsLookup.Update(ref state);
-            _triggerEventsLookup.Update(ref state);
-            _collisionEventsLookup.Update(ref state);
+            this._localTransformLookup.Update(ref state);
+            this._localToWorldLookup.Update(ref state);
+            this._targetsLookup.Update(ref state);
+            this._triggerEventsLookup.Update(ref state);
+            this._collisionEventsLookup.Update(ref state);
             
             state.Dependency = new TeleportJob
             {
                 ECB = ecb,
-                LocalTransformLookup = _localTransformLookup,
-                LocalToWorldLookup = _localToWorldLookup,
-                TargetsLookup = _targetsLookup,
-                TriggerEventsLookup = _triggerEventsLookup,
-                CollisionEventsLookup = _collisionEventsLookup
+                LocalTransformLookup = this._localTransformLookup,
+                LocalToWorldLookup = this._localToWorldLookup,
+                TargetsLookup = this._targetsLookup,
+                TriggerEventsLookup = this._triggerEventsLookup,
+                CollisionEventsLookup = this._collisionEventsLookup
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -69,7 +70,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 var self = binding.Value;
 
-                if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                if (this.TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                 {
                     var i = 0;
                     while (i < triggers.Length)
@@ -77,15 +78,15 @@ namespace BovineLabs.Timeline.Physics
                         var evt = triggers[i];
                         if (evt.State == cfg.EventState)
                         {
-                            var midpoint = (LocalToWorldLookup[self].Position + LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var dir = math.normalizesafe(LocalToWorldLookup[self].Position - LocalToWorldLookup[evt.EntityB].Position);
-                            ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, midpoint, dir);
+                            var midpoint = (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
+                            var dir = math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
+                            this.ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, midpoint, dir);
                         }
                         i++;
                     }
                 }
 
-                if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                if (this.CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                 {
                     var i = 0;
                     while (i < collisions.Length)
@@ -94,9 +95,9 @@ namespace BovineLabs.Timeline.Physics
                         if (evt.State == cfg.EventState)
                         {
                             var hasContact = evt.TryGetDetails(out var details);
-                            var pt = hasContact ? details.AverageContactPointPosition : (LocalToWorldLookup[self].Position + LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var normal = hasContact ? evt.Normal : math.normalizesafe(LocalToWorldLookup[self].Position - LocalToWorldLookup[evt.EntityB].Position);
-                            ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, pt, normal);
+                            var pt = hasContact ? details.AverageContactPointPosition : (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
+                            var normal = hasContact ? evt.Normal : math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
+                            this.ProcessTeleport(chunkIndex, self, evt.EntityB, cfg, pt, normal);
                         }
                         i++;
                     }
@@ -105,12 +106,12 @@ namespace BovineLabs.Timeline.Physics
 
             private void ProcessTeleport(int chunkIndex, Entity self, Entity other, in PhysicsTriggerTeleportData cfg, float3 contactPoint, float3 contactNormal)
             {
-                if (!LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
+                if (!this.LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !this.LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
 
-                var selfTargets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
+                var selfTargets = this.TargetsLookup.TryGetComponent(self, out var t) ? t : default;
                 var targetToMove = PhysicsTriggerResolution.ResolveTarget(cfg.EntityToMove, self, other, selfTargets);
 
-                if (targetToMove == Entity.Null || !LocalTransformLookup.TryGetComponent(targetToMove, out var targetLt)) return;
+                if (targetToMove == Entity.Null || !this.LocalTransformLookup.TryGetComponent(targetToMove, out var targetLt)) return;
 
                 var transform = PhysicsTriggerResolution.CalculateTransform(
                     cfg.PositionMode, cfg.PositionOffset, cfg.IsPositionOffsetLocal,
@@ -119,11 +120,11 @@ namespace BovineLabs.Timeline.Physics
 
                 targetLt.Position = transform.Position;
                 targetLt.Rotation = transform.Rotation;
-                ECB.SetComponent(chunkIndex, targetToMove, targetLt);
+                this.ECB.SetComponent(chunkIndex, targetToMove, targetLt);
 
                 if (cfg.ResetVelocity)
                 {
-                    ECB.SetComponent(chunkIndex, targetToMove, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
+                    this.ECB.SetComponent(chunkIndex, targetToMove, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
                 }
             }
         }

@@ -1,5 +1,3 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -15,7 +13,6 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<PhysicsWorldSingleton>();
         }
 
         [BurstCompile]
@@ -37,11 +34,8 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(ref PhysicsVelocity velocity, in ActiveDrag active)
             {
-                var linearMultiplier = math.clamp(1.0f - active.Config.Linear * DeltaTime, 0.0f, 1.0f);
-                var angularMultiplier = math.clamp(1.0f - active.Config.Angular * DeltaTime, 0.0f, 1.0f);
-
-                velocity.Linear *= linearMultiplier;
-                velocity.Angular *= angularMultiplier;
+                velocity.Linear *= math.exp(-active.Config.Linear * this.DeltaTime);
+                velocity.Angular *= math.exp(-active.Config.Angular * this.DeltaTime);
             }
         }
     }

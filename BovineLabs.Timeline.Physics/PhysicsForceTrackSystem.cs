@@ -5,9 +5,6 @@ using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -15,17 +12,13 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsForceTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> blendImpl;
-        private UnsafeComponentLookup<LocalTransform> localTransformLookup;
-        private UnsafeComponentLookup<PhysicsVelocity> physicsVelocityLookup;
-        private UnsafeComponentLookup<PhysicsMass> physicsMassLookup;
+        private UnsafeComponentLookup<ActiveForce> activeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             blendImpl.OnCreate(ref state);
-            localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            physicsVelocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
-            physicsMassLookup = state.GetUnsafeComponentLookup<PhysicsMass>(true);
+            activeLookup = state.GetUnsafeComponentLookup<ActiveForce>();
         }
 
         [BurstCompile]
@@ -34,20 +27,17 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            localTransformLookup.Update(ref state);
-            physicsVelocityLookup.Update(ref state);
-            physicsMassLookup.Update(ref state);
+            activeLookup.Update(ref state);
 
             state.Dependency = new PrepareForceDataJob().ScheduleParallel(state.Dependency);
+            state.Dependency = new DisableStaleJob().ScheduleParallel(state.Dependency);
+            
             var blendData = blendImpl.Update(ref state);
 
-            state.Dependency = new ApplyForceJob
+            state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                LocalTransformLookup = localTransformLookup,
-                PhysicsVelocityLookup = physicsVelocityLookup,
-                PhysicsMassLookup = physicsMassLookup,
-                DeltaTime = SystemAPI.Time.DeltaTime
+                ActiveLookup = activeLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -59,29 +49,31 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        private struct ApplyForceJob : IJobParallelHashMapDefer
+        [WithNone(typeof(TimelineActive))]
+        [WithAll(typeof(TimelineActivePrevious))]
+        private partial struct DisableStaleJob : IJobEntity
+        {
+            private void Execute(in TrackBinding binding, ref PhysicsForceAnimated anim)
+            {
+            }
+        }
+
+        [BurstCompile]
+        private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsForceData>>.ReadOnly BlendData;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> LocalTransformLookup;
-            [ReadOnly] public UnsafeComponentLookup<PhysicsMass> PhysicsMassLookup;
-            public UnsafeComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
-            public float DeltaTime;
+            public UnsafeComponentLookup<ActiveForce> ActiveLookup;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
+                if (!ActiveLookup.HasComponent(entity)) return;
 
-                if (!PhysicsVelocityLookup.TryGetComponent(entity, out var velocity)) return;
-                if (!PhysicsMassLookup.TryGetComponent(entity, out var mass)) return;
-                if (!LocalTransformLookup.TryGetComponent(entity, out var transform)) return;
-
-                var blended = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default);
-
-                if (PhysicsMath.TryApplyLinearForce(velocity, mass, blended.Linear, DeltaTime, out var v1) &&
-                    PhysicsMath.TryApplyAngularTorque(v1, mass, transform, blended.Angular, DeltaTime, out var v2))
+                ActiveLookup.SetComponentEnabled(entity, true);
+                ActiveLookup[entity] = new ActiveForce
                 {
-                    PhysicsVelocityLookup[entity] = v2;
-                }
+                    Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
+                };
             }
         }
     }

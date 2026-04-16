@@ -64,7 +64,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated)
+            private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated, in LocalTime localTime)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
@@ -75,6 +75,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var up = math.mul(finalRot, math.up());
                 Drawer.Arrow(transform.Position, forward, Color.blue);
                 Drawer.Arrow(transform.Position, up, Color.green);
+                
+                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, transform.Rotation, finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
                     Drawer.Arrow(transform.Position, velocity.Angular, Color.magenta);

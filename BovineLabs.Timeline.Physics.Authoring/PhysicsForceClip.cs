@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using UnityEngine;
@@ -9,6 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     {
         public Vector3 LinearForce;
         public Vector3 AngularForce;
+        public Target space = Target.None;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -20,7 +22,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 AuthoredData = new PhysicsForceData
                 {
                     Linear = LinearForce,
-                    Angular = AngularForce
+                    Angular = AngularForce,
+                    Space = space
                 }
             });
 

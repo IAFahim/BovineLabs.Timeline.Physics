@@ -11,7 +11,7 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
-    public partial struct PhysicsPidApplySystem : ISystem
+    public partial struct PhysicsKinematicsApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> targetsLookup;
         private ComponentLookup<TargetsCustom> targetsCustomLookup;
@@ -36,7 +36,7 @@ namespace BovineLabs.Timeline.Physics
             targetsCustomLookup.Update(ref state);
             transformLookup.Update(ref state);
 
-            state.Dependency = new ApplyLinearJob
+            state.Dependency = new ApplyForceJob
             {
                 DeltaTime = dt,
                 TargetsLookup = targetsLookup,
@@ -44,7 +44,7 @@ namespace BovineLabs.Timeline.Physics
                 TransformLookup = transformLookup
             }.ScheduleParallel(state.Dependency);
 
-            state.Dependency = new ApplyAngularJob
+            state.Dependency = new ApplyVelocityJob
             {
                 DeltaTime = dt,
                 TargetsLookup = targetsLookup,
@@ -54,42 +54,40 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        private partial struct ApplyLinearJob : IJobEntity
+        private partial struct ApplyForceJob : IJobEntity
         {
             [ReadOnly] public float DeltaTime;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, ref PhysicsLinearPIDState state, in ActiveLinearPid active, in LocalTransform transform, in PhysicsMass mass)
+            private void Execute(Entity entity, ref PhysicsVelocity velocity, in ActiveForce active, in LocalTransform transform, in PhysicsMass mass)
             {
-                if (PhysicsMath.TryResolveLinearPidTarget(transform, active.Config, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var targetPos) &&
-                    PhysicsMath.TryCalculatePid(transform.Position - targetPos, active.Config.Tuning, state.State, DeltaTime, out var force, out var nextState) &&
-                    PhysicsMath.TryApplyLinearForce(velocity, mass, -force, DeltaTime, out var nextVelocity))
+                if (PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Linear, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var linForce) &&
+                    PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Angular, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var angForce) &&
+                    PhysicsMath.TryApplyLinearForce(velocity, mass, linForce, DeltaTime, out var v1) &&
+                    PhysicsMath.TryApplyAngularTorque(v1, mass, transform, angForce, DeltaTime, out var v2))
                 {
-                    velocity = nextVelocity;
-                    state.State = nextState;
+                    velocity = v2;
                 }
             }
         }
 
         [BurstCompile]
-        private partial struct ApplyAngularJob : IJobEntity
+        private partial struct ApplyVelocityJob : IJobEntity
         {
             [ReadOnly] public float DeltaTime;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, ref PhysicsAngularPIDState state, in ActiveAngularPid active, in LocalTransform transform, in PhysicsMass mass)
+            private void Execute(Entity entity, ref PhysicsVelocity velocity, in ActiveVelocity active)
             {
-                if (PhysicsMath.TryResolveAngularPidTarget(transform, active.Config, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var targetRot) &&
-                    PhysicsMath.TryCalculateAngularError(transform.Rotation, targetRot, out var error) &&
-                    PhysicsMath.TryCalculatePid(error, active.Config.Tuning, state.State, DeltaTime, out var torque, out var nextState) &&
-                    PhysicsMath.TryApplyAngularTorque(velocity, mass, transform, torque, DeltaTime, out var nextVelocity))
+                if (PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Linear, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var linVel) &&
+                    PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Angular, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var angVel))
                 {
-                    velocity = nextVelocity;
-                    state.State = nextState;
+                    velocity.Linear += linVel * DeltaTime;
+                    velocity.Angular += angVel * DeltaTime;
                 }
             }
         }

@@ -5,6 +5,7 @@
     "BovineLabs.Core",
     "BovineLabs.Core.Extensions",
     "BovineLabs.Core.PhysicsStates",
+    "BovineLabs.Quill",
     "BovineLabs.Reaction.Data",
     "BovineLabs.Timeline",
     "BovineLabs.Timeline.Core",
@@ -14,6 +15,7 @@
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
+    "Unity.Entities.Graphics",
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms"

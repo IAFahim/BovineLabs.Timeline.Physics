@@ -1,3 +1,4 @@
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using UnityEngine;
@@ -7,13 +8,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsVelocityClip : DOTSClip, ITimelineClipAsset
     {
-        [Tooltip("Linear velocity in world units per second")]
+        [Tooltip("Linear velocity added (accel mode) per second")]
         public Vector3 linearVelocity = Vector3.forward;
 
-        [Tooltip("Angular velocity in radians per second")]
+        [Tooltip("Angular velocity added (accel mode) per second")]
         public Vector3 angularVelocity;
-
-        public bool isLocalSpace;
+        
+        public Target space = Target.None;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -25,9 +26,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 AuthoredVelocity = new PhysicsVelocityData
                 {
                     Linear = linearVelocity,
-                    Angular = angularVelocity
-                },
-                IsLocalSpace = isLocalSpace
+                    Angular = angularVelocity,
+                    Space = space
+                }
             });
 
             base.Bake(clipEntity, context);

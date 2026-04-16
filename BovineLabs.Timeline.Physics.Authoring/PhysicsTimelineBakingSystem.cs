@@ -6,7 +6,7 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
-    public partial struct PhysicsPIDBakingSystem : ISystem
+    public partial struct PhysicsTimelineBakingSystem : ISystem
     {
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
@@ -32,6 +32,36 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<ActiveAngularPid>(target);
                     ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
                     ecb.AddComponent<PhysicsAngularPIDState>(target);
+                }
+            }
+
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsForceAnimated>().WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target != Entity.Null && !SystemAPI.HasComponent<ActiveForce>(target))
+                {
+                    ecb.AddComponent<ActiveForce>(target);
+                    ecb.SetComponentEnabled<ActiveForce>(target, false);
+                }
+            }
+
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsVelocityAnimated>().WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target != Entity.Null && !SystemAPI.HasComponent<ActiveVelocity>(target))
+                {
+                    ecb.AddComponent<ActiveVelocity>(target);
+                    ecb.SetComponentEnabled<ActiveVelocity>(target, false);
+                }
+            }
+
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsDragAnimated>().WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target != Entity.Null && !SystemAPI.HasComponent<ActiveDrag>(target))
+                {
+                    ecb.AddComponent<ActiveDrag>(target);
+                    ecb.SetComponentEnabled<ActiveDrag>(target, false);
                 }
             }
 

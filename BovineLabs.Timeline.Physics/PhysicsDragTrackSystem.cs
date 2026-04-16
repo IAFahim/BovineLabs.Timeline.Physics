@@ -9,16 +9,16 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    public partial struct PhysicsVelocityTrackSystem : ISystem
+    public partial struct PhysicsDragTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsVelocityData, PhysicsVelocityAnimated> blendImpl;
-        private UnsafeComponentLookup<ActiveVelocity> activeLookup;
+        private TrackBlendImpl<PhysicsDragData, PhysicsDragAnimated> blendImpl;
+        private UnsafeComponentLookup<ActiveDrag> activeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             blendImpl.OnCreate(ref state);
-            activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
+            activeLookup = state.GetUnsafeComponentLookup<ActiveDrag>();
         }
 
         [BurstCompile]
@@ -45,7 +45,7 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(ClipActive))]
         private partial struct PrepareJob : IJobEntity
         {
-            private void Execute(ref PhysicsVelocityAnimated animated) => animated.Value = animated.AuthoredVelocity;
+            private void Execute(ref PhysicsDragAnimated animated) => animated.Value = animated.AuthoredData;
         }
 
         [BurstCompile]
@@ -53,14 +53,14 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(TimelineActivePrevious))]
         private partial struct DisableStaleJob : IJobEntity
         {
-            private void Execute(in TrackBinding binding, ref PhysicsVelocityAnimated anim) { }
+            private void Execute(in TrackBinding binding, ref PhysicsDragAnimated anim) { }
         }
 
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityData>>.ReadOnly BlendData;
-            public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsDragData>>.ReadOnly BlendData;
+            public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
@@ -68,9 +68,9 @@ namespace BovineLabs.Timeline.Physics
                 if (!ActiveLookup.HasComponent(entity)) return;
 
                 ActiveLookup.SetComponentEnabled(entity, true);
-                ActiveLookup[entity] = new ActiveVelocity
+                ActiveLookup[entity] = new ActiveDrag
                 {
-                    Config = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsDragData, PhysicsDragMixer>(ref mixData, default)
                 };
             }
         }

@@ -10,13 +10,14 @@ namespace BovineLabs.Timeline.Physics
         public ObjectId ObjectId;
         public StatefulEventState EventState;
 
-        public InstantiatePositionMode PositionMode;
+        public PhysicsTriggerPositionMode PositionMode;
         public float3 PositionOffset;
         public bool IsPositionOffsetLocal;
 
-        public InstantiateRotationMode RotationMode;
+        public PhysicsTriggerRotationMode RotationMode;
         public float3 RotationOffsetEuler;
 
-        public InstantiateParentMode ParentMode;
+        public bool AssignParent;
+        public PhysicsTriggerTargetMode ParentTarget;
     }
 }

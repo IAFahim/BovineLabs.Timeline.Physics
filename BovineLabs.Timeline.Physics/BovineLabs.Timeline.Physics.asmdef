@@ -10,6 +10,7 @@
     "BovineLabs.Timeline.Core",
     "BovineLabs.Timeline.Data",
     "BovineLabs.Timeline.Instantiate",
+    "BovineLabs.Timeline.Physics.Data",
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",

@@ -15,10 +15,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         [Header("Linear Tuning")]
         public bool uniformAxes = true;
-        public Vector3 proportional = new(10f, 10f, 10f);
-        public Vector3 integral = new(2f, 2f, 2f);
-        public Vector3 derivative = new(1f, 1f, 1f);
-        public float maxForce = 100f;
+        public PidTuning tuning = new()
+        {
+            Proportional = new Vector3(10f, 10f, 10f),
+            Integral = new Vector3(2f, 2f, 2f),
+            Derivative = new Vector3(1f, 1f, 1f),
+            MaxOutput = 100f
+        };
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -29,10 +32,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsLinearPIDData
                 {
-                    Proportional = proportional,
-                    Integral     = integral,
-                    Derivative   = derivative,
-                    MaxForce = maxForce,
+                    Tuning = tuning,
                     TrackingTarget = trackingTarget,
                     TargetMode = targetMode,
                     TargetOffset = targetOffset,

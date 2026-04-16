@@ -15,6 +15,7 @@
     "BovineLabs.Timeline.Instantiate",
     "BovineLabs.Timeline.Instantiate.Authoring",
     "BovineLabs.Timeline.Physics",
+    "BovineLabs.Timeline.Physics.Data",
     "Unity.Collections",
     "Unity.Entities",
     "Unity.Entities.Hybrid",

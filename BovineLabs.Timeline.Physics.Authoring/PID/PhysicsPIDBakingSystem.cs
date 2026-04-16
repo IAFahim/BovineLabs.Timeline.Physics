@@ -17,14 +17,22 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsLinearPIDState>(target))
+                {
+                    ecb.AddComponent<ActiveLinearPid>(target);
+                    ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
                     ecb.AddComponent<PhysicsLinearPIDState>(target);
+                }
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsAngularPIDAnimated>().WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsAngularPIDState>(target))
+                {
+                    ecb.AddComponent<ActiveAngularPid>(target);
+                    ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
                     ecb.AddComponent<PhysicsAngularPIDState>(target);
+                }
             }
 
             ecb.Playback(state.EntityManager);

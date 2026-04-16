@@ -1,19 +1,22 @@
 {
-  "name": "BovineLabs.Timeline.Physics.Debug",
+  "name": "BovineLabs.Timeline.Physics.Tests",
   "rootNamespace": "",
   "references": [
     "BovineLabs.Core",
-    "BovineLabs.Timeline.Data",
+    "BovineLabs.Core.Extensions",
+    "BovineLabs.Testing",
     "BovineLabs.Timeline.Physics",
     "BovineLabs.Timeline.Physics.Data",
-    "BovineLabs.Quill",
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
     "Unity.Mathematics",
+    "Unity.PerformanceTesting",
     "Unity.Physics",
-    "Unity.Transforms",
-    "BovineLabs.Reaction.Data"
+    "Unity.Transforms"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
   ],
   "includePlatforms": [
     "Editor"
@@ -23,9 +26,7 @@
   "overrideReferences": false,
   "precompiledReferences": [],
   "autoReferenced": false,
-  "defineConstraints": [
-    "UNITY_EDITOR || BL_DEBUG"
-  ],
+  "defineConstraints": [],
   "versionDefines": [],
   "noEngineReferences": false
 }

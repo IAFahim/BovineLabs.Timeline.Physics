@@ -16,10 +16,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         [Header("Angular Tuning")]
         public bool uniformAxes = true;
-        public Vector3 proportional = new(10f, 10f, 10f);
-        public Vector3 integral = new(2f, 2f, 2f);
-        public Vector3 derivative = new(1f, 1f, 1f);
-        public float maxTorque = 100f;
+        public PidTuning tuning = new()
+        {
+            Proportional = new Vector3(10f, 10f, 10f),
+            Integral = new Vector3(2f, 2f, 2f),
+            Derivative = new Vector3(1f, 1f, 1f),
+            MaxOutput = 100f
+        };
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -30,13 +33,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsAngularPIDData
                 {
-                    Proportional = proportional,
-                    Integral     = integral,
-                    Derivative   = derivative,
-                    MaxTorque = maxTorque,
+                    Tuning = tuning,
                     TrackingTarget = trackingTarget,
                     TargetMode = targetMode,
-                    TargetRotationEuler = math.radians(targetRotationEuler),
+                    TargetRotation = quaternion.Euler(math.radians(targetRotationEuler)),
                 }
             });
 

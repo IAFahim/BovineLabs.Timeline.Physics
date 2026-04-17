@@ -16,7 +16,8 @@
     "Unity.Entities",
     "Unity.Mathematics",
     "Unity.Physics",
-    "Unity.Transforms"
+    "Unity.Transforms",
+    "BovineLabs.Timeline.Essence.Data"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [

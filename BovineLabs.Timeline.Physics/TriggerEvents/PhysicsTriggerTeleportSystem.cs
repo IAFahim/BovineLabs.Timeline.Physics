@@ -21,52 +21,52 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct PhysicsTriggerTeleportSystem : ISystem
     {
-        private EntityQuery query;
-        private EntityLock entityLock;
+        private EntityQuery _query;
+        private EntityLock _entityLock;
 
-        private EntityTypeHandle entityHandle;
-        private ComponentTypeHandle<PhysicsTriggerTeleportData> dataHandle;
+        private EntityTypeHandle _entityHandle;
+        private ComponentTypeHandle<PhysicsTriggerTeleportData> _dataHandle;
 
         private UnsafeComponentLookup<LocalTransform> _transformLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
-        private BufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
-        private BufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
+        private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
+        private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            entityLock = new EntityLock(Allocator.Persistent);
+            _entityLock = new EntityLock(Allocator.Persistent);
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<TeleportJob>();
 
-            query = SystemAPI.QueryBuilder()
+            _query = SystemAPI.QueryBuilder()
                 .WithAll<ClipActive, PhysicsTriggerTeleportData>()
                 .Build();
 
-            entityHandle = state.GetEntityTypeHandle();
-            dataHandle = state.GetComponentTypeHandle<PhysicsTriggerTeleportData>(true);
+            _entityHandle = state.GetEntityTypeHandle();
+            _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerTeleportData>(true);
 
             _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(false);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(false);
             
             _localToWorldLookup = state.GetComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _triggerEventsLookup = state.GetBufferLookup<StatefulTriggerEvent>(true);
-            _collisionEventsLookup = state.GetBufferLookup<StatefulCollisionEvent>(true);
+            _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         public void OnDestroy(ref SystemState state)
         {
-            entityLock.Dispose();
+            _entityLock.Dispose();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
 
-            entityHandle.Update(ref state);
-            dataHandle.Update(ref state);
+            _entityHandle.Update(ref state);
+            _dataHandle.Update(ref state);
             _transformLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _localToWorldLookup.Update(ref state);
@@ -76,16 +76,16 @@ namespace BovineLabs.Timeline.Physics
 
             state.Dependency = new TeleportJob
             {
-                Lock = entityLock,
-                EntityHandle = entityHandle,
-                DataHandle = dataHandle,
+                Lock = _entityLock,
+                EntityHandle = _entityHandle,
+                DataHandle = _dataHandle,
                 TransformLookup = _transformLookup,
                 VelocityLookup = _velocityLookup,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup
-            }.ScheduleParallel(query, state.Dependency);
+            }.ScheduleParallel(_query, state.Dependency);
         }
 
         [BurstCompile]
@@ -101,8 +101,8 @@ namespace BovineLabs.Timeline.Physics
             
             [ReadOnly] public ComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
-            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {

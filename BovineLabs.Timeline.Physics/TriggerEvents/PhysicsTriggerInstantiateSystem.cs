@@ -23,14 +23,14 @@ namespace BovineLabs.Timeline.Physics
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
-        private EntityQuery query;
-        private EntityTypeHandle entityHandle;
-        private ComponentTypeHandle<PhysicsTriggerInstantiateData> dataHandle;
+        private EntityQuery _query;
+        private EntityTypeHandle _entityHandle;
+        private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
         
         private ComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
-        private BufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
-        private BufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
+        private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
+        private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -39,25 +39,25 @@ namespace BovineLabs.Timeline.Physics
             state.RequireForUpdate<BLLogger>();
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<InstantiateGatherJob>();
 
-            query = SystemAPI.QueryBuilder()
+            _query = SystemAPI.QueryBuilder()
                 .WithAll<ClipActive, PhysicsTriggerInstantiateData>()
                 .Build();
 
-            entityHandle = state.GetEntityTypeHandle();
-            dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
+            _entityHandle = state.GetEntityTypeHandle();
+            _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
             
             _localToWorldLookup = state.GetComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _triggerEventsLookup = state.GetBufferLookup<StatefulTriggerEvent>(true);
-            _collisionEventsLookup = state.GetBufferLookup<StatefulCollisionEvent>(true);
+            _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
+            _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
 
-            entityHandle.Update(ref state);
-            dataHandle.Update(ref state);
+            _entityHandle.Update(ref state);
+            _dataHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
@@ -70,13 +70,13 @@ namespace BovineLabs.Timeline.Physics
                 ECB = ecb.AsParallelWriter(),
                 Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
-                EntityHandle = entityHandle,
-                DataHandle = dataHandle,
+                EntityHandle = _entityHandle,
+                DataHandle = _dataHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup
-            }.ScheduleParallel(query, state.Dependency);
+            }.ScheduleParallel(_query, state.Dependency);
         }
 
         private struct SpawnData
@@ -101,8 +101,8 @@ namespace BovineLabs.Timeline.Physics
             
             [ReadOnly] public ComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
-            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {

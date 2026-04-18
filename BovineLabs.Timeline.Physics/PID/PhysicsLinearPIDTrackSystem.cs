@@ -13,14 +13,14 @@ namespace BovineLabs.Timeline.Physics
     {
         private TrackBlendImpl<PhysicsLinearPIDData, PhysicsLinearPIDAnimated> _blendImpl;
         private UnsafeComponentLookup<ActiveLinearPid> _activePidLookup;
-        private ComponentLookup<PhysicsLinearPIDState> _stateLookup;
+        private UnsafeComponentLookup<PhysicsLinearPIDState> _stateLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
             _activePidLookup = state.GetUnsafeComponentLookup<ActiveLinearPid>();
-            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>();
+            _stateLookup = state.GetUnsafeComponentLookup<PhysicsLinearPIDState>();
         }
 
         [BurstCompile]
@@ -66,13 +66,15 @@ namespace BovineLabs.Timeline.Physics
         private partial struct ResetStateJob : IJobEntity
         {
             [NativeDisableParallelForRestriction]
-            public ComponentLookup<PhysicsLinearPIDState> StateLookup;
+            public UnsafeComponentLookup<PhysicsLinearPIDState> StateLookup;
 
             private void Execute(in TrackBinding binding)
             {
                 if (StateLookup.HasComponent(binding.Value))
                 {
-                    StateLookup.GetRefRW(binding.Value).ValueRW.State = default;
+                    var state = StateLookup[binding.Value];
+                    state.State = default;
+                    StateLookup[binding.Value] = state;
                 }
             }
         }

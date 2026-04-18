@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics.Data/PhysicsVelocityData.cs
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Entities;

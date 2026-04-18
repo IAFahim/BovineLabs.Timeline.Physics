@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/PhysicsBodyFacet.cs
 using BovineLabs.Core;
 using Unity.Entities;
 using Unity.Physics;

@@ -1,4 +1,6 @@
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
@@ -17,18 +19,18 @@ namespace BovineLabs.Timeline.Physics
         private EntityQuery _linearQuery;
         private EntityQuery _angularQuery;
 
-        private PhysicsBodyFacet.TypeHandle facetHandle;
-        private EntityTypeHandle entityHandle;
+        private PhysicsBodyFacet.TypeHandle _facetHandle;
+        private EntityTypeHandle _entityHandle;
         
-        private ComponentTypeHandle<PhysicsLinearPIDState> linearStateHandle;
-        private ComponentTypeHandle<ActiveLinearPid> activeLinearHandle;
+        private ComponentTypeHandle<PhysicsLinearPIDState> _linearStateHandle;
+        private ComponentTypeHandle<ActiveLinearPid> _activeLinearHandle;
 
-        private ComponentTypeHandle<PhysicsAngularPIDState> angularStateHandle;
-        private ComponentTypeHandle<ActiveAngularPid> activeAngularHandle;
+        private ComponentTypeHandle<PhysicsAngularPIDState> _angularStateHandle;
+        private ComponentTypeHandle<ActiveAngularPid> _activeAngularHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
-        private ComponentLookup<LocalTransform> _transformLookup;
+        private UnsafeComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -46,18 +48,18 @@ namespace BovineLabs.Timeline.Physics
                 .WithAll<ActiveAngularPid, LocalTransform>()
                 .Build();
 
-            facetHandle.Create(ref state);
-            entityHandle = state.GetEntityTypeHandle();
+            _facetHandle.Create(ref state);
+            _entityHandle = state.GetEntityTypeHandle();
 
-            linearStateHandle = state.GetComponentTypeHandle<PhysicsLinearPIDState>();
-            activeLinearHandle = state.GetComponentTypeHandle<ActiveLinearPid>(true);
+            _linearStateHandle = state.GetComponentTypeHandle<PhysicsLinearPIDState>();
+            _activeLinearHandle = state.GetComponentTypeHandle<ActiveLinearPid>(true);
 
-            angularStateHandle = state.GetComponentTypeHandle<PhysicsAngularPIDState>();
-            activeAngularHandle = state.GetComponentTypeHandle<ActiveAngularPid>(true);
+            _angularStateHandle = state.GetComponentTypeHandle<PhysicsAngularPIDState>();
+            _activeAngularHandle = state.GetComponentTypeHandle<ActiveAngularPid>(true);
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
-            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -66,14 +68,14 @@ namespace BovineLabs.Timeline.Physics
             var dt = SystemAPI.Time.DeltaTime;
             if (dt <= 0.0001f) return;
 
-            facetHandle.Update(ref state);
-            entityHandle.Update(ref state);
+            _facetHandle.Update(ref state);
+            _entityHandle.Update(ref state);
             
-            linearStateHandle.Update(ref state);
-            activeLinearHandle.Update(ref state);
+            _linearStateHandle.Update(ref state);
+            _activeLinearHandle.Update(ref state);
             
-            angularStateHandle.Update(ref state);
-            activeAngularHandle.Update(ref state);
+            _angularStateHandle.Update(ref state);
+            _activeAngularHandle.Update(ref state);
 
             _targetsLookup.Update(ref state);
             _targetsCustomLookup.Update(ref state);
@@ -82,10 +84,10 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new ApplyLinearJob
             {
                 DeltaTime = dt,
-                FacetHandle = facetHandle,
-                EntityHandle = entityHandle,
-                StateHandle = linearStateHandle,
-                ActiveHandle = activeLinearHandle,
+                FacetHandle = _facetHandle,
+                EntityHandle = _entityHandle,
+                StateHandle = _linearStateHandle,
+                ActiveHandle = _activeLinearHandle,
                 TargetsLookup = _targetsLookup,
                 TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
@@ -94,10 +96,10 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new ApplyAngularJob
             {
                 DeltaTime = dt,
-                FacetHandle = facetHandle,
-                EntityHandle = entityHandle,
-                StateHandle = angularStateHandle,
-                ActiveHandle = activeAngularHandle,
+                FacetHandle = _facetHandle,
+                EntityHandle = _entityHandle,
+                StateHandle = _angularStateHandle,
+                ActiveHandle = _activeAngularHandle,
                 TargetsLookup = _targetsLookup,
                 TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
@@ -115,7 +117,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
@@ -164,7 +166,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {

@@ -1,4 +1,5 @@
 using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Quill;
 using Unity.Entities;
@@ -17,7 +18,7 @@ namespace BovineLabs.Timeline.Physics
             Entity entity, 
             in ComponentLookup<Targets> targetsLookup, 
             in ComponentLookup<TargetsCustom> customLookup, 
-            in ComponentLookup<LocalTransform> transformLookup, 
+            in UnsafeComponentLookup<LocalTransform> transformLookup, 
             out float3 resolvedVector)
         {
             if (space == Target.None)
@@ -227,7 +228,7 @@ namespace BovineLabs.Timeline.Physics
             Entity entity, 
             in ComponentLookup<Targets> targetsLookup, 
             in ComponentLookup<TargetsCustom> targetsCustoms, 
-            in ComponentLookup<LocalTransform> transformLookup, 
+            in UnsafeComponentLookup<LocalTransform> transformLookup, 
             out float3 targetPosition)
         {
             var targetEntity = Entity.Null;
@@ -258,7 +259,7 @@ namespace BovineLabs.Timeline.Physics
             Entity entity, 
             in ComponentLookup<Targets> targetsLookup, 
             in ComponentLookup<TargetsCustom> targetsCustoms, 
-            in ComponentLookup<LocalTransform> transformLookup, 
+            in UnsafeComponentLookup<LocalTransform> transformLookup, 
             out quaternion targetRotation)
         {
             var targetEntity = Entity.Null;

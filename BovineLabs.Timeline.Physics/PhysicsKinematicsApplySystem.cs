@@ -1,4 +1,6 @@
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
@@ -24,7 +26,7 @@ namespace BovineLabs.Timeline.Physics
 
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
-        private ComponentLookup<LocalTransform> _transformLookup;
+        private UnsafeComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -49,7 +51,7 @@ namespace BovineLabs.Timeline.Physics
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
-            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -100,7 +102,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
@@ -140,7 +142,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {

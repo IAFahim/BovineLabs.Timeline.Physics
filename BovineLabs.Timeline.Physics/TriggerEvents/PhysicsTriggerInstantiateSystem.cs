@@ -1,11 +1,16 @@
-// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerInstantiateSystem.cs
+using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.EntityCommands;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
+using BovineLabs.Core.Jobs;
 using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -13,129 +18,208 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
+    [Configurable]
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
-        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
-        private UnsafeComponentLookup<Targets> _targetsLookup;
-        private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
-        private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
+        private EntityQuery query;
+        private EntityTypeHandle entityHandle;
+        private ComponentTypeHandle<PhysicsTriggerInstantiateData> dataHandle;
+        
+        private ComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<Targets> _targetsLookup;
+        private BufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
+        private BufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ObjectDefinitionRegistry>();
-            this._localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            this._targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            this._triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
-            this._collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
+            state.RequireForUpdate<BLLogger>();
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<InstantiateGatherJob>();
+
+            query = SystemAPI.QueryBuilder()
+                .WithAll<ClipActive, PhysicsTriggerInstantiateData>()
+                .Build();
+
+            entityHandle = state.GetEntityTypeHandle();
+            dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
+            
+            _localToWorldLookup = state.GetComponentLookup<LocalToWorld>(true);
+            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _triggerEventsLookup = state.GetBufferLookup<StatefulTriggerEvent>(true);
+            _collisionEventsLookup = state.GetBufferLookup<StatefulCollisionEvent>(true);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
-            this._localToWorldLookup.Update(ref state);
-            this._targetsLookup.Update(ref state);
-            this._triggerEventsLookup.Update(ref state);
-            this._collisionEventsLookup.Update(ref state);
+            entityHandle.Update(ref state);
+            dataHandle.Update(ref state);
+            _localToWorldLookup.Update(ref state);
+            _targetsLookup.Update(ref state);
+            _triggerEventsLookup.Update(ref state);
+            _collisionEventsLookup.Update(ref state);
 
-            state.Dependency = new InstantiateJob
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+
+            state.Dependency = new InstantiateGatherJob
             {
-                ECB = ecb,
+                ECB = ecb.AsParallelWriter(),
+                Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
-                LocalToWorldLookup = this._localToWorldLookup,
-                TargetsLookup = this._targetsLookup,
-                TriggerEventsLookup = this._triggerEventsLookup,
-                CollisionEventsLookup = this._collisionEventsLookup
-            }.ScheduleParallel(state.Dependency);
+                EntityHandle = entityHandle,
+                DataHandle = dataHandle,
+                LocalToWorldLookup = _localToWorldLookup,
+                TargetsLookup = _targetsLookup,
+                TriggerEventsLookup = _triggerEventsLookup,
+                CollisionEventsLookup = _collisionEventsLookup
+            }.ScheduleParallel(query, state.Dependency);
+        }
+
+        private struct SpawnData
+        {
+            public Entity Prefab;
+            public Entity Self;
+            public Entity Other;
+            public PhysicsTriggerInstantiateData Config;
+            public float3 ContactPoint;
+            public float3 ContactNormal;
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct InstantiateJob : IJobEntity
+        private struct InstantiateGatherJob : IJobChunkWorkerBeginEnd
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            public BLLogger Logger;
             [ReadOnly] public ObjectDefinitionRegistry Registry;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
-            [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
+            
+            [ReadOnly] public ComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            private void Execute([ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerInstantiateData cfg)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var self = binding.Value;
-                var prefab = this.Registry[cfg.ObjectId];
-                if (prefab == Entity.Null) return;
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var configs = chunk.GetNativeArray(ref DataHandle);
 
-                if (this.TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                using var spawnsPool = PooledNativeList<SpawnData>.Make();
+                var spawns = spawnsPool.List;
+
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    var i = 0;
-                    while (i < triggers.Length)
+                    var self = entities[i];
+                    var cfg = configs[i];
+
+                    if (!Registry.TryGetValue(cfg.ObjectId, out var prefab) || prefab == Entity.Null)
                     {
-                        var evt = triggers[i];
-                        if (evt.State == cfg.EventState)
+                        Logger.LogError($"Prefab not found for ObjectId {cfg.ObjectId.ID}");
+                        continue;
+                    }
+
+                    if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                    {
+                        for (var j = 0; j < triggers.Length; j++)
                         {
-                            var midpoint = (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var dir = math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
-                            this.Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, midpoint, dir);
+                            var evt = triggers[j];
+                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(self) || !LocalToWorldLookup.HasComponent(evt.EntityB))
+                            {
+                                continue;
+                            }
+
+                            var selfPos = LocalToWorldLookup[self].Position;
+                            var otherPos = LocalToWorldLookup[evt.EntityB].Position;
+                            var midpoint = (selfPos + otherPos) * 0.5f;
+                            var dir = math.normalizesafe(selfPos - otherPos);
+
+                            spawns.AddNoResize(new SpawnData
+                            {
+                                Prefab = prefab,
+                                Self = self,
+                                Other = evt.EntityB,
+                                Config = cfg,
+                                ContactPoint = midpoint,
+                                ContactNormal = dir
+                            });
                         }
-                        i++;
+                    }
+
+                    if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                    {
+                        for (var j = 0; j < collisions.Length; j++)
+                        {
+                            var evt = collisions[j];
+                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(self) || !LocalToWorldLookup.HasComponent(evt.EntityB))
+                            {
+                                continue;
+                            }
+
+                            var selfPos = LocalToWorldLookup[self].Position;
+                            var otherPos = LocalToWorldLookup[evt.EntityB].Position;
+
+                            var hasContact = evt.TryGetDetails(out var details);
+                            var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
+                            var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
+
+                            spawns.AddNoResize(new SpawnData
+                            {
+                                Prefab = prefab,
+                                Self = self,
+                                Other = evt.EntityB,
+                                Config = cfg,
+                                ContactPoint = pt,
+                                ContactNormal = normal
+                            });
+                        }
                     }
                 }
 
-                if (this.CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                var spawnsArray = spawns.AsArray();
+                for (var i = 0; i < spawnsArray.Length; i++)
                 {
-                    var i = 0;
-                    while (i < collisions.Length)
-                    {
-                        var evt = collisions[i];
-                        if (evt.State == cfg.EventState)
-                        {
-                            var hasContact = evt.TryGetDetails(out var details);
-                            var pt = hasContact ? details.AverageContactPointPosition : (this.LocalToWorldLookup[self].Position + this.LocalToWorldLookup[evt.EntityB].Position) * 0.5f;
-                            var normal = hasContact ? evt.Normal : math.normalizesafe(this.LocalToWorldLookup[self].Position - this.LocalToWorldLookup[evt.EntityB].Position);
-                            this.Spawn(chunkIndex, self, evt.EntityB, prefab, cfg, pt, normal);
-                        }
-                        i++;
-                    }
+                    Spawn(unfilteredChunkIndex, in spawnsArray.ElementAtRO(i));
                 }
             }
 
-            private void Spawn(int chunkIndex, Entity self, Entity other, Entity prefab, in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal)
+            private void Spawn(int chunkIndex, in SpawnData spawn)
             {
-                if (!this.LocalToWorldLookup.TryGetComponent(self, out var selfLtw) || !this.LocalToWorldLookup.TryGetComponent(other, out var otherLtw)) return;
+                var selfLtw = LocalToWorldLookup[spawn.Self];
+                var otherLtw = LocalToWorldLookup[spawn.Other];
 
                 var transform = PhysicsTriggerResolution.CalculateTransform(
-                    cfg.PositionMode, cfg.PositionOffset, cfg.IsPositionOffsetLocal,
-                    cfg.RotationMode, cfg.RotationOffsetEuler,
-                    selfLtw, otherLtw, contactPoint, contactNormal);
+                    spawn.Config.PositionMode, spawn.Config.PositionOffset, spawn.Config.IsPositionOffsetLocal,
+                    spawn.Config.RotationMode, spawn.Config.RotationOffsetEuler,
+                    selfLtw, otherLtw, spawn.ContactPoint, spawn.ContactNormal);
 
-                var instance = this.ECB.Instantiate(chunkIndex, prefab);
-                this.ECB.SetComponent(chunkIndex, instance, transform);
-
-                var selfTargets = this.TargetsLookup.TryGetComponent(self, out var t) ? t : default;
+                var commands = new CommandBufferParallelCommands(ECB, chunkIndex);
+                var instance = commands.Instantiate(spawn.Prefab);
                 
-                var newTargets = new Targets
-                {
-                    Owner = selfTargets.Owner != Entity.Null ? selfTargets.Owner : self,
-                    Source = self,
-                    Target = other
-                };
-                this.ECB.SetComponent(chunkIndex, instance, newTargets);
+                commands.SetComponent(transform);
 
-                if (cfg.AssignParent)
+                var selfTargets = TargetsLookup.TryGetComponent(spawn.Self, out var t) ? t : default;
+                
+                commands.SetComponent(new Targets
                 {
-                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(cfg.ParentTarget, self, other, selfTargets);
-                    if (parentEntity != Entity.Null && this.LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
+                    Owner = selfTargets.Owner != Entity.Null ? selfTargets.Owner : spawn.Self,
+                    Source = spawn.Self,
+                    Target = spawn.Other
+                });
+
+                if (spawn.Config.AssignParent)
+                {
+                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.ParentTarget, spawn.Self, spawn.Other, selfTargets);
+                    if (parentEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
                     {
-                        this.ECB.AddComponent(chunkIndex, instance, new Parent { Value = parentEntity });
+                        commands.AddComponent(new Parent { Value = parentEntity });
                         var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
                         var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
-                        this.ECB.SetComponent(chunkIndex, instance, LocalTransform.FromMatrix(localMatrix));
+                        commands.SetComponent(LocalTransform.FromMatrix(localMatrix));
                     }
                 }
             }

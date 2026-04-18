@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/Smear/UpdateSmearVelocitySystem.cs
 using Unity.Burst;
 using Unity.Entities;
 using Unity.Physics;

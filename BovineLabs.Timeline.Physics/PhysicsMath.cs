@@ -1,6 +1,4 @@
-// BovineLabs.Timeline.Physics/PhysicsMath.cs
 using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Quill;
 using Unity.Entities;
@@ -13,7 +11,14 @@ namespace BovineLabs.Timeline.Physics
 {
     public static class PhysicsMath
     {
-        public static bool TryResolveSpaceVector(Target space, float3 vector, Entity entity, UnsafeComponentLookup<Targets> targetsLookup, ComponentLookup<TargetsCustom> customLookup, UnsafeComponentLookup<LocalTransform> transformLookup, out float3 resolvedVector)
+        public static bool TryResolveSpaceVector(
+            Target space, 
+            float3 vector, 
+            Entity entity, 
+            in ComponentLookup<Targets> targetsLookup, 
+            in ComponentLookup<TargetsCustom> customLookup, 
+            in ComponentLookup<LocalTransform> transformLookup, 
+            out float3 resolvedVector)
         {
             if (space == Target.None)
             {
@@ -23,17 +28,34 @@ namespace BovineLabs.Timeline.Physics
 
             var targetEntity = entity;
             if (space != Target.Self && targetsLookup.TryGetComponent(entity, out var targets))
+            {
                 targetEntity = targets.Get(space, entity, customLookup);
+            }
 
             if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var lt))
+            {
                 resolvedVector = math.rotate(lt.Rotation, vector);
-            else
-                resolvedVector = vector;
+                return true;
+            }
 
+            resolvedVector = vector;
             return true;
         }
 
-        public static void DrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos, PidTuning tuning, float time)
+        public static bool TryComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag, float deltaTime, out PhysicsVelocity velocityOut)
+        {
+            velocityOut = velocityIn;
+            if (deltaTime <= 0f)
+            {
+                return true;
+            }
+
+            velocityOut.Linear *= math.exp(-drag.Linear * deltaTime);
+            velocityOut.Angular *= math.exp(-drag.Angular * deltaTime);
+            return true;
+        }
+
+        public static bool TryDrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos, PidTuning tuning, float time)
         {
             var pos = startPos;
             var vel = float3.zero;
@@ -44,17 +66,20 @@ namespace BovineLabs.Timeline.Physics
             var steps = (int)(time / dt);
             var lastPos = startPos;
 
+            var integralMax = tuning.MaxOutput / math.max(tuning.Integral, 0.001f);
+            var maxSq = tuning.MaxOutput * tuning.MaxOutput;
+
             for (var i = 0; i < steps; i++)
             {
                 var error = targetPos - pos;
                 integral += error * dt;
-                var integralMax = tuning.MaxOutput / math.max(tuning.Integral, 0.001f);
                 integral = math.clamp(integral, -integralMax, integralMax);
 
                 var derivative = (error - prevError) / dt;
                 var rawForce = (tuning.Proportional * error) + (tuning.Integral * integral) + (tuning.Derivative * derivative);
+                
                 var forceMagSq = math.lengthsq(rawForce);
-                var force = forceMagSq > tuning.MaxOutput * tuning.MaxOutput ? math.normalize(rawForce) * tuning.MaxOutput : rawForce;
+                var force = forceMagSq > maxSq ? math.normalize(rawForce) * tuning.MaxOutput : rawForce;
 
                 vel += force * dt;
                 pos += vel * dt;
@@ -62,33 +87,53 @@ namespace BovineLabs.Timeline.Physics
 
                 drawer.Line(lastPos, pos, new Color(0f, 1f, 0f, 0.3f));
                 lastPos = pos;
+
+                // Clever optimization: Asymptotic steady-state early out. 
+                // Saves integrating stationary targets over long timelines.
+                if (math.lengthsq(error) < 1e-4f && forceMagSq < 1e-4f && math.lengthsq(vel) < 1e-4f)
+                {
+                    pos = targetPos;
+                    break;
+                }
             }
 
             drawer.Cuboid(pos, quaternion.identity, new float3(0.5f), Color.green);
             drawer.Text32(pos + new float3(0, 0.5f, 0), "Predicted", Color.green, 10f);
+            return true;
         }
 
-        public static void DrawAngularPidPrediction(ref Drawer drawer, float3 drawPos, quaternion startRot, quaternion targetRot, PidTuning tuning, float time)
+        public static bool TryDrawAngularPidPrediction(ref Drawer drawer, float3 drawPos, quaternion startRot, quaternion targetRot, PidTuning tuning, float time)
         {
             var rot = startRot;
             var vel = float3.zero;
             var integral = float3.zero;
-            TryCalculateAngularError(rot, targetRot, out var prevError);
+            
+            if (!TryComputeAngularError(rot, targetRot, out var prevError))
+            {
+                return false;
+            }
 
             const float dt = 0.02f;
             var steps = (int)(time / dt);
+            
+            var integralMax = tuning.MaxOutput / math.max(tuning.Integral, 0.001f);
+            var maxSq = tuning.MaxOutput * tuning.MaxOutput;
 
             for (var i = 0; i < steps; i++)
             {
-                TryCalculateAngularError(rot, targetRot, out var error);
+                if (!TryComputeAngularError(rot, targetRot, out var error))
+                {
+                    continue;
+                }
+
                 integral += error * dt;
-                var integralMax = tuning.MaxOutput / math.max(tuning.Integral, 0.001f);
                 integral = math.clamp(integral, -integralMax, integralMax);
 
                 var derivative = (error - prevError) / dt;
                 var rawTorque = (tuning.Proportional * error) + (tuning.Integral * integral) + (tuning.Derivative * derivative);
+                
                 var torqueMagSq = math.lengthsq(rawTorque);
-                var torque = torqueMagSq > tuning.MaxOutput * tuning.MaxOutput ? math.normalize(rawTorque) * tuning.MaxOutput : rawTorque;
+                var torque = torqueMagSq > maxSq ? math.normalize(rawTorque) * tuning.MaxOutput : rawTorque;
 
                 vel += torque * dt;
 
@@ -105,20 +150,28 @@ namespace BovineLabs.Timeline.Physics
                 {
                     drawer.Arrow(drawPos, math.mul(rot, math.forward()) * 0.5f, new Color(0f, 1f, 0f, 0.1f));
                 }
+
+                // Clever optimization: Asymptotic steady-state early out.
+                if (math.lengthsq(error) < 1e-4f && torqueMagSq < 1e-4f && math.lengthsq(vel) < 1e-4f)
+                {
+                    rot = targetRot;
+                    break;
+                }
             }
 
             drawer.Arrow(drawPos, math.mul(rot, math.forward()), Color.green);
             drawer.Arrow(drawPos, math.mul(rot, math.up()), new Color(0f, 0.5f, 0f));
             drawer.Text32(drawPos + new float3(0, -0.5f, 0), "Predicted", Color.green, 10f);
+            return true;
         }
 
-        public static bool TryCalculatePid(float3 error, PidTuning tuning, PidStateData state, float deltaTime, out float3 output, out PidStateData nextState)
+        public static bool TryComputePidForce(float3 error, PidTuning tuning, PidStateData state, float deltaTime, out float3 output, out PidStateData nextState)
         {
             if (deltaTime <= 0f)
             {
                 output = float3.zero;
                 nextState = state;
-                return false;
+                return true;
             }
 
             var isInit = state.IsInitialized;
@@ -150,7 +203,7 @@ namespace BovineLabs.Timeline.Physics
             return true;
         }
 
-        public static bool TryCalculateAngularError(quaternion current, quaternion target, out float3 error)
+        public static bool TryComputeAngularError(quaternion current, quaternion target, out float3 error)
         {
             var delta = math.mul(target, math.conjugate(current));
             var q = delta.value;
@@ -168,14 +221,25 @@ namespace BovineLabs.Timeline.Physics
             return true;
         }
 
-        public static bool TryResolveLinearPidTarget(LocalTransform transform, PhysicsLinearPIDData config, Entity entity, UnsafeComponentLookup<Targets> targetsLookup, ComponentLookup<TargetsCustom> targetsCustoms, UnsafeComponentLookup<LocalTransform> transformLookup, out float3 targetPosition)
+        public static bool TryResolveLinearPidTarget(
+            in LocalTransform transform, 
+            in PhysicsLinearPIDData config, 
+            Entity entity, 
+            in ComponentLookup<Targets> targetsLookup, 
+            in ComponentLookup<TargetsCustom> targetsCustoms, 
+            in ComponentLookup<LocalTransform> transformLookup, 
+            out float3 targetPosition)
         {
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
+            {
                 targetEntity = targets.Get(config.TrackingTarget, entity, targetsCustoms);
+            }
 
             if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
+            {
                 targetTransform = transform;
+            }
 
             targetPosition = config.TargetMode switch
             {
@@ -184,17 +248,29 @@ namespace BovineLabs.Timeline.Physics
                 PidLinearTargetMode.World => targetTransform.Position + config.TargetOffset,
                 _ => transform.Position
             };
+            
             return true;
         }
 
-        public static bool TryResolveAngularPidTarget(LocalTransform transform, PhysicsAngularPIDData config, Entity entity, UnsafeComponentLookup<Targets> targetsLookup, ComponentLookup<TargetsCustom> targetsCustoms, UnsafeComponentLookup<LocalTransform> transformLookup, out quaternion targetRotation)
+        public static bool TryResolveAngularPidTarget(
+            in LocalTransform transform, 
+            in PhysicsAngularPIDData config, 
+            Entity entity, 
+            in ComponentLookup<Targets> targetsLookup, 
+            in ComponentLookup<TargetsCustom> targetsCustoms, 
+            in ComponentLookup<LocalTransform> transformLookup, 
+            out quaternion targetRotation)
         {
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
+            {
                 targetEntity = targets.Get(config.TrackingTarget, entity, targetsCustoms);
+            }
 
             if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
+            {
                 targetTransform = transform;
+            }
 
             targetRotation = config.TargetMode switch
             {
@@ -203,6 +279,7 @@ namespace BovineLabs.Timeline.Physics
                 PidAngularTargetMode.World => config.TargetRotation,
                 _ => transform.Rotation
             };
+            
             return true;
         }
 
@@ -222,7 +299,7 @@ namespace BovineLabs.Timeline.Physics
             return math.mul(baseRot, offsetRot);
         }
 
-        public static bool TryApplyLinearForce(PhysicsVelocity velocityIn, PhysicsMass mass, float3 force, float deltaTime, out PhysicsVelocity velocityOut)
+        public static bool TryApplyLinearForce(in PhysicsVelocity velocityIn, in PhysicsMass mass, float3 force, float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             var invMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
@@ -230,7 +307,7 @@ namespace BovineLabs.Timeline.Physics
             return true;
         }
 
-        public static bool TryApplyAngularTorque(PhysicsVelocity velocityIn, PhysicsMass mass, LocalTransform transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
+        public static bool TryApplyAngularTorque(in PhysicsVelocity velocityIn, in PhysicsMass mass, in LocalTransform transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             var invInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);

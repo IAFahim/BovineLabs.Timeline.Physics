@@ -1,29 +1,55 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Jobs;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
+    [Configurable]
     [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private ComponentLookup<TargetsCustom> targetsCustomLookup;
-        private UnsafeComponentLookup<LocalTransform> transformLookup;
+        private EntityQuery _forceQuery;
+        private EntityQuery _velocityQuery;
+
+        private PhysicsBodyFacet.TypeHandle _facetHandle;
+        private EntityTypeHandle _entityHandle;
+        private ComponentTypeHandle<ActiveForce> _activeForceHandle;
+        private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
+
+        private ComponentLookup<Targets> _targetsLookup;
+        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<PhysicsWorldSingleton>();
-            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
-            transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyForceJob>();
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyVelocityJob>();
+
+            _forceQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<Unity.Physics.PhysicsVelocity>()
+                .WithAll<ActiveForce, LocalTransform>()
+                .Build();
+
+            _velocityQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<Unity.Physics.PhysicsVelocity>()
+                .WithAll<ActiveVelocity, LocalTransform>()
+                .Build();
+
+            _facetHandle.Create(ref state);
+            _entityHandle = state.GetEntityTypeHandle();
+            _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
+            _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
+
+            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -32,62 +58,109 @@ namespace BovineLabs.Timeline.Physics
             var dt = SystemAPI.Time.DeltaTime;
             if (dt <= 0.0001f) return;
 
-            targetsLookup.Update(ref state);
-            targetsCustomLookup.Update(ref state);
-            transformLookup.Update(ref state);
+            _facetHandle.Update(ref state);
+            _entityHandle.Update(ref state);
+            _activeForceHandle.Update(ref state);
+            _activeVelocityHandle.Update(ref state);
+
+            _targetsLookup.Update(ref state);
+            _targetsCustomLookup.Update(ref state);
+            _transformLookup.Update(ref state);
 
             state.Dependency = new ApplyForceJob
             {
                 DeltaTime = dt,
-                TargetsLookup = targetsLookup,
-                TargetsCustomLookup = targetsCustomLookup,
-                TransformLookup = transformLookup
-            }.ScheduleParallel(state.Dependency);
+                FacetHandle = _facetHandle,
+                EntityHandle = _entityHandle,
+                ActiveForceHandle = _activeForceHandle,
+                TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
+                TransformLookup = _transformLookup
+            }.ScheduleParallel(_forceQuery, state.Dependency);
 
             state.Dependency = new ApplyVelocityJob
             {
                 DeltaTime = dt,
-                TargetsLookup = targetsLookup,
-                TargetsCustomLookup = targetsCustomLookup,
-                TransformLookup = transformLookup
-            }.ScheduleParallel(state.Dependency);
+                FacetHandle = _facetHandle,
+                EntityHandle = _entityHandle,
+                ActiveVelocityHandle = _activeVelocityHandle,
+                TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
+                TransformLookup = _transformLookup
+            }.ScheduleParallel(_velocityQuery, state.Dependency);
         }
 
         [BurstCompile]
-        private partial struct ApplyForceJob : IJobEntity
+        private struct ApplyForceJob : IJobChunkWorkerBeginEnd
         {
-            [ReadOnly] public float DeltaTime;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            public float DeltaTime;
+            public PhysicsBodyFacet.TypeHandle FacetHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveForce> ActiveForceHandle;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, in ActiveForce active, in LocalTransform transform, in PhysicsMass mass)
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Linear, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var linForce) &&
-                    PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Angular, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var angForce) &&
-                    PhysicsMath.TryApplyLinearForce(velocity, mass, linForce, DeltaTime, out var v1) &&
-                    PhysicsMath.TryApplyAngularTorque(v1, mass, transform, angForce, DeltaTime, out var v2))
+                var resolved = FacetHandle.Resolve(chunk);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var forces = chunk.GetNativeArray(ref ActiveForceHandle);
+
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    velocity = v2;
+                    var facet = resolved[i];
+                    var config = forces[i].Config;
+
+                    if (!PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var linForce) ||
+                        !PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var angForce))
+                    {
+                        continue;
+                    }
+
+                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, DeltaTime, out var v1) &&
+                        PhysicsMath.TryApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, DeltaTime, out var v2))
+                    {
+                        facet.Velocity.ValueRW = v2;
+                    }
                 }
             }
         }
 
         [BurstCompile]
-        private partial struct ApplyVelocityJob : IJobEntity
+        private struct ApplyVelocityJob : IJobChunkWorkerBeginEnd
         {
-            [ReadOnly] public float DeltaTime;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            public float DeltaTime;
+            public PhysicsBodyFacet.TypeHandle FacetHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveVelocityHandle;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, in ActiveVelocity active)
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Linear, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var linVel) &&
-                    PhysicsMath.TryResolveSpaceVector(active.Config.Space, active.Config.Angular, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var angVel))
+                var resolved = FacetHandle.Resolve(chunk);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var velocities = chunk.GetNativeArray(ref ActiveVelocityHandle);
+
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    velocity.Linear += linVel * DeltaTime;
-                    velocity.Angular += angVel * DeltaTime;
+                    var facet = resolved[i];
+                    var config = velocities[i].Config;
+
+                    if (PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var linVel) &&
+                        PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var angVel))
+                    {
+                        var v = facet.Velocity.ValueRO;
+                        v.Linear += linVel * DeltaTime;
+                        v.Angular += angVel * DeltaTime;
+                        facet.Velocity.ValueRW = v;
+                    }
                 }
             }
         }

@@ -22,9 +22,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsVelocityData
                 {
-                    Linear = this.linearVelocity,
-                    Angular = this.angularVelocity,
-                    Space = this.space
+                    Linear = linearVelocity,
+                    Angular = angularVelocity,
+                    Space = space
                 }
             });
 

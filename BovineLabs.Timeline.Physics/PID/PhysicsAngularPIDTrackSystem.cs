@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/PID/PhysicsAngularPIDTrackSystem.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -13,45 +12,45 @@ namespace BovineLabs.Timeline.Physics
     [UpdateAfter(typeof(PhysicsLinearPIDTrackSystem))]
     public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> blendImpl;
-        private UnsafeComponentLookup<ActiveAngularPid> activePidLookup;
-        private ComponentLookup<PhysicsAngularPIDState> stateLookup;
+        private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> _blendImpl;
+        private UnsafeComponentLookup<ActiveAngularPid> _activePidLookup;
+        private ComponentLookup<PhysicsAngularPIDState> _stateLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            this.blendImpl.OnCreate(ref state);
-            this.activePidLookup = state.GetUnsafeComponentLookup<ActiveAngularPid>();
-            this.stateLookup = state.GetComponentLookup<PhysicsAngularPIDState>();
+            _blendImpl.OnCreate(ref state);
+            _activePidLookup = state.GetUnsafeComponentLookup<ActiveAngularPid>();
+            _stateLookup = state.GetComponentLookup<PhysicsAngularPIDState>();
         }
 
         [BurstCompile]
-        public void OnDestroy(ref SystemState state) => this.blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state) => _blendImpl.OnDestroy(ref state);
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            this.activePidLookup.Update(ref state);
-            this.stateLookup.Update(ref state);
+            _activePidLookup.Update(ref state);
+            _stateLookup.Update(ref state);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob
             {
-                ActiveLookup = this.activePidLookup
+                ActiveLookup = _activePidLookup
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = new ResetStateJob
             {
-                StateLookup = this.stateLookup
+                StateLookup = _stateLookup
             }.ScheduleParallel(state.Dependency);
 
-            var blendData = this.blendImpl.Update(ref state);
+            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActivePidLookup = this.activePidLookup
+                ActivePidLookup = _activePidLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -72,9 +71,9 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(in TrackBinding binding)
             {
-                if (this.StateLookup.HasComponent(binding.Value))
+                if (StateLookup.HasComponent(binding.Value))
                 {
-                    this.StateLookup.GetRefRW(binding.Value).ValueRW.State = default;
+                    StateLookup.GetRefRW(binding.Value).ValueRW.State = default;
                 }
             }
         }
@@ -89,9 +88,9 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(in TrackBinding binding)
             {
-                if (this.ActiveLookup.HasComponent(binding.Value))
+                if (ActiveLookup.HasComponent(binding.Value))
                 {
-                    this.ActiveLookup.SetComponentEnabled(binding.Value, false);
+                    ActiveLookup.SetComponentEnabled(binding.Value, false);
                 }
             }
         }
@@ -104,11 +103,11 @@ namespace BovineLabs.Timeline.Physics
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                this.Read(this.BlendData, entryIndex, out var entity, out var mixData);
-                if (!this.ActivePidLookup.HasComponent(entity)) return;
+                this.Read(BlendData, entryIndex, out var entity, out var mixData);
+                if (!ActivePidLookup.HasComponent(entity)) return;
 
-                this.ActivePidLookup.SetComponentEnabled(entity, true);
-                this.ActivePidLookup[entity] = new ActiveAngularPid
+                ActivePidLookup.SetComponentEnabled(entity, true);
+                ActivePidLookup[entity] = new ActiveAngularPid
                 {
                     Config = JobHelpers.Blend<PhysicsAngularPIDData, PhysicsAngularPIDMixer>(ref mixData, default)
                 };

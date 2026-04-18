@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/PhysicsForceTrackSystem.cs
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -12,37 +11,37 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     public partial struct PhysicsForceTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> blendImpl;
-        private UnsafeComponentLookup<ActiveForce> activeLookup;
+        private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> _blendImpl;
+        private UnsafeComponentLookup<ActiveForce> _activeLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            this.blendImpl.OnCreate(ref state);
-            this.activeLookup = state.GetUnsafeComponentLookup<ActiveForce>();
+            _blendImpl.OnCreate(ref state);
+            _activeLookup = state.GetUnsafeComponentLookup<ActiveForce>();
         }
 
         [BurstCompile]
-        public void OnDestroy(ref SystemState state) => this.blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state) => _blendImpl.OnDestroy(ref state);
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            this.activeLookup.Update(ref state);
+            _activeLookup.Update(ref state);
 
             state.Dependency = new PrepareForceDataJob().ScheduleParallel(state.Dependency);
             
             state.Dependency = new DisableStaleJob
             {
-                ActiveLookup = this.activeLookup
+                ActiveLookup = _activeLookup
             }.ScheduleParallel(state.Dependency);
             
-            var blendData = this.blendImpl.Update(ref state);
+            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActiveLookup = this.activeLookup
+                ActiveLookup = _activeLookup
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -63,9 +62,9 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(in TrackBinding binding)
             {
-                if (this.ActiveLookup.HasComponent(binding.Value))
+                if (ActiveLookup.HasComponent(binding.Value))
                 {
-                    this.ActiveLookup.SetComponentEnabled(binding.Value, false);
+                    ActiveLookup.SetComponentEnabled(binding.Value, false);
                 }
             }
         }
@@ -78,11 +77,11 @@ namespace BovineLabs.Timeline.Physics
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
-                this.Read(this.BlendData, entryIndex, out var entity, out var mixData);
-                if (!this.ActiveLookup.HasComponent(entity)) return;
+                this.Read(BlendData, entryIndex, out var entity, out var mixData);
+                if (!ActiveLookup.HasComponent(entity)) return;
 
-                this.ActiveLookup.SetComponentEnabled(entity, true);
-                this.ActiveLookup[entity] = new ActiveForce
+                ActiveLookup.SetComponentEnabled(entity, true);
+                ActiveLookup[entity] = new ActiveForce
                 {
                     Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
                 };

@@ -1,29 +1,63 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Jobs;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
+    [Configurable]
     [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
     public partial struct PhysicsPidApplySystem : ISystem
     {
-        private UnsafeComponentLookup<Targets> targetsLookup;
-        private ComponentLookup<TargetsCustom> targetsCustomLookup;
-        private UnsafeComponentLookup<LocalTransform> transformLookup;
+        private EntityQuery _linearQuery;
+        private EntityQuery _angularQuery;
+
+        private PhysicsBodyFacet.TypeHandle facetHandle;
+        private EntityTypeHandle entityHandle;
+        
+        private ComponentTypeHandle<PhysicsLinearPIDState> linearStateHandle;
+        private ComponentTypeHandle<ActiveLinearPid> activeLinearHandle;
+
+        private ComponentTypeHandle<PhysicsAngularPIDState> angularStateHandle;
+        private ComponentTypeHandle<ActiveAngularPid> activeAngularHandle;
+
+        private ComponentLookup<Targets> _targetsLookup;
+        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
+        private ComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<PhysicsWorldSingleton>();
-            targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
-            targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
-            transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyLinearJob>();
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyAngularJob>();
+
+            _linearQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<Unity.Physics.PhysicsVelocity, PhysicsLinearPIDState>()
+                .WithAll<ActiveLinearPid, LocalTransform>()
+                .Build();
+
+            _angularQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<Unity.Physics.PhysicsVelocity, PhysicsAngularPIDState>()
+                .WithAll<ActiveAngularPid, LocalTransform>()
+                .Build();
+
+            facetHandle.Create(ref state);
+            entityHandle = state.GetEntityTypeHandle();
+
+            linearStateHandle = state.GetComponentTypeHandle<PhysicsLinearPIDState>();
+            activeLinearHandle = state.GetComponentTypeHandle<ActiveLinearPid>(true);
+
+            angularStateHandle = state.GetComponentTypeHandle<PhysicsAngularPIDState>();
+            activeAngularHandle = state.GetComponentTypeHandle<ActiveAngularPid>(true);
+
+            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
+            _transformLookup = state.GetComponentLookup<LocalTransform>(true);
         }
 
         [BurstCompile]
@@ -32,64 +66,134 @@ namespace BovineLabs.Timeline.Physics
             var dt = SystemAPI.Time.DeltaTime;
             if (dt <= 0.0001f) return;
 
-            targetsLookup.Update(ref state);
-            targetsCustomLookup.Update(ref state);
-            transformLookup.Update(ref state);
+            facetHandle.Update(ref state);
+            entityHandle.Update(ref state);
+            
+            linearStateHandle.Update(ref state);
+            activeLinearHandle.Update(ref state);
+            
+            angularStateHandle.Update(ref state);
+            activeAngularHandle.Update(ref state);
+
+            _targetsLookup.Update(ref state);
+            _targetsCustomLookup.Update(ref state);
+            _transformLookup.Update(ref state);
 
             state.Dependency = new ApplyLinearJob
             {
                 DeltaTime = dt,
-                TargetsLookup = targetsLookup,
-                TargetsCustomLookup = targetsCustomLookup,
-                TransformLookup = transformLookup
-            }.ScheduleParallel(state.Dependency);
+                FacetHandle = facetHandle,
+                EntityHandle = entityHandle,
+                StateHandle = linearStateHandle,
+                ActiveHandle = activeLinearHandle,
+                TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
+                TransformLookup = _transformLookup
+            }.ScheduleParallel(_linearQuery, state.Dependency);
 
             state.Dependency = new ApplyAngularJob
             {
                 DeltaTime = dt,
-                TargetsLookup = targetsLookup,
-                TargetsCustomLookup = targetsCustomLookup,
-                TransformLookup = transformLookup
-            }.ScheduleParallel(state.Dependency);
+                FacetHandle = facetHandle,
+                EntityHandle = entityHandle,
+                StateHandle = angularStateHandle,
+                ActiveHandle = activeAngularHandle,
+                TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
+                TransformLookup = _transformLookup
+            }.ScheduleParallel(_angularQuery, state.Dependency);
         }
 
         [BurstCompile]
-        private partial struct ApplyLinearJob : IJobEntity
+        private struct ApplyLinearJob : IJobChunkWorkerBeginEnd
         {
-            [ReadOnly] public float DeltaTime;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            public float DeltaTime;
+            public PhysicsBodyFacet.TypeHandle FacetHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            public ComponentTypeHandle<PhysicsLinearPIDState> StateHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveLinearPid> ActiveHandle;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, ref PhysicsLinearPIDState state, in ActiveLinearPid active, in LocalTransform transform, in PhysicsMass mass)
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (PhysicsMath.TryResolveLinearPidTarget(transform, active.Config, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var targetPos) &&
-                    PhysicsMath.TryCalculatePid(transform.Position - targetPos, active.Config.Tuning, state.State, DeltaTime, out var force, out var nextState) &&
-                    PhysicsMath.TryApplyLinearForce(velocity, mass, -force, DeltaTime, out var nextVelocity))
+                var resolved = FacetHandle.Resolve(chunk);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var states = chunk.GetNativeArray(ref StateHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
+
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    velocity = nextVelocity;
-                    state.State = nextState;
+                    var facet = resolved[i];
+                    
+                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetPos))
+                    {
+                        continue;
+                    }
+
+                    var error = facet.Transform.ValueRO.Position - targetPos;
+                    if (!PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime, out var force, out var nextState))
+                    {
+                        continue;
+                    }
+
+                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, -force, DeltaTime, out var nextVelocity))
+                    {
+                        facet.Velocity.ValueRW = nextVelocity;
+                        
+                        var s = states[i];
+                        s.State = nextState;
+                        states[i] = s;
+                    }
                 }
             }
         }
 
         [BurstCompile]
-        private partial struct ApplyAngularJob : IJobEntity
+        private struct ApplyAngularJob : IJobChunkWorkerBeginEnd
         {
-            [ReadOnly] public float DeltaTime;
-            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            public float DeltaTime;
+            public PhysicsBodyFacet.TypeHandle FacetHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            public ComponentTypeHandle<PhysicsAngularPIDState> StateHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveAngularPid> ActiveHandle;
 
-            private void Execute(Entity entity, ref PhysicsVelocity velocity, ref PhysicsAngularPIDState state, in ActiveAngularPid active, in LocalTransform transform, in PhysicsMass mass)
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> TransformLookup;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (PhysicsMath.TryResolveAngularPidTarget(transform, active.Config, entity, TargetsLookup, TargetsCustomLookup, TransformLookup, out var targetRot) &&
-                    PhysicsMath.TryCalculateAngularError(transform.Rotation, targetRot, out var error) &&
-                    PhysicsMath.TryCalculatePid(error, active.Config.Tuning, state.State, DeltaTime, out var torque, out var nextState) &&
-                    PhysicsMath.TryApplyAngularTorque(velocity, mass, transform, torque, DeltaTime, out var nextVelocity))
+                var resolved = FacetHandle.Resolve(chunk);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var states = chunk.GetNativeArray(ref StateHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
+
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    velocity = nextVelocity;
-                    state.State = nextState;
+                    var facet = resolved[i];
+
+                    if (!PhysicsMath.TryResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot) ||
+                        !PhysicsMath.TryComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot, out var error) ||
+                        !PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime, out var torque, out var nextState))
+                    {
+                        continue;
+                    }
+
+                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+
+                    if (PhysicsMath.TryApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque, DeltaTime, out var nextVelocity))
+                    {
+                        facet.Velocity.ValueRW = nextVelocity;
+                        
+                        var s = states[i];
+                        s.State = nextState;
+                        states[i] = s;
+                    }
                 }
             }
         }

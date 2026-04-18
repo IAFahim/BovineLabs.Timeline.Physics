@@ -4,6 +4,7 @@ using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring

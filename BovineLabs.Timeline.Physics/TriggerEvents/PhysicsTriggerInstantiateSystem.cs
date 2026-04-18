@@ -24,10 +24,9 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
         private EntityQuery _query;
-        private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
-        
+
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
@@ -44,10 +43,9 @@ namespace BovineLabs.Timeline.Physics
                 .WithAll<ClipActive, PhysicsTriggerInstantiateData>()
                 .Build();
 
-            _entityHandle = state.GetEntityTypeHandle();
             _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
-            
+
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
@@ -64,7 +62,8 @@ namespace BovineLabs.Timeline.Physics
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
 
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new InstantiateGatherJob
             {
@@ -96,16 +95,17 @@ namespace BovineLabs.Timeline.Physics
             public EntityCommandBuffer.ParallelWriter ECB;
             public BLLogger Logger;
             [ReadOnly] public ObjectDefinitionRegistry Registry;
-            
+
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
-            
+
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var configs = chunk.GetNativeArray(ref DataHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
@@ -128,10 +128,7 @@ namespace BovineLabs.Timeline.Physics
                     {
                         foreach (var evt in triggers)
                         {
-                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(self) || !LocalToWorldLookup.HasComponent(evt.EntityB))
-                            {
-                                continue;
-                            }
+                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                             var selfPos = LocalToWorldLookup[self].Position;
                             var otherPos = LocalToWorldLookup[evt.EntityB].Position;
@@ -153,10 +150,7 @@ namespace BovineLabs.Timeline.Physics
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(self) || !LocalToWorldLookup.HasComponent(evt.EntityB))
-                        {
-                            continue;
-                        }
+                        if (evt.State != cfg.EventState) continue;
 
                         var selfPos = LocalToWorldLookup[self].Position;
                         var otherPos = LocalToWorldLookup[evt.EntityB].Position;
@@ -205,8 +199,10 @@ namespace BovineLabs.Timeline.Physics
 
                 if (spawn.Config.AssignParent)
                 {
-                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.ParentTarget, spawn.Self, spawn.Other, targets);
-                    if (parentEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
+                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.ParentTarget, spawn.Self,
+                        spawn.Other, targets);
+                    if (parentEntity != Entity.Null &&
+                        LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
                     {
                         commands.AddComponent(new Parent { Value = parentEntity });
                         var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);

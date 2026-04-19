@@ -22,7 +22,10 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        public void OnDestroy(ref SystemState state) => _blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state)
+        {
+            _blendImpl.OnDestroy(ref state);
+        }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
@@ -30,12 +33,12 @@ namespace BovineLabs.Timeline.Physics
             _activeLookup.Update(ref state);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
-            
+
             state.Dependency = new DisableStaleJob
             {
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(state.Dependency);
-            
+
             var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
@@ -49,7 +52,10 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(ClipActive))]
         private partial struct PrepareJob : IJobEntity
         {
-            private void Execute(ref PhysicsDragAnimated animated) => animated.Value = animated.AuthoredData;
+            private void Execute(ref PhysicsDragAnimated animated)
+            {
+                animated.Value = animated.AuthoredData;
+            }
         }
 
         [BurstCompile]
@@ -57,15 +63,11 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(TimelineActivePrevious))]
         private partial struct DisableStaleJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction]
-            public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
 
             private void Execute(in TrackBinding binding)
             {
-                if (ActiveLookup.HasComponent(binding.Value))
-                {
-                    ActiveLookup.SetComponentEnabled(binding.Value, false);
-                }
+                if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
             }
         }
 

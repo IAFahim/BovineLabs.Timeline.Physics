@@ -1,6 +1,6 @@
 using Unity.Entities;
-using Unity.Rendering;
 using Unity.Mathematics;
+using Unity.Rendering;
 
 namespace BovineLabs.Timeline.Physics.Smear
 {

@@ -4,29 +4,30 @@ using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.Playables;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Spawn")] 
-        public ObjectDefinition objectDefinition;
+        [Header("Spawn")] public ObjectDefinition objectDefinition;
+
         public StatefulEventState triggerState = StatefulEventState.Enter;
 
-        [Header("Position")] 
+        [Header("Position")]
         public PhysicsTriggerPositionMode positionMode = PhysicsTriggerPositionMode.MatchContactPoint;
+
         public Vector3 positionOffset = Vector3.zero;
         public bool isPositionOffsetLocal = true;
 
-        [Header("Rotation")] 
+        [Header("Rotation")]
         public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
+
         [Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
         public Vector3 rotationOffset = Vector3.zero;
 
-        [Header("Hierarchy")] 
-        public bool assignParent;
+        [Header("Hierarchy")] public bool assignParent;
+
         public PhysicsTriggerTargetMode parentTarget = PhysicsTriggerTargetMode.Self;
 
         public override double duration => 1;

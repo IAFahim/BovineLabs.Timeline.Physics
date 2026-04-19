@@ -6,9 +6,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
     [CustomEditor(typeof(PhysicsLinearPIDClip))]
     public class PhysicsLinearPIDClipEditor : UnityEditor.Editor
     {
+        private bool showAdvanced;
         private bool showPresets = true;
         private bool showTuning = true;
-        private bool showAdvanced = false;
 
         public override void OnInspectorGUI()
         {
@@ -32,13 +32,15 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             {
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Destination", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.trackingTarget)));
+                EditorGUILayout.PropertyField(
+                    serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.trackingTarget)));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.targetMode)));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.targetOffset)));
-                
+
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Gains", EditorStyles.boldLabel);
-                PidEditorUtility.DrawPIDFields(tuningProp, serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.uniformAxes)));
+                PidEditorUtility.DrawPIDFields(tuningProp,
+                    serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.uniformAxes)));
             }
 
             serializedObject.ApplyModifiedProperties();

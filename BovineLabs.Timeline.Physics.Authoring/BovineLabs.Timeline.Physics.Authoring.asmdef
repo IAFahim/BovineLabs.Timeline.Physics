@@ -2,6 +2,7 @@
   "name": "BovineLabs.Timeline.Physics.Authoring",
   "rootNamespace": "",
   "references": [
+    "BovineLabs.Core",
     "BovineLabs.Core.Authoring",
     "BovineLabs.Core.Extensions",
     "BovineLabs.Core.Extensions.Authoring",

@@ -6,9 +6,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
     [CustomEditor(typeof(PhysicsAngularPIDClip))]
     public class PhysicsAngularPIDClipEditor : UnityEditor.Editor
     {
+        private bool showAdvanced;
         private bool showPresets = true;
         private bool showTuning = true;
-        private bool showAdvanced = false;
 
         public override void OnInspectorGUI()
         {
@@ -32,13 +32,16 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             {
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Destination", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.trackingTarget)));
+                EditorGUILayout.PropertyField(
+                    serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.trackingTarget)));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetMode)));
-                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
-                
+                EditorGUILayout.PropertyField(
+                    serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
+
                 EditorGUILayout.Space(2);
                 EditorGUILayout.LabelField("Gains", EditorStyles.boldLabel);
-                PidEditorUtility.DrawPIDFields(tuningProp, serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.uniformAxes)));
+                PidEditorUtility.DrawPIDFields(tuningProp,
+                    serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.uniformAxes)));
             }
 
             serializedObject.ApplyModifiedProperties();

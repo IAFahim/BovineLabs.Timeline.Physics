@@ -14,8 +14,5 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackBindingType(typeof(StatefulTriggerEventAuthoring))]
     public class StatefulTriggerTrack : DOTSTrack
     {
-        
-        
-        
     }
 }

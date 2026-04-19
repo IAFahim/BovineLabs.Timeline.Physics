@@ -125,7 +125,6 @@ namespace BovineLabs.Timeline.Physics
                     }
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                    {
                         foreach (var evt in triggers)
                         {
                             if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
@@ -145,7 +144,6 @@ namespace BovineLabs.Timeline.Physics
                                 ContactNormal = dir
                             });
                         }
-                    }
 
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)

@@ -4,7 +4,9 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Physics;
 using Unity.Physics.Systems;
+using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -22,8 +24,8 @@ namespace BovineLabs.Timeline.Physics
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyDragJob>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAllRW<Unity.Physics.PhysicsVelocity>()
-                .WithAll<ActiveDrag, Unity.Transforms.LocalTransform>()
+                .WithAllRW<PhysicsVelocity>()
+                .WithAll<ActiveDrag, LocalTransform>()
                 .Build();
 
             _facetHandle.Create(ref state);
@@ -34,10 +36,7 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             var dt = SystemAPI.Time.DeltaTime;
-            if (dt <= 0.0001f)
-            {
-                return;
-            }
+            if (dt <= 0.0001f) return;
 
             _facetHandle.Update(ref state);
             _activeDragHandle.Update(ref state);
@@ -57,7 +56,8 @@ namespace BovineLabs.Timeline.Physics
             public PhysicsBodyFacet.TypeHandle FacetHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveDrag> ActiveDragHandle;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var drags = chunk.GetNativeArray(ref ActiveDragHandle);
@@ -65,10 +65,8 @@ namespace BovineLabs.Timeline.Physics
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var facet = resolved[i];
-                    if (PhysicsMath.TryComputeExponentialDecay(facet.Velocity.ValueRO, drags[i].Config, DeltaTime, out var vOut))
-                    {
-                        facet.Velocity.ValueRW = vOut;
-                    }
+                    if (PhysicsMath.TryComputeExponentialDecay(facet.Velocity.ValueRO, drags[i].Config, DeltaTime,
+                            out var vOut)) facet.Velocity.ValueRW = vOut;
                 }
             }
         }

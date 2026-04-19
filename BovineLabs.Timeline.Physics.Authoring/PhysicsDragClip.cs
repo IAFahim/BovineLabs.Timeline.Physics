@@ -9,7 +9,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     {
         [Tooltip("Linear drag multiplier. 0 = no drag. 50 = instant stop (at 50hz).")]
         public float linearDrag = 5f;
-        
+
         [Tooltip("Angular drag multiplier. 0 = no drag. 50 = instant stop (at 50hz).")]
         public float angularDrag = 5f;
 

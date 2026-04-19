@@ -26,18 +26,24 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsForceMixer : IMixer<PhysicsForceData>
     {
-        public PhysicsForceData Lerp(in PhysicsForceData a, in PhysicsForceData b, in float s) => new()
+        public PhysicsForceData Lerp(in PhysicsForceData a, in PhysicsForceData b, in float s)
         {
-            Linear = math.lerp(a.Linear, b.Linear, s),
-            Angular = math.lerp(a.Angular, b.Angular, s),
-            Space = s < 0.5f ? a.Space : b.Space
-        };
+            return new PhysicsForceData
+            {
+                Linear = math.lerp(a.Linear, b.Linear, s),
+                Angular = math.lerp(a.Angular, b.Angular, s),
+                Space = s < 0.5f ? a.Space : b.Space
+            };
+        }
 
-        public PhysicsForceData Add(in PhysicsForceData a, in PhysicsForceData b) => new()
+        public PhysicsForceData Add(in PhysicsForceData a, in PhysicsForceData b)
         {
-            Linear = a.Linear + b.Linear,
-            Angular = a.Angular + b.Angular,
-            Space = a.Space
-        };
+            return new PhysicsForceData
+            {
+                Linear = a.Linear + b.Linear,
+                Angular = a.Angular + b.Angular,
+                Space = a.Space
+            };
+        }
     }
 }

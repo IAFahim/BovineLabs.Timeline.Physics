@@ -37,10 +37,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem))
-            {
-                return;
-            }
+            if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
             var drawer = drawSystem.CreateDrawer();
 
@@ -74,14 +71,16 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                if (!PhysicsMath.TryResolveAngularPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var finalRot)) return;
-                
+                if (!PhysicsMath.TryResolveAngularPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
+                        in TargetsCustomLookup, in TransformLookup, out var finalRot)) return;
+
                 var forward = math.mul(finalRot, math.forward());
                 var up = math.mul(finalRot, math.up());
                 Drawer.Arrow(transform.Position, forward, Color.blue);
                 Drawer.Arrow(transform.Position, up, Color.green);
-                
-                PhysicsMath.TryDrawAngularPidPrediction(ref Drawer, transform.Position, transform.Rotation, finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
+
+                PhysicsMath.TryDrawAngularPidPrediction(ref Drawer, transform.Position, transform.Rotation, finalRot,
+                    animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
                     Drawer.Arrow(transform.Position, velocity.Angular, Color.magenta);

@@ -8,13 +8,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsLinearPIDClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Destination")]
-        public Target trackingTarget = Target.Target;
+        [Header("Destination")] public Target trackingTarget = Target.Target;
+
         public PidLinearTargetMode targetMode = PidLinearTargetMode.TargetLocal;
         public Vector3 targetOffset = new(0, 0, 0);
 
-        [Header("Linear Tuning")]
-        public bool uniformAxes = true;
+        [Header("Linear Tuning")] public bool uniformAxes = true;
+
         public PidTuning tuning = new()
         {
             Proportional = new Vector3(10f, 10f, 10f),
@@ -35,7 +35,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Tuning = tuning,
                     TrackingTarget = trackingTarget,
                     TargetMode = targetMode,
-                    TargetOffset = targetOffset,
+                    TargetOffset = targetOffset
                 }
             });
 

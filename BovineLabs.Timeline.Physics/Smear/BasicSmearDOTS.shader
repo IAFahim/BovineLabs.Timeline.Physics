@@ -9,7 +9,10 @@ Shader "Custom/BasicSmearDOTS"
 
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
+        Tags
+        {
+            "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline"
+        }
 
         Pass
         {
@@ -45,15 +48,15 @@ Shader "Custom/BasicSmearDOTS"
 
             // --- DOTS INSTANCING REGISTRATION ---
             #ifdef UNITY_DOTS_INSTANCING_ENABLED
-                UNITY_DOTS_INSTANCING_START(MaterialPropertyMetadata)
-                    UNITY_DOTS_INSTANCED_PROP(float4, _BaseColor)
-                    UNITY_DOTS_INSTANCED_PROP(float, _SmearMultiplier)
-                    UNITY_DOTS_INSTANCED_PROP(float4, _Velocity)
-                UNITY_DOTS_INSTANCING_END(MaterialPropertyMetadata)
+            UNITY_DOTS_INSTANCING_START (MaterialPropertyMetadata)
+            UNITY_DOTS_INSTANCED_PROP(float4, _BaseColor)
+            UNITY_DOTS_INSTANCED_PROP(float, _SmearMultiplier)
+            UNITY_DOTS_INSTANCED_PROP(float4, _Velocity)
+            UNITY_DOTS_INSTANCING_END (MaterialPropertyMetadata)
 
-                #define _BaseColor       UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _BaseColor)
-                #define _SmearMultiplier UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _SmearMultiplier)
-                #define _Velocity        UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _Velocity)
+            #define _BaseColor       UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _BaseColor)
+            #define _SmearMultiplier UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float, _SmearMultiplier)
+            #define _Velocity        UNITY_ACCESS_DOTS_INSTANCED_PROP_WITH_DEFAULT(float4, _Velocity)
             #endif
 
             Varyings vert(Attributes input)

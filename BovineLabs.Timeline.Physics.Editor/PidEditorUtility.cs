@@ -8,10 +8,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
     {
         private static readonly PIDPreset[] Presets =
         {
-            new("🚀 Snappy",    "Fast, direct, slight overshoot.",    p:15f, i:1f,  d:3f,  limit:150f),
-            new("🎯 Precise",   "Reaches goal accurately, no drift.", p:10f, i:3f,  d:2f,  limit:100f),
-            new("🪶 Floaty",    "Slow and dreamy, lots of glide.",    p:4f,  i:0.5f,d:1f,  limit:40f),
-            new("🏋️ Heavy",    "High force, strong damping.",        p:20f, i:2f,  d:8f,  limit:300f),
+            new("🚀 Snappy", "Fast, direct, slight overshoot.", 15f, 1f, 3f, 150f),
+            new("🎯 Precise", "Reaches goal accurately, no drift.", 10f, 3f, 2f, 100f),
+            new("🪶 Floaty", "Slow and dreamy, lots of glide.", 4f, 0.5f, 1f, 40f),
+            new("🏋️ Heavy", "High force, strong damping.", 20f, 2f, 8f, 300f)
         };
 
         public static void DrawPresets(Object target, SerializedProperty tuningProp)
@@ -26,10 +26,13 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
                 if (GUILayout.Button(new GUIContent(preset.Label, preset.Tooltip)))
                 {
                     Undo.RecordObject(target, $"Apply Preset: {preset.Label}");
-                    tuningProp.FindPropertyRelative("Proportional").vector3Value = new Vector3(preset.P, preset.P, preset.P);
-                    tuningProp.FindPropertyRelative("Integral").vector3Value     = new Vector3(preset.I, preset.I, preset.I);
-                    tuningProp.FindPropertyRelative("Derivative").vector3Value   = new Vector3(preset.D, preset.D, preset.D);
-                    tuningProp.FindPropertyRelative("MaxOutput").floatValue      = preset.Limit;
+                    tuningProp.FindPropertyRelative("Proportional").vector3Value =
+                        new Vector3(preset.P, preset.P, preset.P);
+                    tuningProp.FindPropertyRelative("Integral").vector3Value =
+                        new Vector3(preset.I, preset.I, preset.I);
+                    tuningProp.FindPropertyRelative("Derivative").vector3Value =
+                        new Vector3(preset.D, preset.D, preset.D);
+                    tuningProp.FindPropertyRelative("MaxOutput").floatValue = preset.Limit;
                     tuningProp.serializedObject.ApplyModifiedProperties();
                 }
 
@@ -46,7 +49,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             DrawTuningRow(target, tuningProp, "Fix Drift", "Increase I.", 1f, 1.25f, 1f);
         }
 
-        private static void DrawTuningRow(Object target, SerializedProperty prop, string label, string tooltip, float p, float i, float d)
+        private static void DrawTuningRow(Object target, SerializedProperty prop, string label, string tooltip, float p,
+            float i, float d)
         {
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(new GUIContent(label, tooltip), GUILayout.ExpandWidth(true));
@@ -58,6 +62,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
                 prop.FindPropertyRelative("Derivative").vector3Value *= d;
                 prop.serializedObject.ApplyModifiedProperties();
             }
+
             EditorGUILayout.EndHorizontal();
         }
 
@@ -87,7 +92,16 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             public readonly string Label;
             public readonly string Tooltip;
             public readonly float P, I, D, Limit;
-            public PIDPreset(string label, string tooltip, float p, float i, float d, float limit) { Label = label; Tooltip = tooltip; P = p; I = i; D = d; Limit = limit; }
+
+            public PIDPreset(string label, string tooltip, float p, float i, float d, float limit)
+            {
+                Label = label;
+                Tooltip = tooltip;
+                P = p;
+                I = i;
+                D = d;
+                Limit = limit;
+            }
         }
     }
 }

@@ -9,13 +9,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsAngularPIDClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Destination")]
-        public Target trackingTarget = Target.Target;
+        [Header("Destination")] public Target trackingTarget = Target.Target;
+
         public PidAngularTargetMode targetMode = PidAngularTargetMode.LookAtTarget;
         public Vector3 targetRotationEuler = Vector3.zero;
 
-        [Header("Angular Tuning")]
-        public bool uniformAxes = true;
+        [Header("Angular Tuning")] public bool uniformAxes = true;
+
         public PidTuning tuning = new()
         {
             Proportional = new Vector3(10f, 10f, 10f),
@@ -36,7 +36,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Tuning = tuning,
                     TrackingTarget = trackingTarget,
                     TargetMode = targetMode,
-                    TargetRotation = quaternion.Euler(math.radians(targetRotationEuler)),
+                    TargetRotation = quaternion.Euler(math.radians(targetRotationEuler))
                 }
             });
 

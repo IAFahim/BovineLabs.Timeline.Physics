@@ -24,7 +24,10 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        public void OnDestroy(ref SystemState state) => _blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state)
+        {
+            _blendImpl.OnDestroy(ref state);
+        }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
@@ -33,7 +36,7 @@ namespace BovineLabs.Timeline.Physics
             _stateLookup.Update(ref state);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
-            
+
             state.Dependency = new DisableStaleJob
             {
                 ActiveLookup = _activePidLookup
@@ -43,7 +46,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 StateLookup = _stateLookup
             }.ScheduleParallel(state.Dependency);
-            
+
             var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
@@ -57,7 +60,10 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(ClipActive))]
         private partial struct PrepareJob : IJobEntity
         {
-            private void Execute(ref PhysicsLinearPIDAnimated animated) => animated.Value = animated.AuthoredData;
+            private void Execute(ref PhysicsLinearPIDAnimated animated)
+            {
+                animated.Value = animated.AuthoredData;
+            }
         }
 
         [BurstCompile]
@@ -65,8 +71,7 @@ namespace BovineLabs.Timeline.Physics
         [WithNone(typeof(ClipActivePrevious))]
         private partial struct ResetStateJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction]
-            public UnsafeComponentLookup<PhysicsLinearPIDState> StateLookup;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsLinearPIDState> StateLookup;
 
             private void Execute(in TrackBinding binding)
             {
@@ -84,15 +89,11 @@ namespace BovineLabs.Timeline.Physics
         [WithAll(typeof(TimelineActivePrevious))]
         private partial struct DisableStaleJob : IJobEntity
         {
-            [NativeDisableParallelForRestriction]
-            public UnsafeComponentLookup<ActiveLinearPid> ActiveLookup;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveLinearPid> ActiveLookup;
 
             private void Execute(in TrackBinding binding)
             {
-                if (ActiveLookup.HasComponent(binding.Value))
-                {
-                    ActiveLookup.SetComponentEnabled(binding.Value, false);
-                }
+                if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
             }
         }
 

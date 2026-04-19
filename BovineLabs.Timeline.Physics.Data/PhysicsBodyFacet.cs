@@ -11,7 +11,12 @@ namespace BovineLabs.Timeline.Physics
         public readonly RefRO<LocalTransform> Transform;
         [FacetOptional] public readonly RefRO<PhysicsMass> Mass;
 
-        public partial struct Lookup { }
-        public partial struct TypeHandle { }
+        public partial struct Lookup
+        {
+        }
+
+        public partial struct TypeHandle
+        {
+        }
     }
 }

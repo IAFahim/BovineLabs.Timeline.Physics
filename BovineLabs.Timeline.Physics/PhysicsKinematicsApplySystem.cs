@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
@@ -35,12 +36,12 @@ namespace BovineLabs.Timeline.Physics
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyVelocityJob>();
 
             _forceQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<Unity.Physics.PhysicsVelocity>()
+                .WithAllRW<PhysicsVelocity>()
                 .WithAll<ActiveForce, LocalTransform>()
                 .Build();
 
             _velocityQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<Unity.Physics.PhysicsVelocity>()
+                .WithAllRW<PhysicsVelocity>()
                 .WithAll<ActiveVelocity, LocalTransform>()
                 .Build();
 
@@ -104,7 +105,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
@@ -115,19 +117,21 @@ namespace BovineLabs.Timeline.Physics
                     var facet = resolved[i];
                     var config = forces[i].Config;
 
-                    if (!PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var linForce) ||
-                        !PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var angForce))
-                    {
+                    if (!PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
+                            in TargetsCustomLookup, in TransformLookup, out var linForce) ||
+                        !PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
+                            in TargetsCustomLookup, in TransformLookup, out var angForce))
                         continue;
-                    }
 
-                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+                    var mass = facet.Mass.IsValid
+                        ? facet.Mass.ValueRO
+                        : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, DeltaTime, out var v1) &&
-                        PhysicsMath.TryApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, DeltaTime, out var v2))
-                    {
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, DeltaTime,
+                            out var v1) &&
+                        PhysicsMath.TryApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, DeltaTime,
+                            out var v2))
                         facet.Velocity.ValueRW = v2;
-                    }
                 }
             }
         }
@@ -144,7 +148,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
@@ -155,8 +160,10 @@ namespace BovineLabs.Timeline.Physics
                     var facet = resolved[i];
                     var config = velocities[i].Config;
 
-                    if (PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var linVel) &&
-                        PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var angVel))
+                    if (PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
+                            in TargetsCustomLookup, in TransformLookup, out var linVel) &&
+                        PhysicsMath.TryResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
+                            in TargetsCustomLookup, in TransformLookup, out var angVel))
                     {
                         var v = facet.Velocity.ValueRO;
                         v.Linear += linVel * DeltaTime;

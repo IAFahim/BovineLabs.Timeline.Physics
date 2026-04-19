@@ -7,32 +7,44 @@ namespace BovineLabs.Timeline.Physics
 {
     public static class PhysicsTriggerResolution
     {
-        public static float3 ResolvePosition(PhysicsTriggerPositionMode mode, LocalToWorld self, LocalToWorld other, float3 contactPoint) => mode switch
+        public static float3 ResolvePosition(PhysicsTriggerPositionMode mode, LocalToWorld self, LocalToWorld other,
+            float3 contactPoint)
         {
-            PhysicsTriggerPositionMode.MatchCollidedEntity => other.Position,
-            PhysicsTriggerPositionMode.MatchContactPoint => contactPoint,
-            _ => self.Position
-        };
+            return mode switch
+            {
+                PhysicsTriggerPositionMode.MatchCollidedEntity => other.Position,
+                PhysicsTriggerPositionMode.MatchContactPoint => contactPoint,
+                _ => self.Position
+            };
+        }
 
-        public static quaternion ResolveRotation(PhysicsTriggerRotationMode mode, LocalToWorld self, LocalToWorld other, float3 contactNormal) => mode switch
+        public static quaternion ResolveRotation(PhysicsTriggerRotationMode mode, LocalToWorld self, LocalToWorld other,
+            float3 contactNormal)
         {
-            PhysicsTriggerRotationMode.MatchSelf => math.quaternion(self.Value),
-            PhysicsTriggerRotationMode.MatchCollidedEntity => math.quaternion(other.Value),
-            PhysicsTriggerRotationMode.AlignToContactNormal => quaternion.LookRotationSafe(contactNormal, math.up()),
-            PhysicsTriggerRotationMode.Identity => quaternion.identity,
-            _ => quaternion.identity
-        };
+            return mode switch
+            {
+                PhysicsTriggerRotationMode.MatchSelf => math.quaternion(self.Value),
+                PhysicsTriggerRotationMode.MatchCollidedEntity => math.quaternion(other.Value),
+                PhysicsTriggerRotationMode.AlignToContactNormal =>
+                    quaternion.LookRotationSafe(contactNormal, math.up()),
+                PhysicsTriggerRotationMode.Identity => quaternion.identity,
+                _ => quaternion.identity
+            };
+        }
 
-        public static Entity ResolveTarget(PhysicsTriggerTargetMode mode, Entity self, Entity other, in Targets targets) => mode switch
+        public static Entity ResolveTarget(PhysicsTriggerTargetMode mode, Entity self, Entity other, in Targets targets)
         {
-            PhysicsTriggerTargetMode.Self => self,
-            PhysicsTriggerTargetMode.CollidedEntity => other,
-            PhysicsTriggerTargetMode.ReactionOwner => targets.Owner,
-            PhysicsTriggerTargetMode.ReactionSource => targets.Source,
-            PhysicsTriggerTargetMode.ReactionTarget => targets.Target,
-            _ => Entity.Null
-        };
-        
+            return mode switch
+            {
+                PhysicsTriggerTargetMode.Self => self,
+                PhysicsTriggerTargetMode.CollidedEntity => other,
+                PhysicsTriggerTargetMode.ReactionOwner => targets.Owner,
+                PhysicsTriggerTargetMode.ReactionSource => targets.Source,
+                PhysicsTriggerTargetMode.ReactionTarget => targets.Target,
+                _ => Entity.Null
+            };
+        }
+
         public static LocalTransform CalculateTransform(
             PhysicsTriggerPositionMode posMode, float3 posOffset, bool isPosOffsetLocal,
             PhysicsTriggerRotationMode rotMode, float3 rotOffsetEuler,

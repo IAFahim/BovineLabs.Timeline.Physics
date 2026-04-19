@@ -1,8 +1,7 @@
 using Unity.Burst;
 using Unity.Entities;
-using Unity.Physics;
-using Unity.Rendering;
 using Unity.Mathematics;
+using Unity.Physics;
 
 namespace BovineLabs.Timeline.Physics.Smear
 {

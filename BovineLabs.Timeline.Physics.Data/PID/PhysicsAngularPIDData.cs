@@ -32,20 +32,26 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsAngularPIDMixer : IMixer<PhysicsAngularPIDData>
     {
-        public PhysicsAngularPIDData Lerp(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b, in float s) => new()
+        public PhysicsAngularPIDData Lerp(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b, in float s)
         {
-            Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
-            TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
-            TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
-            TargetRotation = math.slerp(a.TargetRotation, b.TargetRotation, s)
-        };
+            return new PhysicsAngularPIDData
+            {
+                Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
+                TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
+                TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
+                TargetRotation = math.slerp(a.TargetRotation, b.TargetRotation, s)
+            };
+        }
 
-        public PhysicsAngularPIDData Add(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b) => new()
+        public PhysicsAngularPIDData Add(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b)
         {
-            Tuning = PidMixer.Add(a.Tuning, b.Tuning),
-            TrackingTarget = a.TrackingTarget,
-            TargetMode = a.TargetMode,
-            TargetRotation = math.mul(a.TargetRotation, b.TargetRotation)
-        };
+            return new PhysicsAngularPIDData
+            {
+                Tuning = PidMixer.Add(a.Tuning, b.Tuning),
+                TrackingTarget = a.TrackingTarget,
+                TargetMode = a.TargetMode,
+                TargetRotation = math.mul(a.TargetRotation, b.TargetRotation)
+            };
+        }
     }
 }

@@ -1,4 +1,3 @@
-using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -24,7 +23,7 @@ namespace BovineLabs.Timeline.Physics
         private EntityQuery _query;
         private EntityLock _entityLock;
 
-        
+
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerTeleportData> _dataHandle;
 
@@ -44,13 +43,13 @@ namespace BovineLabs.Timeline.Physics
             _query = SystemAPI.QueryBuilder()
                 .WithAll<ClipActive, PhysicsTriggerTeleportData>()
                 .Build();
-            
+
             _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerTeleportData>(true);
 
-            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(false);
-            _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(false);
-            
+            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>();
+            _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>();
+
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
@@ -98,13 +97,14 @@ namespace BovineLabs.Timeline.Physics
 
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
-            
+
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var configs = chunk.GetNativeArray(ref DataHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
@@ -115,7 +115,6 @@ namespace BovineLabs.Timeline.Physics
                     var cfg = configs[i];
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                    {
                         foreach (var evt in triggers)
                         {
                             if (evt.State != cfg.EventState) continue;
@@ -127,7 +126,6 @@ namespace BovineLabs.Timeline.Physics
 
                             ProcessTeleport(self, evt.EntityB, in cfg, midpoint, dir);
                         }
-                    }
 
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
@@ -146,15 +144,13 @@ namespace BovineLabs.Timeline.Physics
                 }
             }
 
-            private void ProcessTeleport(Entity self, Entity other, in PhysicsTriggerTeleportData cfg, float3 contactPoint, float3 contactNormal)
+            private void ProcessTeleport(Entity self, Entity other, in PhysicsTriggerTeleportData cfg,
+                float3 contactPoint, float3 contactNormal)
             {
                 var targets = TargetsLookup[self];
                 var targetToMove = PhysicsTriggerResolution.ResolveTarget(cfg.EntityToMove, self, other, targets);
 
-                if (targetToMove == Entity.Null || !TransformLookup.HasComponent(targetToMove))
-                {
-                    return;
-                }
+                if (targetToMove == Entity.Null || !TransformLookup.HasComponent(targetToMove)) return;
 
                 var selfLtw = LocalToWorldLookup[self];
                 var otherLtw = LocalToWorldLookup[other];
@@ -172,9 +168,8 @@ namespace BovineLabs.Timeline.Physics
                     TransformLookup[targetToMove] = lt;
 
                     if (cfg.ResetVelocity && VelocityLookup.HasComponent(targetToMove))
-                    {
-                        VelocityLookup[targetToMove] = new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero };
-                    }
+                        VelocityLookup[targetToMove] = new PhysicsVelocity
+                            { Linear = float3.zero, Angular = float3.zero };
                 }
             }
         }

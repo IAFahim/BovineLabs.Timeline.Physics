@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
 
@@ -21,7 +22,7 @@ namespace BovineLabs.Timeline.Physics
 
         private PhysicsBodyFacet.TypeHandle _facetHandle;
         private EntityTypeHandle _entityHandle;
-        
+
         private ComponentTypeHandle<PhysicsLinearPIDState> _linearStateHandle;
         private ComponentTypeHandle<ActiveLinearPid> _activeLinearHandle;
 
@@ -39,12 +40,12 @@ namespace BovineLabs.Timeline.Physics
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyAngularJob>();
 
             _linearQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<Unity.Physics.PhysicsVelocity, PhysicsLinearPIDState>()
+                .WithAllRW<PhysicsVelocity, PhysicsLinearPIDState>()
                 .WithAll<ActiveLinearPid, LocalTransform>()
                 .Build();
 
             _angularQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<Unity.Physics.PhysicsVelocity, PhysicsAngularPIDState>()
+                .WithAllRW<PhysicsVelocity, PhysicsAngularPIDState>()
                 .WithAll<ActiveAngularPid, LocalTransform>()
                 .Build();
 
@@ -70,10 +71,10 @@ namespace BovineLabs.Timeline.Physics
 
             _facetHandle.Update(ref state);
             _entityHandle.Update(ref state);
-            
+
             _linearStateHandle.Update(ref state);
             _activeLinearHandle.Update(ref state);
-            
+
             _angularStateHandle.Update(ref state);
             _activeAngularHandle.Update(ref state);
 
@@ -119,7 +120,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
@@ -129,24 +131,23 @@ namespace BovineLabs.Timeline.Physics
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var facet = resolved[i];
-                    
-                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetPos))
-                    {
-                        continue;
-                    }
+
+                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
+                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetPos)) continue;
 
                     var error = facet.Transform.ValueRO.Position - targetPos;
-                    if (!PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime, out var force, out var nextState))
-                    {
-                        continue;
-                    }
+                    if (!PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
+                            out var force, out var nextState)) continue;
 
-                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+                    var mass = facet.Mass.IsValid
+                        ? facet.Mass.ValueRO
+                        : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, -force, DeltaTime, out var nextVelocity))
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, -force, DeltaTime,
+                            out var nextVelocity))
                     {
                         facet.Velocity.ValueRW = nextVelocity;
-                        
+
                         var s = states[i];
                         s.State = nextState;
                         states[i] = s;
@@ -168,7 +169,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
@@ -179,19 +181,23 @@ namespace BovineLabs.Timeline.Physics
                 {
                     var facet = resolved[i];
 
-                    if (!PhysicsMath.TryResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i], in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot) ||
-                        !PhysicsMath.TryComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot, out var error) ||
-                        !PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime, out var torque, out var nextState))
-                    {
+                    if (!PhysicsMath.TryResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
+                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot) ||
+                        !PhysicsMath.TryComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot,
+                            out var error) ||
+                        !PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
+                            out var torque, out var nextState))
                         continue;
-                    }
 
-                    var mass = facet.Mass.IsValid ? facet.Mass.ValueRO : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+                    var mass = facet.Mass.IsValid
+                        ? facet.Mass.ValueRO
+                        : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque, DeltaTime, out var nextVelocity))
+                    if (PhysicsMath.TryApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque,
+                            DeltaTime, out var nextVelocity))
                     {
                         facet.Velocity.ValueRW = nextVelocity;
-                        
+
                         var s = states[i];
                         s.State = nextState;
                         states[i] = s;

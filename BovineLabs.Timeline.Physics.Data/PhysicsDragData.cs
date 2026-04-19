@@ -24,16 +24,22 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsDragMixer : IMixer<PhysicsDragData>
     {
-        public PhysicsDragData Lerp(in PhysicsDragData a, in PhysicsDragData b, in float s) => new()
+        public PhysicsDragData Lerp(in PhysicsDragData a, in PhysicsDragData b, in float s)
         {
-            Linear = math.lerp(a.Linear, b.Linear, s),
-            Angular = math.lerp(a.Angular, b.Angular, s)
-        };
+            return new PhysicsDragData
+            {
+                Linear = math.lerp(a.Linear, b.Linear, s),
+                Angular = math.lerp(a.Angular, b.Angular, s)
+            };
+        }
 
-        public PhysicsDragData Add(in PhysicsDragData a, in PhysicsDragData b) => new()
+        public PhysicsDragData Add(in PhysicsDragData a, in PhysicsDragData b)
         {
-            Linear = a.Linear + b.Linear,
-            Angular = a.Angular + b.Angular
-        };
+            return new PhysicsDragData
+            {
+                Linear = a.Linear + b.Linear,
+                Angular = a.Angular + b.Angular
+            };
+        }
     }
 }

@@ -21,7 +21,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsLinearPIDDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
-        private ComponentLookup<PhysicsVelocity> _velocityLookup;
+        private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomsLookup;
 
@@ -29,7 +29,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnCreate(ref SystemState state)
         {
             _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
-            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>(true);
+            _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
         }
@@ -65,7 +65,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             public Drawer Drawer;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
-            [ReadOnly] public ComponentLookup<PhysicsVelocity> VelocityLookup;
+            [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 

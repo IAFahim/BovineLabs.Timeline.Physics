@@ -32,28 +32,29 @@ namespace BovineLabs.Timeline.Physics
             };
         }
 
-        public static Entity ResolveTarget(PhysicsTriggerTargetMode mode, Entity self, Entity other, in Targets targets)
+        public static Entity ResolveTarget(Target mode, Entity self, Entity other, in Targets targets, in ComponentLookup<TargetsCustom> customLookup)
         {
             return mode switch
             {
-                PhysicsTriggerTargetMode.Self => self,
-                PhysicsTriggerTargetMode.CollidedEntity => other,
-                PhysicsTriggerTargetMode.ReactionOwner => targets.Owner,
-                PhysicsTriggerTargetMode.ReactionSource => targets.Source,
-                PhysicsTriggerTargetMode.ReactionTarget => targets.Target,
+                Target.Self => self,
+                Target.Target => other, // CollidedEntity
+                Target.Owner => targets.Owner,
+                Target.Source => targets.Source,
+                Target.Custom0 => customLookup.HasComponent(self) ? customLookup[self].Target0 : Entity.Null,
+                Target.Custom1 => customLookup.HasComponent(self) ? customLookup[self].Target1 : Entity.Null,
                 _ => Entity.Null
             };
         }
 
         public static LocalTransform CalculateTransform(
-            PhysicsTriggerPositionMode posMode, float3 posOffset, bool isPosOffsetLocal,
+            PhysicsTriggerPositionMode posMode, float3 resolvedPosOffset,
             PhysicsTriggerRotationMode rotMode, float3 rotOffsetEuler,
             LocalToWorld self, LocalToWorld other, float3 contactPoint, float3 contactNormal)
         {
             var pos = ResolvePosition(posMode, self, other, contactPoint);
             var rot = ResolveRotation(rotMode, self, other, contactNormal);
 
-            pos += isPosOffsetLocal ? math.rotate(rot, posOffset) : posOffset;
+            pos += resolvedPosOffset;
             rot = math.mul(rot, quaternion.Euler(rotOffsetEuler));
 
             return LocalTransform.FromPositionRotation(pos, rot);

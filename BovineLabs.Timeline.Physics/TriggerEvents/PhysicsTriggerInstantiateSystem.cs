@@ -29,6 +29,7 @@ namespace BovineLabs.Timeline.Physics
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
+        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
@@ -48,6 +49,7 @@ namespace BovineLabs.Timeline.Physics
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
@@ -59,6 +61,7 @@ namespace BovineLabs.Timeline.Physics
             _dataHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
+            _targetsCustomLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
 
@@ -74,6 +77,7 @@ namespace BovineLabs.Timeline.Physics
                 DataHandle = _dataHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup
             }.ScheduleParallel(_query, state.Dependency);
@@ -101,6 +105,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
@@ -177,9 +182,21 @@ namespace BovineLabs.Timeline.Physics
             {
                 var selfLtw = LocalToWorldLookup[spawn.Self];
                 var otherLtw = LocalToWorldLookup[spawn.Other];
+                
+                var targets = TargetsLookup.HasComponent(spawn.Self) ? TargetsLookup[spawn.Self] : default;
+
+                float3 resolvedPosOffset = spawn.Config.PositionOffset;
+                if (spawn.Config.PositionOffsetSpace != Target.None)
+                {
+                    var spaceEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup);
+                    if (spaceEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
+                    {
+                        resolvedPosOffset = math.rotate(spaceLtw.Rotation, spawn.Config.PositionOffset);
+                    }
+                }
 
                 var transform = PhysicsTriggerResolution.CalculateTransform(
-                    spawn.Config.PositionMode, spawn.Config.PositionOffset, spawn.Config.IsPositionOffsetLocal,
+                    spawn.Config.PositionMode, resolvedPosOffset,
                     spawn.Config.RotationMode, spawn.Config.RotationOffsetEuler,
                     selfLtw, otherLtw, spawn.ContactPoint, spawn.ContactNormal);
 
@@ -187,7 +204,6 @@ namespace BovineLabs.Timeline.Physics
                 commands.Instantiate(spawn.Prefab);
                 commands.SetComponent(transform);
 
-                var targets = TargetsLookup[spawn.Self];
                 commands.SetComponent(new Targets
                 {
                     Owner = targets.Owner,
@@ -195,10 +211,11 @@ namespace BovineLabs.Timeline.Physics
                     Target = spawn.Other
                 });
 
-                if (spawn.Config.AssignParent)
+                if (spawn.Config.AssignParent != Target.None)
                 {
-                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.ParentTarget, spawn.Self,
-                        spawn.Other, targets);
+                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.AssignParent, spawn.Self,
+                        spawn.Other, targets, TargetsCustomLookup);
+                    
                     if (parentEntity != Entity.Null &&
                         LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
                     {

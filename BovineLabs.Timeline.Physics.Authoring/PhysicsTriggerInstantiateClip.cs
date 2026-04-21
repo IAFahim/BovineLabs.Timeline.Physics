@@ -1,5 +1,6 @@
 using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -18,7 +19,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsTriggerPositionMode positionMode = PhysicsTriggerPositionMode.MatchContactPoint;
 
         public Vector3 positionOffset = Vector3.zero;
-        public bool isPositionOffsetLocal = true;
+        public Target positionOffsetSpace = Target.Self;
 
         [Header("Rotation")]
         public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
@@ -26,9 +27,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
         public Vector3 rotationOffset = Vector3.zero;
 
-        [Header("Hierarchy")] public bool assignParent;
-
-        public PhysicsTriggerTargetMode parentTarget = PhysicsTriggerTargetMode.Self;
+        [Header("Hierarchy")] 
+        public Target assignParent = Target.None;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
@@ -41,11 +41,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EventState = triggerState,
                 PositionMode = positionMode,
                 PositionOffset = positionOffset,
-                IsPositionOffsetLocal = isPositionOffsetLocal,
+                PositionOffsetSpace = positionOffsetSpace,
                 RotationMode = rotationMode,
                 RotationOffsetEuler = math.radians(rotationOffset),
-                AssignParent = assignParent,
-                ParentTarget = parentTarget
+                AssignParent = assignParent
             });
 
             base.Bake(clipEntity, context);

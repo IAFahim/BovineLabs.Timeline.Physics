@@ -1,4 +1,5 @@
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -11,8 +12,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
     {
         [Header("Teleport Configuration")] public StatefulEventState TriggerState = StatefulEventState.Enter;
 
-        [Tooltip("Who should be teleported?")]
-        public PhysicsTriggerTargetMode EntityToMove = PhysicsTriggerTargetMode.ReactionOwner;
+        [Tooltip("Who should be teleported? Target = The Entity colliding with us.")]
+        public Target EntityToMove = Target.Owner;
 
         [Tooltip("If true, removes all momentum from the teleported entity so it doesn't fly away.")]
         public bool ResetPhysicsVelocity = true;
@@ -21,7 +22,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsTriggerPositionMode PositionMode = PhysicsTriggerPositionMode.MatchContactPoint;
 
         public Vector3 PositionOffset = Vector3.zero;
-        public bool IsPositionOffsetLocal = true;
+        public Target PositionOffsetSpace = Target.Self;
 
         [Header("Facing Direction")]
         public PhysicsTriggerRotationMode RotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
@@ -39,7 +40,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EntityToMove = EntityToMove,
                 PositionMode = PositionMode,
                 PositionOffset = PositionOffset,
-                IsPositionOffsetLocal = IsPositionOffsetLocal,
+                PositionOffsetSpace = PositionOffsetSpace,
                 RotationMode = RotationMode,
                 RotationOffsetEuler = math.radians(RotationOffset),
                 ResetVelocity = ResetPhysicsVelocity

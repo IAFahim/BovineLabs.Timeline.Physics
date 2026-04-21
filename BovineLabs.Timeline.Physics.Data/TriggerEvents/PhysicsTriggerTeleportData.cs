@@ -1,4 +1,5 @@
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Data.Core;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -8,11 +9,11 @@ namespace BovineLabs.Timeline.Physics
     {
         public StatefulEventState EventState;
 
-        public PhysicsTriggerTargetMode EntityToMove;
+        public Target EntityToMove;
 
         public PhysicsTriggerPositionMode PositionMode;
         public float3 PositionOffset;
-        public bool IsPositionOffsetLocal;
+        public Target PositionOffsetSpace;
 
         public PhysicsTriggerRotationMode RotationMode;
         public float3 RotationOffsetEuler;

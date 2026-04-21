@@ -23,7 +23,6 @@ namespace BovineLabs.Timeline.Physics
         private EntityQuery _query;
         private EntityLock _entityLock;
 
-
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerTeleportData> _dataHandle;
 
@@ -31,6 +30,7 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
+        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
 
@@ -52,6 +52,7 @@ namespace BovineLabs.Timeline.Physics
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
         }
@@ -70,6 +71,7 @@ namespace BovineLabs.Timeline.Physics
             _velocityLookup.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
+            _targetsCustomLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
 
@@ -82,6 +84,7 @@ namespace BovineLabs.Timeline.Physics
                 VelocityLookup = _velocityLookup,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
+                TargetsCustomLookup = _targetsCustomLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup
             }.ScheduleParallel(_query, state.Dependency);
@@ -100,6 +103,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
@@ -147,16 +151,26 @@ namespace BovineLabs.Timeline.Physics
             private void ProcessTeleport(Entity self, Entity other, in PhysicsTriggerTeleportData cfg,
                 float3 contactPoint, float3 contactNormal)
             {
-                var targets = TargetsLookup[self];
-                var targetToMove = PhysicsTriggerResolution.ResolveTarget(cfg.EntityToMove, self, other, targets);
+                var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                var targetToMove = PhysicsTriggerResolution.ResolveTarget(cfg.EntityToMove, self, other, targets, TargetsCustomLookup);
 
                 if (targetToMove == Entity.Null || !TransformLookup.HasComponent(targetToMove)) return;
 
                 var selfLtw = LocalToWorldLookup[self];
                 var otherLtw = LocalToWorldLookup[other];
 
+                float3 resolvedPosOffset = cfg.PositionOffset;
+                if (cfg.PositionOffsetSpace != Target.None)
+                {
+                    var spaceEntity = PhysicsTriggerResolution.ResolveTarget(cfg.PositionOffsetSpace, self, other, targets, TargetsCustomLookup);
+                    if (spaceEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
+                    {
+                        resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
+                    }
+                }
+
                 var transform = PhysicsTriggerResolution.CalculateTransform(
-                    cfg.PositionMode, cfg.PositionOffset, cfg.IsPositionOffsetLocal,
+                    cfg.PositionMode, resolvedPosOffset,
                     cfg.RotationMode, cfg.RotationOffsetEuler,
                     selfLtw, otherLtw, contactPoint, contactNormal);
 

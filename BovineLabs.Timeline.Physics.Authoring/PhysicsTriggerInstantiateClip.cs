@@ -1,3 +1,5 @@
+// BovineLabs.Timeline.Physics.Authoring/PhysicsTriggerInstantiateClip.cs
+
 using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
@@ -12,7 +14,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Spawn")] public ObjectDefinition objectDefinition;
-
         public StatefulEventState triggerState = StatefulEventState.Enter;
 
         [Header("Position")]
@@ -27,8 +28,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
         public Vector3 rotationOffset = Vector3.zero;
 
-        [Header("Hierarchy")] 
-        public Target assignParent = Target.None;
+        [Header("Hierarchy")] public Target assignParent = Target.None;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;

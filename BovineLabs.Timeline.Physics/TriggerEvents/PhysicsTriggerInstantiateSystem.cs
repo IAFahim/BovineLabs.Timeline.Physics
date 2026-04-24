@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerInstantiateSystem.cs
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.EntityCommands;
@@ -18,8 +19,7 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [Configurable]
-    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [Configurable][UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
@@ -103,8 +103,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
 
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;[ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
@@ -153,7 +152,7 @@ namespace BovineLabs.Timeline.Physics
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (evt.State != cfg.EventState) continue;
+                        if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                         var selfPos = LocalToWorldLookup[self].Position;
                         var otherPos = LocalToWorldLookup[evt.EntityB].Position;

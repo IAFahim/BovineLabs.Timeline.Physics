@@ -1,3 +1,4 @@
+// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerTeleportSystem.cs
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -16,8 +17,7 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [Configurable]
-    [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [Configurable][UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     public partial struct PhysicsTriggerTeleportSystem : ISystem
     {
         private EntityQuery _query;
@@ -96,9 +96,7 @@ namespace BovineLabs.Timeline.Physics
             public EntityLock Lock;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerTeleportData> DataHandle;
-
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerTeleportData> DataHandle;[NativeDisableParallelForRestriction] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
@@ -121,7 +119,7 @@ namespace BovineLabs.Timeline.Physics
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
-                            if (evt.State != cfg.EventState) continue;
+                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                             var selfPos = LocalToWorldLookup[self].Position;
                             var otherPos = LocalToWorldLookup[evt.EntityB].Position;
@@ -134,7 +132,7 @@ namespace BovineLabs.Timeline.Physics
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (evt.State != cfg.EventState) continue;
+                        if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                         var selfPos = LocalToWorldLookup[self].Position;
                         var otherPos = LocalToWorldLookup[evt.EntityB].Position;

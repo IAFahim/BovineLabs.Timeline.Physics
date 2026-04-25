@@ -1,5 +1,3 @@
-// BovineLabs.Timeline.Physics.Authoring/PhysicsTriggerInstantiateClip.cs
-
 using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;

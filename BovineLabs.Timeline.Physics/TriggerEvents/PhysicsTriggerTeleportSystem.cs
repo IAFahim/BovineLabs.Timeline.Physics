@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerTeleportSystem.cs
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -150,9 +149,10 @@ namespace BovineLabs.Timeline.Physics
                 float3 contactPoint, float3 contactNormal)
             {
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
-                var targetToMove = PhysicsTriggerResolution.ResolveTarget(cfg.EntityToMove, self, other, targets, TargetsCustomLookup);
 
-                if (targetToMove == Entity.Null || !TransformLookup.HasComponent(targetToMove)) return;
+                if (!PhysicsTriggerResolution.TryResolveTarget(cfg.EntityToMove, self, other, targets, TargetsCustomLookup, out var targetToMove))
+                    return;
+                if (!TransformLookup.HasComponent(targetToMove)) return;
 
                 var selfLtw = LocalToWorldLookup[self];
                 var otherLtw = LocalToWorldLookup[other];
@@ -160,17 +160,18 @@ namespace BovineLabs.Timeline.Physics
                 float3 resolvedPosOffset = cfg.PositionOffset;
                 if (cfg.PositionOffsetSpace != Target.None)
                 {
-                    var spaceEntity = PhysicsTriggerResolution.ResolveTarget(cfg.PositionOffsetSpace, self, other, targets, TargetsCustomLookup);
-                    if (spaceEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
+                    if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets, TargetsCustomLookup, out var spaceEntity)
+                        && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
                     {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
                     }
                 }
 
-                var transform = PhysicsTriggerResolution.CalculateTransform(
+                PhysicsTriggerResolution.TryCalculateTransform(
                     cfg.PositionMode, resolvedPosOffset,
                     cfg.RotationMode, cfg.RotationOffsetEuler,
-                    selfLtw, otherLtw, contactPoint, contactNormal);
+                    selfLtw, otherLtw, contactPoint, contactNormal,
+                    out var transform);
 
                 using (Lock.Acquire(targetToMove))
                 {

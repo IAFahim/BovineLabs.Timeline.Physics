@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics/TriggerEvents/PhysicsTriggerInstantiateSystem.cs
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.EntityCommands;
@@ -187,17 +186,18 @@ namespace BovineLabs.Timeline.Physics
                 float3 resolvedPosOffset = spawn.Config.PositionOffset;
                 if (spawn.Config.PositionOffsetSpace != Target.None)
                 {
-                    var spaceEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup);
-                    if (spaceEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
+                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
+                        && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
                     {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, spawn.Config.PositionOffset);
                     }
                 }
 
-                var transform = PhysicsTriggerResolution.CalculateTransform(
+                PhysicsTriggerResolution.TryCalculateTransform(
                     spawn.Config.PositionMode, resolvedPosOffset,
                     spawn.Config.RotationMode, spawn.Config.RotationOffsetEuler,
-                    selfLtw, otherLtw, spawn.ContactPoint, spawn.ContactNormal);
+                    selfLtw, otherLtw, spawn.ContactPoint, spawn.ContactNormal,
+                    out var transform);
 
                 var commands = new CommandBufferParallelCommands(ECB, chunkIndex);
                 commands.Instantiate(spawn.Prefab);
@@ -212,11 +212,9 @@ namespace BovineLabs.Timeline.Physics
 
                 if (spawn.Config.AssignParent != Target.None)
                 {
-                    var parentEntity = PhysicsTriggerResolution.ResolveTarget(spawn.Config.AssignParent, spawn.Self,
-                        spawn.Other, targets, TargetsCustomLookup);
-                    
-                    if (parentEntity != Entity.Null &&
-                        LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
+                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.AssignParent, spawn.Self,
+                            spawn.Other, targets, TargetsCustomLookup, out var parentEntity)
+                        && LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
                     {
                         commands.AddComponent(new Parent { Value = parentEntity });
                         var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);

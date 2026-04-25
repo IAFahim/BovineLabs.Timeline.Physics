@@ -86,8 +86,6 @@ namespace BovineLabs.Timeline.Physics
                 drawer.Line(lastPos, pos, new Color(0f, 1f, 0f, 0.3f));
                 lastPos = pos;
 
-                // Clever optimization: Asymptotic steady-state early out. 
-                // Saves integrating stationary targets over long timelines.
                 if (math.lengthsq(error) < 1e-4f && forceMagSq < 1e-4f && math.lengthsq(vel) < 1e-4f)
                 {
                     pos = targetPos;
@@ -144,7 +142,6 @@ namespace BovineLabs.Timeline.Physics
                 if (i % 10 == 0)
                     drawer.Arrow(drawPos, math.mul(rot, math.forward()) * 0.5f, new Color(0f, 1f, 0f, 0.1f));
 
-                // Clever optimization: Asymptotic steady-state early out.
                 if (math.lengthsq(error) < 1e-4f && torqueMagSq < 1e-4f && math.lengthsq(vel) < 1e-4f)
                 {
                     rot = targetRot;

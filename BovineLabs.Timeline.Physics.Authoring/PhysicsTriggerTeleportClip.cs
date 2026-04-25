@@ -1,4 +1,3 @@
-// BovineLabs.Timeline.Physics.Authoring/PhysicsTriggerTeleportClip.cs
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;

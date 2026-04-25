@@ -32,7 +32,6 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activePidLookup.Update(ref state);
             _stateLookup.Update(ref state);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
@@ -49,10 +48,14 @@ namespace BovineLabs.Timeline.Physics
 
             var blendData = _blendImpl.Update(ref state);
 
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActivePidLookup = _activePidLookup
+                ActivePidLookup = _activePidLookup,
+                ECB = ecb.AsParallelWriter()
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -101,18 +104,19 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsLinearPIDData>>.ReadOnly BlendData;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveLinearPid> ActivePidLookup;
+            [ReadOnly] public UnsafeComponentLookup<ActiveLinearPid> ActivePidLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActivePidLookup.HasComponent(entity)) return;
 
-                ActivePidLookup.SetComponentEnabled(entity, true);
-                ActivePidLookup[entity] = new ActiveLinearPid
+                ECB.SetComponentEnabled<ActiveLinearPid>(jobIndex, entity, true);
+                ECB.SetComponent(jobIndex, entity, new ActiveLinearPid
                 {
                     Config = JobHelpers.Blend<PhysicsLinearPIDData, PhysicsLinearPIDMixer>(ref mixData, default)
-                };
+                });
             }
         }
     }

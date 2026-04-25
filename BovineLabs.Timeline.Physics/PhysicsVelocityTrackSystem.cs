@@ -30,8 +30,6 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
-
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob
@@ -41,10 +39,14 @@ namespace BovineLabs.Timeline.Physics
 
             var blendData = _blendImpl.Update(ref state);
 
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activeLookup,
+                ECB = ecb.AsParallelWriter()
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -75,18 +77,19 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityData>>.ReadOnly BlendData;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            [ReadOnly] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActiveLookup.HasComponent(entity)) return;
 
-                ActiveLookup.SetComponentEnabled(entity, true);
-                ActiveLookup[entity] = new ActiveVelocity
+                ECB.SetComponentEnabled<ActiveVelocity>(jobIndex, entity, true);
+                ECB.SetComponent(jobIndex, entity, new ActiveVelocity
                 {
                     Config = JobHelpers.Blend<PhysicsVelocityData, PhysicsVelocityMixer>(ref mixData, default)
-                };
+                });
             }
         }
     }

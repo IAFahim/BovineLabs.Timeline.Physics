@@ -30,8 +30,6 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
-
             state.Dependency = new PrepareForceDataJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob
@@ -41,10 +39,14 @@ namespace BovineLabs.Timeline.Physics
 
             var blendData = _blendImpl.Update(ref state);
 
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activeLookup,
+                ECB = ecb.AsParallelWriter()
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -75,18 +77,19 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsForceData>>.ReadOnly BlendData;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
+            [ReadOnly] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActiveLookup.HasComponent(entity)) return;
 
-                ActiveLookup.SetComponentEnabled(entity, true);
-                ActiveLookup[entity] = new ActiveForce
+                ECB.SetComponentEnabled<ActiveForce>(jobIndex, entity, true);
+                ECB.SetComponent(jobIndex, entity, new ActiveForce
                 {
                     Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
-                };
+                });
             }
         }
     }

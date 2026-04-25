@@ -7,6 +7,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Physics.Systems;
 using Unity.Transforms;
@@ -125,31 +126,51 @@ namespace BovineLabs.Timeline.Physics
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
-                var states = chunk.GetNativeArray(ref StateHandle);
-                var actives = chunk.GetNativeArray(ref ActiveHandle);
+                var states   = chunk.GetNativeArray(ref StateHandle);
+                var actives  = chunk.GetNativeArray(ref ActiveHandle);
 
                 for (var i = 0; i < chunk.Count; i++)
                 {
-                    var facet = resolved[i];
+                    var facet  = resolved[i];
+                    var s      = states[i];
+                    var config = actives[i].Config;
 
-                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
-                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetPos)) continue;
+                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
+                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
+                            out var resolvedTarget)) continue;
 
-                    var error = facet.Transform.ValueRO.Position - targetPos;
-                    if (!PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
+                    // InitialLocal: lock the goal to first-tick world position
+                    float3 targetPos;
+                    if (config.TargetMode == PidLinearTargetMode.InitialLocal)
+                    {
+                        if (!s.State.IsInitialized)
+                            s.State.CapturedTargetPosition = resolvedTarget;
+                        targetPos = s.State.CapturedTargetPosition;
+                    }
+                    else
+                    {
+                        targetPos = resolvedTarget;
+                    }
+
+                    // Preserve captured position across the PID state update
+                    var capturedPos = s.State.CapturedTargetPosition;
+
+                    var error = targetPos - facet.Transform.ValueRO.Position;
+
+                    if (!PhysicsMath.TryComputePidForce(error, config.Tuning, s.State, DeltaTime,
                             out var force, out var nextState)) continue;
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, -force, DeltaTime,
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, force, DeltaTime,
                             out var nextVelocity))
                     {
                         facet.Velocity.ValueRW = nextVelocity;
 
-                        var s = states[i];
-                        s.State = nextState;
+                        nextState.CapturedTargetPosition = capturedPos; // TryComputePidForce doesn't know about this field
+                        s.State  = nextState;
                         states[i] = s;
                     }
                 }

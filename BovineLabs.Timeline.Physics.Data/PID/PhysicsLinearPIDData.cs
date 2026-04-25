@@ -32,26 +32,20 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsLinearPIDMixer : IMixer<PhysicsLinearPIDData>
     {
-        public PhysicsLinearPIDData Lerp(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b, in float s)
+        public PhysicsLinearPIDData Lerp(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b, in float s) => new()
         {
-            return new PhysicsLinearPIDData
-            {
-                Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
-                TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
-                TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
-                TargetOffset = math.lerp(a.TargetOffset, b.TargetOffset, s)
-            };
-        }
+            Tuning         = PidMixer.Lerp(a.Tuning, b.Tuning, s),
+            TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
+            TargetMode     = s < 0.5f ? a.TargetMode     : b.TargetMode,
+            TargetOffset   = math.lerp(a.TargetOffset, b.TargetOffset, s),
+        };
 
-        public PhysicsLinearPIDData Add(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b)
+        public PhysicsLinearPIDData Add(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b) => new()
         {
-            return new PhysicsLinearPIDData
-            {
-                Tuning = PidMixer.Add(a.Tuning, b.Tuning),
-                TrackingTarget = a.TrackingTarget,
-                TargetMode = a.TargetMode,
-                TargetOffset = a.TargetOffset + b.TargetOffset
-            };
-        }
+            Tuning         = PidMixer.Add(a.Tuning, b.Tuning),
+            TrackingTarget = a.TrackingTarget,
+            TargetMode     = a.TargetMode,
+            TargetOffset   = a.TargetOffset + b.TargetOffset,
+        };
     }
 }

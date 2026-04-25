@@ -8,100 +8,113 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
     {
         private static readonly PIDPreset[] Presets =
         {
-            new("🚀 Snappy", "Fast, direct, slight overshoot.", 15f, 1f, 3f, 150f),
-            new("🎯 Precise", "Reaches goal accurately, no drift.", 10f, 3f, 2f, 100f),
-            new("🪶 Floaty", "Slow and dreamy, lots of glide.", 4f, 0.5f, 1f, 40f),
-            new("🏋️ Heavy", "High force, strong damping.", 20f, 2f, 8f, 300f)
+            new("Snappy",   "Fast with slight overshoot",     p: 20f, d:  4f,  i: 0.5f, limit:  200f),
+            new("Balanced", "Smooth, no overshoot",           p: 10f, d:  3f,  i: 1f,   limit:  100f),
+            new("Floaty",   "Gentle, large overshoot",        p:  4f, d:  0.5f,i: 0.2f, limit:   40f),
+            new("Heavy",    "High force, well-damped",        p: 30f, d: 10f,  i: 1f,   limit:  400f),
+            new("Precise",  "Slow but kills drift",           p:  8f, d:  4f,  i: 5f,   limit:   80f),
+            new("Rigid",    "Near-kinematic feel",            p: 60f, d: 20f,  i: 0f,   limit: 1000f),
         };
 
-        public static void DrawPresets(Object target, SerializedProperty tuningProp)
+        // ── Public API ────────────────────────────────────────────────────
+
+        public static void DrawGains(Object target, SerializedProperty tuning, SerializedProperty uniform)
         {
-            EditorGUILayout.HelpBox("Pick starting point. Fine-tune after.", MessageType.None);
-            var cols = 2;
+            uniform.boolValue = EditorGUILayout.Toggle(
+                new GUIContent("Uniform Axes", "Keep X/Y/Z gains identical"),
+                uniform.boolValue);
+
+            var isUniform = uniform.boolValue;
+
+            DrawGain(target, tuning, "Proportional", "P — Response",
+                "How hard the controller pushes. Raise until it reaches the goal.", isUniform);
+            DrawGain(target, tuning, "Derivative", "D — Damping",
+                "Kills oscillation. Raise after P until stable. Too high = sluggish.", isUniform);
+            DrawGain(target, tuning, "Integral", "I — Drift correction",
+                "Only add if the entity stalls short of the goal. Too high = slow oscillation.", isUniform);
+
+            EditorGUILayout.PropertyField(
+                tuning.FindPropertyRelative("MaxOutput"),
+                new GUIContent("Max Force", "Hard cap on output each frame. Prevents explosive behaviour."));
+        }
+
+        public static void DrawPresets(Object target, SerializedProperty tuning)
+        {
+            var curP = tuning.FindPropertyRelative("Proportional").vector3Value.x;
+            var curD = tuning.FindPropertyRelative("Derivative").vector3Value.x;
+            var curI = tuning.FindPropertyRelative("Integral").vector3Value.x;
+
+            const int cols = 3;
             for (var i = 0; i < Presets.Length; i++)
             {
                 if (i % cols == 0) EditorGUILayout.BeginHorizontal();
 
-                var preset = Presets[i];
-                if (GUILayout.Button(new GUIContent(preset.Label, preset.Tooltip)))
+                var p      = Presets[i];
+                var active = Mathf.Approximately(curP, p.P)
+                          && Mathf.Approximately(curD, p.D)
+                          && Mathf.Approximately(curI, p.I);
+
+                using (new EditorGUI.DisabledScope(active))
                 {
-                    Undo.RecordObject(target, $"Apply Preset: {preset.Label}");
-                    tuningProp.FindPropertyRelative("Proportional").vector3Value =
-                        new Vector3(preset.P, preset.P, preset.P);
-                    tuningProp.FindPropertyRelative("Integral").vector3Value =
-                        new Vector3(preset.I, preset.I, preset.I);
-                    tuningProp.FindPropertyRelative("Derivative").vector3Value =
-                        new Vector3(preset.D, preset.D, preset.D);
-                    tuningProp.FindPropertyRelative("MaxOutput").floatValue = preset.Limit;
-                    tuningProp.serializedObject.ApplyModifiedProperties();
+                    var label = active ? $"✓ {p.Name}" : p.Name;
+                    var tip   = $"{p.Description}\nP={p.P}  D={p.D}  I={p.I}  Max={p.Limit}";
+                    if (GUILayout.Button(new GUIContent(label, tip),
+                            EditorStyles.miniButton, GUILayout.ExpandWidth(true)))
+                    {
+                        Undo.RecordObject(target, $"PID Preset: {p.Name}");
+                        ApplyPreset(tuning, p);
+                        tuning.serializedObject.ApplyModifiedProperties();
+                    }
                 }
 
                 if (i % cols == cols - 1 || i == Presets.Length - 1) EditorGUILayout.EndHorizontal();
             }
         }
 
-        public static void DrawTuningRows(Object target, SerializedProperty tuningProp)
-        {
-            DrawTuningRow(target, tuningProp, "Too Sluggish", "Increase P.", 1.2f, 1f, 1f);
-            DrawTuningRow(target, tuningProp, "Too Twitchy", "Decrease P.", 0.85f, 1f, 1f);
-            DrawTuningRow(target, tuningProp, "Fix Overshoot", "Increase D, lower P.", 0.9f, 1f, 1.3f);
-            DrawTuningRow(target, tuningProp, "Fix Oscillation", "Reduce I, boost D.", 1f, 0.75f, 1.2f);
-            DrawTuningRow(target, tuningProp, "Fix Drift", "Increase I.", 1f, 1.25f, 1f);
-        }
+        // ── Helpers ───────────────────────────────────────────────────────
 
-        private static void DrawTuningRow(Object target, SerializedProperty prop, string label, string tooltip, float p,
-            float i, float d)
+        private static void DrawGain(Object target, SerializedProperty tuning,
+            string field, string label, string tooltip, bool uniform)
         {
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(new GUIContent(label, tooltip), GUILayout.ExpandWidth(true));
-            if (GUILayout.Button("Apply", GUILayout.Width(54)))
+            var prop = tuning.FindPropertyRelative(field);
+            if (uniform)
             {
-                Undo.RecordObject(target, $"PID Tune: {label}");
-                prop.FindPropertyRelative("Proportional").vector3Value *= p;
-                prop.FindPropertyRelative("Integral").vector3Value *= i;
-                prop.FindPropertyRelative("Derivative").vector3Value *= d;
-                prop.serializedObject.ApplyModifiedProperties();
+                EditorGUI.BeginChangeCheck();
+                var v = EditorGUILayout.FloatField(new GUIContent(label, tooltip), prop.vector3Value.x);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    v = Mathf.Max(0f, v);
+                    Undo.RecordObject(target, $"PID {field}");
+                    prop.vector3Value = new Vector3(v, v, v);
+                }
             }
-
-            EditorGUILayout.EndHorizontal();
-        }
-
-        public static void DrawPIDFields(SerializedProperty tuningProp, SerializedProperty uniformAxesProp)
-        {
-            EditorGUILayout.PropertyField(uniformAxesProp);
-            DrawField(tuningProp, "Proportional", uniformAxesProp.boolValue);
-            DrawField(tuningProp, "Integral", uniformAxesProp.boolValue);
-            DrawField(tuningProp, "Derivative", uniformAxesProp.boolValue);
-            EditorGUILayout.PropertyField(tuningProp.FindPropertyRelative("MaxOutput"));
-        }
-
-        private static void DrawField(SerializedProperty tuningProp, string propName, bool uniform)
-        {
-            var prop = tuningProp.FindPropertyRelative(propName);
-            EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(prop);
-            if (EditorGUI.EndChangeCheck() && uniform)
+            else
             {
-                var x = prop.vector3Value.x;
-                prop.vector3Value = new Vector3(x, x, x);
+                EditorGUI.BeginChangeCheck();
+                EditorGUILayout.PropertyField(prop, new GUIContent(label, tooltip));
+                if (EditorGUI.EndChangeCheck())
+                {
+                    var v = prop.vector3Value;
+                    prop.vector3Value = new Vector3(Mathf.Max(0, v.x), Mathf.Max(0, v.y), Mathf.Max(0, v.z));
+                }
             }
+        }
+
+        private static void ApplyPreset(SerializedProperty tuning, PIDPreset p)
+        {
+            tuning.FindPropertyRelative("Proportional").vector3Value = new Vector3(p.P, p.P, p.P);
+            tuning.FindPropertyRelative("Derivative").vector3Value   = new Vector3(p.D, p.D, p.D);
+            tuning.FindPropertyRelative("Integral").vector3Value     = new Vector3(p.I, p.I, p.I);
+            tuning.FindPropertyRelative("MaxOutput").floatValue      = p.Limit;
         }
 
         private readonly struct PIDPreset
         {
-            public readonly string Label;
-            public readonly string Tooltip;
-            public readonly float P, I, D, Limit;
+            public readonly string Name, Description;
+            public readonly float  P, D, I, Limit;
 
-            public PIDPreset(string label, string tooltip, float p, float i, float d, float limit)
-            {
-                Label = label;
-                Tooltip = tooltip;
-                P = p;
-                I = i;
-                D = d;
-                Limit = limit;
-            }
+            public PIDPreset(string name, string description, float p, float d, float i, float limit)
+                => (Name, Description, P, D, I, Limit) = (name, description, p, d, i, limit);
         }
     }
 }

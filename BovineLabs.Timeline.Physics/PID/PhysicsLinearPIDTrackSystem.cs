@@ -112,8 +112,8 @@ namespace BovineLabs.Timeline.Physics
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActivePidLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveLinearPid>(jobIndex, entity, true);
-                ECB.SetComponent(jobIndex, entity, new ActiveLinearPid
+                ECB.SetComponentEnabled<ActiveLinearPid>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveLinearPid
                 {
                     Config = JobHelpers.Blend<PhysicsLinearPIDData, PhysicsLinearPIDMixer>(ref mixData, default)
                 });

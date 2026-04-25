@@ -113,8 +113,8 @@ namespace BovineLabs.Timeline.Physics
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActivePidLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveAngularPid>(jobIndex, entity, true);
-                ECB.SetComponent(jobIndex, entity, new ActiveAngularPid
+                ECB.SetComponentEnabled<ActiveAngularPid>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveAngularPid
                 {
                     Config = JobHelpers.Blend<PhysicsAngularPIDData, PhysicsAngularPIDMixer>(ref mixData, default)
                 });

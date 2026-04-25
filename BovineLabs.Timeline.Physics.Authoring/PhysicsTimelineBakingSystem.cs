@@ -11,6 +11,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public void OnUpdate(ref SystemState state)
         {
             var em = state.EntityManager;
+            var ecb = new Unity.Entities.EntityCommandBuffer(Unity.Collections.Allocator.Temp);
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsLinearPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -18,9 +19,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsLinearPIDState>(target))
                 {
-                    em.AddComponent<ActiveLinearPid>(target);
-                    em.SetComponentEnabled<ActiveLinearPid>(target, false);
-                    em.AddComponent<PhysicsLinearPIDState>(target);
+                    ecb.AddComponent<ActiveLinearPid>(target);
+                    ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
+                    ecb.AddComponent<PhysicsLinearPIDState>(target);
                 }
             }
 
@@ -30,9 +31,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsAngularPIDState>(target))
                 {
-                    em.AddComponent<ActiveAngularPid>(target);
-                    em.SetComponentEnabled<ActiveAngularPid>(target, false);
-                    em.AddComponent<PhysicsAngularPIDState>(target);
+                    ecb.AddComponent<ActiveAngularPid>(target);
+                    ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
+                    ecb.AddComponent<PhysicsAngularPIDState>(target);
                 }
             }
 
@@ -42,8 +43,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<ActiveForce>(target))
                 {
-                    em.AddComponent<ActiveForce>(target);
-                    em.SetComponentEnabled<ActiveForce>(target, false);
+                    ecb.AddComponent<ActiveForce>(target);
+                    ecb.SetComponentEnabled<ActiveForce>(target, false);
                 }
             }
 
@@ -53,8 +54,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<ActiveVelocity>(target))
                 {
-                    em.AddComponent<ActiveVelocity>(target);
-                    em.SetComponentEnabled<ActiveVelocity>(target, false);
+                    ecb.AddComponent<ActiveVelocity>(target);
+                    ecb.SetComponentEnabled<ActiveVelocity>(target, false);
                 }
             }
 
@@ -64,10 +65,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target != Entity.Null && !SystemAPI.HasComponent<ActiveDrag>(target))
                 {
-                    em.AddComponent<ActiveDrag>(target);
-                    em.SetComponentEnabled<ActiveDrag>(target, false);
+                    ecb.AddComponent<ActiveDrag>(target);
+                    ecb.SetComponentEnabled<ActiveDrag>(target, false);
                 }
             }
+
+            ecb.Playback(em);
+            ecb.Dispose();
         }
     }
 }

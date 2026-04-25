@@ -85,8 +85,8 @@ namespace BovineLabs.Timeline.Physics
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActiveLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveDrag>(jobIndex, entity, true);
-                ECB.SetComponent(jobIndex, entity, new ActiveDrag
+                ECB.SetComponentEnabled<ActiveDrag>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveDrag
                 {
                     Config = JobHelpers.Blend<PhysicsDragData, PhysicsDragMixer>(ref mixData, default)
                 });

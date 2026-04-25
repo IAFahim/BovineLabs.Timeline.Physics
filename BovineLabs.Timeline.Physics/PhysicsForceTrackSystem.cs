@@ -85,8 +85,8 @@ namespace BovineLabs.Timeline.Physics
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActiveLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveForce>(jobIndex, entity, true);
-                ECB.SetComponent(jobIndex, entity, new ActiveForce
+                ECB.SetComponentEnabled<ActiveForce>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveForce
                 {
                     Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
                 });

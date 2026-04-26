@@ -19,6 +19,6 @@ namespace BovineLabs.Timeline.Physics
         public float3 RotationOffsetEuler;
 
         public Target AssignParent;
-        public byte AssignParentLinkId;
+        public ushort AssignParentLinkKey;
     }
 }

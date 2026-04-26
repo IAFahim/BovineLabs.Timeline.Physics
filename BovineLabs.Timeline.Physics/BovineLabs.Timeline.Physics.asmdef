@@ -20,6 +20,7 @@
     "Unity.Physics",
     "Unity.Transforms",
     "Unity.Entities.Hybrid",
+    "BovineLabs.Timeline.EntityLinks",
     "BovineLabs.Timeline.EntityLinks.Data"
   ],
   "includePlatforms": [],

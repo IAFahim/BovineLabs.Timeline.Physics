@@ -40,9 +40,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
 
         public static void DrawPresets(Object target, SerializedProperty tuning)
         {
-            var curP = tuning.FindPropertyRelative("Proportional").vector3Value.x;
-            var curD = tuning.FindPropertyRelative("Derivative").vector3Value.x;
-            var curI = tuning.FindPropertyRelative("Integral").vector3Value.x;
+            var curP = tuning.FindPropertyRelative("Proportional").FindPropertyRelative("x").floatValue;
+            var curD = tuning.FindPropertyRelative("Derivative").FindPropertyRelative("x").floatValue;
+            var curI = tuning.FindPropertyRelative("Integral").FindPropertyRelative("x").floatValue;
 
             const int cols = 3;
             for (var i = 0; i < Presets.Length; i++)
@@ -80,12 +80,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             if (uniform)
             {
                 EditorGUI.BeginChangeCheck();
-                var v = EditorGUILayout.FloatField(new GUIContent(label, tooltip), prop.vector3Value.x);
+                var v = EditorGUILayout.FloatField(new GUIContent(label, tooltip), prop.FindPropertyRelative("x").floatValue);
                 if (EditorGUI.EndChangeCheck())
                 {
                     v = Mathf.Max(0f, v);
                     Undo.RecordObject(target, $"PID {field}");
-                    prop.vector3Value = new Vector3(v, v, v);
+                    SetFloat3(prop, v, v, v);
                 }
             }
             else
@@ -94,18 +94,34 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
                 EditorGUILayout.PropertyField(prop, new GUIContent(label, tooltip));
                 if (EditorGUI.EndChangeCheck())
                 {
-                    var v = prop.vector3Value;
-                    prop.vector3Value = new Vector3(Mathf.Max(0, v.x), Mathf.Max(0, v.y), Mathf.Max(0, v.z));
+                    ClampFloat3(prop, 0f);
                 }
             }
         }
 
         private static void ApplyPreset(SerializedProperty tuning, PIDPreset p)
         {
-            tuning.FindPropertyRelative("Proportional").vector3Value = new Vector3(p.P, p.P, p.P);
-            tuning.FindPropertyRelative("Derivative").vector3Value   = new Vector3(p.D, p.D, p.D);
-            tuning.FindPropertyRelative("Integral").vector3Value     = new Vector3(p.I, p.I, p.I);
-            tuning.FindPropertyRelative("MaxOutput").floatValue      = p.Limit;
+            SetFloat3(tuning.FindPropertyRelative("Proportional"), p.P, p.P, p.P);
+            SetFloat3(tuning.FindPropertyRelative("Derivative"),   p.D, p.D, p.D);
+            SetFloat3(tuning.FindPropertyRelative("Integral"),     p.I, p.I, p.I);
+            tuning.FindPropertyRelative("MaxOutput").floatValue     = p.Limit;
+        }
+
+        private static void SetFloat3(SerializedProperty prop, float x, float y, float z)
+        {
+            prop.FindPropertyRelative("x").floatValue = x;
+            prop.FindPropertyRelative("y").floatValue = y;
+            prop.FindPropertyRelative("z").floatValue = z;
+        }
+
+        private static void ClampFloat3(SerializedProperty prop, float min)
+        {
+            var px = prop.FindPropertyRelative("x");
+            var py = prop.FindPropertyRelative("y");
+            var pz = prop.FindPropertyRelative("z");
+            px.floatValue = Mathf.Max(min, px.floatValue);
+            py.floatValue = Mathf.Max(min, py.floatValue);
+            pz.floatValue = Mathf.Max(min, pz.floatValue);
         }
 
         private readonly struct PIDPreset

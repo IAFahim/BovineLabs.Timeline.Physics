@@ -10,41 +10,50 @@ using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    public class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
+    public sealed class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Spawn")] public ObjectDefinition objectDefinition;
+        public ObjectDefinition objectDefinition;
         public StatefulEventState triggerState = StatefulEventState.Enter;
 
-        [Header("Position")]
         public PhysicsTriggerPositionMode positionMode = PhysicsTriggerPositionMode.MatchContactPoint;
-
-        public Vector3 positionOffset = Vector3.zero;
+        public Vector3 positionOffset;
         public Target positionOffsetSpace = Target.Self;
 
-        [Header("Rotation")]
-        public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;[Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
-        public Vector3 rotationOffset = Vector3.zero;
+        public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
+        public Vector3 rotationOffset;
 
-        [Header("Hierarchy")] 
-        public Target assignParent = Target.None;[Tooltip("If set, overrides Target and searches the collided entity's RootSource hierarchy for this exact bone/link.")]
-        public SourceSchema assignParentLink;
+        public Target assignParent = Target.None;
+        public EntityLinkSchema assignParentLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            if (this.objectDefinition == null)
+            {
+                Debug.LogError($"{nameof(PhysicsTriggerInstantiateClip)} '{this.name}' needs {nameof(this.objectDefinition)}.");
+                return;
+            }
+
+            context.Baker.DependsOn(this.objectDefinition);
+
+            if (!EntityLinkAuthoringUtility.TryGetKey(this.assignParentLink, out ushort linkKey))
+            {
+                linkKey = 0;
+            }
+
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
             {
-                ObjectId = objectDefinition,
-                EventState = triggerState,
-                PositionMode = positionMode,
-                PositionOffset = positionOffset,
-                PositionOffsetSpace = positionOffsetSpace,
-                RotationMode = rotationMode,
-                RotationOffsetEuler = math.radians(rotationOffset),
-                AssignParent = assignParent,
-                AssignParentLinkId = assignParentLink != null ? assignParentLink.Id : (byte)0
+                ObjectId = this.objectDefinition,
+                EventState = this.triggerState,
+                PositionMode = this.positionMode,
+                PositionOffset = this.positionOffset,
+                PositionOffsetSpace = this.positionOffsetSpace,
+                RotationMode = this.rotationMode,
+                RotationOffsetEuler = math.radians(this.rotationOffset),
+                AssignParent = this.assignParent,
+                AssignParentLinkKey = linkKey
             });
 
             base.Bake(clipEntity, context);

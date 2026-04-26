@@ -1,4 +1,5 @@
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -47,6 +48,26 @@ namespace BovineLabs.Timeline.Physics
                 _ => Entity.Null
             };
             return target != Entity.Null;
+        }
+
+        public static bool TryResolveLinkRuntime(Entity target, byte linkId, in ComponentLookup<Parent> parentLookup, in BufferLookup<EntityLinkElement> linkBuffer, out Entity resolvedTarget)
+        {
+            resolvedTarget = Entity.Null;
+            if (linkId == 0) return false;
+
+            var current = target;
+            for (var i = 0; i < 32; i++)
+            {
+                if (linkBuffer.TryGetBuffer(current, out var links))
+                    return links.TryGetLink(linkId, out resolvedTarget);
+
+                if (parentLookup.TryGetComponent(current, out var parent))
+                    current = parent.Value;
+                else
+                    break;
+            }
+            
+            return false;
         }
 
         public static bool TryCalculateTransform(

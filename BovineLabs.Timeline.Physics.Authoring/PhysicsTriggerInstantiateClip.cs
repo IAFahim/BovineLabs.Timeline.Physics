@@ -2,6 +2,7 @@ using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -21,12 +22,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target positionOffsetSpace = Target.Self;
 
         [Header("Rotation")]
-        public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;
-
-        [Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
+        public PhysicsTriggerRotationMode rotationMode = PhysicsTriggerRotationMode.AlignToContactNormal;[Tooltip("Euler angles to offset the final rotation (e.g., (0, 180, 0) to face inward)")]
         public Vector3 rotationOffset = Vector3.zero;
 
-        [Header("Hierarchy")] public Target assignParent = Target.None;
+        [Header("Hierarchy")] 
+        public Target assignParent = Target.None;[Tooltip("If set, overrides Target and searches the collided entity's RootSource hierarchy for this exact bone/link.")]
+        public SourceSchema assignParentLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
@@ -42,7 +43,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 PositionOffsetSpace = positionOffsetSpace,
                 RotationMode = rotationMode,
                 RotationOffsetEuler = math.radians(rotationOffset),
-                AssignParent = assignParent
+                AssignParent = assignParent,
+                AssignParentLinkId = assignParentLink != null ? assignParentLink.Id : (byte)0
             });
 
             base.Bake(clipEntity, context);

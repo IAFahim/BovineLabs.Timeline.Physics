@@ -6,6 +6,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
@@ -32,6 +33,8 @@ namespace BovineLabs.Timeline.Physics
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
+        private ComponentLookup<Parent> _parentLookup;
+        private BufferLookup<EntityLinkElement> _linkBufferLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -54,6 +57,8 @@ namespace BovineLabs.Timeline.Physics
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
+            _linkBufferLookup = state.GetBufferLookup<EntityLinkElement>(true);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -73,10 +78,16 @@ namespace BovineLabs.Timeline.Physics
             _targetsCustomLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
+            _parentLookup.Update(ref state);
+            _linkBufferLookup.Update(ref state);
+
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new TeleportJob
             {
                 Lock = _entityLock,
+                ECB = ecb.AsParallelWriter(),
                 TrackBindingHandle = _trackBindingHandle,
                 DataHandle = _dataHandle,
                 TransformLookup = _transformLookup,
@@ -85,7 +96,9 @@ namespace BovineLabs.Timeline.Physics
                 TargetsLookup = _targetsLookup,
                 TargetsCustomLookup = _targetsCustomLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
-                CollisionEventsLookup = _collisionEventsLookup
+                CollisionEventsLookup = _collisionEventsLookup,
+                ParentLookup = _parentLookup,
+                LinkBuffer = _linkBufferLookup
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -93,9 +106,11 @@ namespace BovineLabs.Timeline.Physics
         private struct TeleportJob : IJobChunkWorkerBeginEnd
         {
             public EntityLock Lock;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerTeleportData> DataHandle;[NativeDisableParallelForRestriction] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerTeleportData> DataHandle;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
@@ -103,6 +118,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
+            [ReadOnly] public BufferLookup<EntityLinkElement> LinkBuffer;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -125,7 +142,7 @@ namespace BovineLabs.Timeline.Physics
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             var dir = math.normalizesafe(selfPos - otherPos);
 
-                            ProcessTeleport(self, evt.EntityB, in cfg, midpoint, dir);
+                            ProcessTeleport(unfilteredChunkIndex, self, evt.EntityB, in cfg, midpoint, dir);
                         }
 
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
@@ -140,12 +157,12 @@ namespace BovineLabs.Timeline.Physics
                         var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                         var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
 
-                        ProcessTeleport(self, evt.EntityB, in cfg, pt, normal);
+                        ProcessTeleport(unfilteredChunkIndex, self, evt.EntityB, in cfg, pt, normal);
                     }
                 }
             }
 
-            private void ProcessTeleport(Entity self, Entity other, in PhysicsTriggerTeleportData cfg,
+            private void ProcessTeleport(int chunkIndex, Entity self, Entity other, in PhysicsTriggerTeleportData cfg,
                 float3 contactPoint, float3 contactNormal)
             {
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
@@ -173,12 +190,33 @@ namespace BovineLabs.Timeline.Physics
                     selfLtw, otherLtw, contactPoint, contactNormal,
                     out var transform);
 
+                Entity parentEntity = Entity.Null;
+                
+                if (cfg.AssignParentLinkId != 0)
+                {
+                    PhysicsTriggerResolution.TryResolveLinkRuntime(other, cfg.AssignParentLinkId, in ParentLookup, in LinkBuffer, out parentEntity);
+                }
+                else if (cfg.AssignParent != Target.None)
+                {
+                    PhysicsTriggerResolution.TryResolveTarget(cfg.AssignParent, self, other, targets, TargetsCustomLookup, out parentEntity);
+                }
+
                 using (Lock.Acquire(targetToMove))
                 {
-                    var lt = TransformLookup[targetToMove];
-                    lt.Position = transform.Position;
-                    lt.Rotation = transform.Rotation;
-                    TransformLookup[targetToMove] = lt;
+                    if (parentEntity != Entity.Null && LocalToWorldLookup.TryGetComponent(parentEntity, out var parentLtw))
+                    {
+                        ECB.AddComponent(chunkIndex, targetToMove, new Parent { Value = parentEntity });
+                        var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
+                        var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
+                        TransformLookup[targetToMove] = LocalTransform.FromMatrix(localMatrix);
+                    }
+                    else
+                    {
+                        var lt = TransformLookup[targetToMove];
+                        lt.Position = transform.Position;
+                        lt.Rotation = transform.Rotation;
+                        TransformLookup[targetToMove] = lt;
+                    }
 
                     if (cfg.ResetVelocity && VelocityLookup.HasComponent(targetToMove))
                         VelocityLookup[targetToMove] = new PhysicsVelocity

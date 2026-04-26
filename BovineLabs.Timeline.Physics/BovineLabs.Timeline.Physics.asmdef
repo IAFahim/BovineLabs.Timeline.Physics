@@ -19,7 +19,8 @@
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms",
-    "Unity.Entities.Hybrid"
+    "Unity.Entities.Hybrid",
+    "BovineLabs.Timeline.EntityLinks.Data"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

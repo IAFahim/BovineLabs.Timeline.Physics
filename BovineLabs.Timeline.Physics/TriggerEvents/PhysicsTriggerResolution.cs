@@ -68,46 +68,6 @@ namespace BovineLabs.Timeline.Physics
             return target != Entity.Null;
         }
 
-        public static bool TryResolveLinkRuntime(
-            Entity target,
-            ushort linkKey,
-            in ComponentLookup<Parent> parents,
-            in ComponentLookup<EntityLinkSource> sources,
-            in ComponentLookup<EntityLinkMap> maps,
-            in BufferLookup<EntityLinkValue> values,
-            out Entity resolved)
-        {
-            resolved = Entity.Null;
-
-            if (target == Entity.Null || linkKey == 0)
-            {
-                return false;
-            }
-
-            if (EntityLinkResolver.TryResolve(target, linkKey, sources, maps, values, out resolved))
-            {
-                return true;
-            }
-
-            var current = target;
-            for (var i = 0; i < 32; i++)
-            {
-                if (!parents.TryGetComponent(current, out var parent))
-                {
-                    return false;
-                }
-
-                current = parent.Value;
-
-                if (EntityLinkResolver.TryResolve(current, linkKey, sources, maps, values, out resolved))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public static bool TryResolveLinkedTarget(
             Target targetMode,
             ushort linkKey,
@@ -115,10 +75,8 @@ namespace BovineLabs.Timeline.Physics
             Entity other,
             in Targets targets,
             in ComponentLookup<TargetsCustom> customLookup,
-            in ComponentLookup<Parent> parents,
             in ComponentLookup<EntityLinkSource> sources,
-            in ComponentLookup<EntityLinkMap> maps,
-            in BufferLookup<EntityLinkValue> values,
+            in BufferLookup<EntityLink> links,
             out Entity resolved)
         {
             resolved = Entity.Null;
@@ -134,7 +92,7 @@ namespace BovineLabs.Timeline.Physics
                 return true;
             }
 
-            if (TryResolveLinkRuntime(target, linkKey, parents, sources, maps, values, out var linked))
+            if (EntityLinkResolver.TryResolve(target, linkKey, sources, links, out var linked))
             {
                 resolved = linked;
                 return true;

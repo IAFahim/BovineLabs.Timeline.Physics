@@ -33,10 +33,8 @@ namespace BovineLabs.Timeline.Physics
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
-        private ComponentLookup<Parent> _parentLookup;
         private ComponentLookup<EntityLinkSource> _linkSourceLookup;
-        private ComponentLookup<EntityLinkMap> _linkMapLookup;
-        private BufferLookup<EntityLinkValue> _linkValueLookup;
+        private BufferLookup<EntityLink> _linkLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -59,10 +57,8 @@ namespace BovineLabs.Timeline.Physics
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
-            _parentLookup = state.GetComponentLookup<Parent>(true);
             _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
-            _linkMapLookup = state.GetComponentLookup<EntityLinkMap>(true);
-            _linkValueLookup = state.GetBufferLookup<EntityLinkValue>(true);
+            _linkLookup = state.GetBufferLookup<EntityLink>(true);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -82,10 +78,8 @@ namespace BovineLabs.Timeline.Physics
             _targetsCustomLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
-            _parentLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
-            _linkMapLookup.Update(ref state);
-            _linkValueLookup.Update(ref state);
+            _linkLookup.Update(ref state);
 
             var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
@@ -103,10 +97,8 @@ namespace BovineLabs.Timeline.Physics
                 TargetsCustomLookup = _targetsCustomLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup,
-                ParentLookup = _parentLookup,
                 LinkSources = _linkSourceLookup,
-                LinkMaps = _linkMapLookup,
-                LinkValues = _linkValueLookup
+                Links = _linkLookup
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -126,10 +118,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
-            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
-            [ReadOnly] public ComponentLookup<EntityLinkMap> LinkMaps;
-            [ReadOnly] public BufferLookup<EntityLinkValue> LinkValues;
+            [ReadOnly] public BufferLookup<EntityLink> Links;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -209,20 +199,11 @@ namespace BovineLabs.Timeline.Physics
                             other,
                             targets,
                             TargetsCustomLookup,
-                            ParentLookup,
                             LinkSources,
-                            LinkMaps,
-                            LinkValues,
+                            Links,
                             out var parent))
                     {
-                        if (ParentLookup.HasComponent(targetToMove))
-                        {
-                            ECB.SetComponent(chunkIndex, targetToMove, new Parent { Value = parent });
-                        }
-                        else
-                        {
-                            ECB.AddComponent(chunkIndex, targetToMove, new Parent { Value = parent });
-                        }
+                        ECB.AddComponent(chunkIndex, targetToMove, new Parent { Value = parent });
 
                         if (LocalToWorldLookup.TryGetComponent(parent, out var parentLtw))
                         {

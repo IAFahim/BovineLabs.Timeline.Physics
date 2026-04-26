@@ -30,22 +30,19 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (!EntityLinkAuthoringUtility.TryGetKey(this.assignParentLink, out ushort linkKey))
-            {
-                linkKey = 0;
-            }
+            if (!EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var linkKey)) linkKey = 0;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerTeleportData
             {
-                EventState = this.TriggerState,
-                EntityToMove = this.EntityToMove,
-                PositionMode = this.PositionMode,
-                PositionOffset = this.PositionOffset,
-                PositionOffsetSpace = this.PositionOffsetSpace,
-                RotationMode = this.RotationMode,
-                RotationOffsetEuler = math.radians(this.RotationOffset),
-                ResetVelocity = this.ResetPhysicsVelocity,
-                AssignParent = this.assignParent,
+                EventState = TriggerState,
+                EntityToMove = EntityToMove,
+                PositionMode = PositionMode,
+                PositionOffset = PositionOffset,
+                PositionOffsetSpace = PositionOffsetSpace,
+                RotationMode = RotationMode,
+                RotationOffsetEuler = math.radians(RotationOffset),
+                ResetVelocity = ResetPhysicsVelocity,
+                AssignParent = assignParent,
                 AssignParentLinkKey = linkKey
             });
 

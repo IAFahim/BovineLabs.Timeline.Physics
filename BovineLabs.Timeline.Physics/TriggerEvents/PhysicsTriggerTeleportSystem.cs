@@ -17,7 +17,8 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [Configurable][UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [Configurable]
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     public partial struct PhysicsTriggerTeleportSystem : ISystem
     {
         private EntityQuery _query;
@@ -167,22 +168,20 @@ namespace BovineLabs.Timeline.Physics
             {
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
 
-                if (!PhysicsTriggerResolution.TryResolveTarget(cfg.EntityToMove, self, other, targets, TargetsCustomLookup, out var targetToMove))
+                if (!PhysicsTriggerResolution.TryResolveTarget(cfg.EntityToMove, self, other, targets,
+                        TargetsCustomLookup, out var targetToMove))
                     return;
                 if (!TransformLookup.HasComponent(targetToMove)) return;
 
                 var selfLtw = LocalToWorldLookup[self];
                 var otherLtw = LocalToWorldLookup[other];
 
-                float3 resolvedPosOffset = cfg.PositionOffset;
+                var resolvedPosOffset = cfg.PositionOffset;
                 if (cfg.PositionOffsetSpace != Target.None)
-                {
-                    if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets, TargetsCustomLookup, out var spaceEntity)
+                    if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets,
+                            TargetsCustomLookup, out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
-                    {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
-                    }
-                }
 
                 PhysicsTriggerResolution.TryCalculateTransform(
                     cfg.PositionMode, resolvedPosOffset,
@@ -228,10 +227,8 @@ namespace BovineLabs.Timeline.Physics
                     }
 
                     if (cfg.ResetVelocity && VelocityLookup.HasComponent(targetToMove))
-                    {
                         VelocityLookup[targetToMove] = new PhysicsVelocity
                             { Linear = float3.zero, Angular = float3.zero };
-                    }
                 }
             }
         }

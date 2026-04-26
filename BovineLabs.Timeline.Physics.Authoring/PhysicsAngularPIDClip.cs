@@ -10,26 +10,24 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsAngularPIDClip : DOTSClip, ITimelineClipAsset
     {
         // ── Gains (most-tuned first) ──────────────────────────────────────
-        [Header("Gains")]
-        public bool uniformAxes = true;
+        [Header("Gains")] public bool uniformAxes = true;
 
         public PidTuning tuning = new()
         {
             Proportional = new Vector3(10f, 10f, 10f),
-            Integral     = new Vector3(2f,  2f,  2f),
-            Derivative   = new Vector3(1f,  1f,  1f),
-            MaxOutput    = 100f
+            Integral = new Vector3(2f, 2f, 2f),
+            Derivative = new Vector3(1f, 1f, 1f),
+            MaxOutput = 100f
         };
 
         // ── Destination ───────────────────────────────────────────────────
-        [Header("Destination")]
-        public Target trackingTarget = Target.Target;
+        [Header("Destination")] public Target trackingTarget = Target.Target;
 
-        public PidAngularTargetMode targetMode          = PidAngularTargetMode.LookAtTarget;
-        public Vector3              targetRotationEuler = Vector3.zero;
+        public PidAngularTargetMode targetMode = PidAngularTargetMode.LookAtTarget;
+        public Vector3 targetRotationEuler = Vector3.zero;
 
         public override double duration => 1;
-        public ClipCaps        clipCaps => ClipCaps.Blending | ClipCaps.Looping;
+        public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
@@ -37,9 +35,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsAngularPIDData
                 {
-                    Tuning         = tuning,
+                    Tuning = tuning,
                     TrackingTarget = trackingTarget,
-                    TargetMode     = targetMode,
+                    TargetMode = targetMode,
                     TargetRotation = quaternion.Euler(math.radians(targetRotationEuler))
                 }
             });

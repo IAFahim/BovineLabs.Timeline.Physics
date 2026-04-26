@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsAngularPIDClip))]
     [TrackColor(0.9f, 0.4f, 0.4f)]
     [TrackBindingType(typeof(PhysicsBodyAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Physics/Angular PID")]
+    [DisplayName("BovineLabs/Physics/Angular PID")]
     public class PhysicsAngularPIDTrack : DOTSTrack
     {
     }

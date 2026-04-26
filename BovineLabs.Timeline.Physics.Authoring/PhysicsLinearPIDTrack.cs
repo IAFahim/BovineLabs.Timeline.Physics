@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsLinearPIDClip))]
     [TrackColor(0.9f, 0.2f, 0.4f)]
     [TrackBindingType(typeof(PhysicsBodyAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Physics/Linear PID")]
+    [DisplayName("BovineLabs/Physics/Linear PID")]
     public class PhysicsLinearPIDTrack : DOTSTrack
     {
     }

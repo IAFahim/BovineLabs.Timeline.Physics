@@ -8,12 +8,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
     {
         private static readonly PIDPreset[] Presets =
         {
-            new("Snappy",   "Fast with slight overshoot",     p: 20f, d:  4f,  i: 0.5f, limit:  200f),
-            new("Balanced", "Smooth, no overshoot",           p: 10f, d:  3f,  i: 1f,   limit:  100f),
-            new("Floaty",   "Gentle, large overshoot",        p:  4f, d:  0.5f,i: 0.2f, limit:   40f),
-            new("Heavy",    "High force, well-damped",        p: 30f, d: 10f,  i: 1f,   limit:  400f),
-            new("Precise",  "Slow but kills drift",           p:  8f, d:  4f,  i: 5f,   limit:   80f),
-            new("Rigid",    "Near-kinematic feel",            p: 60f, d: 20f,  i: 0f,   limit: 1000f),
+            new("Snappy", "Fast with slight overshoot", 20f, 4f, 0.5f, 200f),
+            new("Balanced", "Smooth, no overshoot", 10f, 3f, 1f, 100f),
+            new("Floaty", "Gentle, large overshoot", 4f, 0.5f, 0.2f, 40f),
+            new("Heavy", "High force, well-damped", 30f, 10f, 1f, 400f),
+            new("Precise", "Slow but kills drift", 8f, 4f, 5f, 80f),
+            new("Rigid", "Near-kinematic feel", 60f, 20f, 0f, 1000f)
         };
 
         // ── Public API ────────────────────────────────────────────────────
@@ -49,15 +49,15 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             {
                 if (i % cols == 0) EditorGUILayout.BeginHorizontal();
 
-                var p      = Presets[i];
+                var p = Presets[i];
                 var active = Mathf.Approximately(curP, p.P)
-                          && Mathf.Approximately(curD, p.D)
-                          && Mathf.Approximately(curI, p.I);
+                             && Mathf.Approximately(curD, p.D)
+                             && Mathf.Approximately(curI, p.I);
 
                 using (new EditorGUI.DisabledScope(active))
                 {
                     var label = active ? $"✓ {p.Name}" : p.Name;
-                    var tip   = $"{p.Description}\nP={p.P}  D={p.D}  I={p.I}  Max={p.Limit}";
+                    var tip = $"{p.Description}\nP={p.P}  D={p.D}  I={p.I}  Max={p.Limit}";
                     if (GUILayout.Button(new GUIContent(label, tip),
                             EditorStyles.miniButton, GUILayout.ExpandWidth(true)))
                     {
@@ -80,7 +80,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             if (uniform)
             {
                 EditorGUI.BeginChangeCheck();
-                var v = EditorGUILayout.FloatField(new GUIContent(label, tooltip), prop.FindPropertyRelative("x").floatValue);
+                var v = EditorGUILayout.FloatField(new GUIContent(label, tooltip),
+                    prop.FindPropertyRelative("x").floatValue);
                 if (EditorGUI.EndChangeCheck())
                 {
                     v = Mathf.Max(0f, v);
@@ -92,19 +93,16 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             {
                 EditorGUI.BeginChangeCheck();
                 EditorGUILayout.PropertyField(prop, new GUIContent(label, tooltip));
-                if (EditorGUI.EndChangeCheck())
-                {
-                    ClampFloat3(prop, 0f);
-                }
+                if (EditorGUI.EndChangeCheck()) ClampFloat3(prop, 0f);
             }
         }
 
         private static void ApplyPreset(SerializedProperty tuning, PIDPreset p)
         {
             SetFloat3(tuning.FindPropertyRelative("Proportional"), p.P, p.P, p.P);
-            SetFloat3(tuning.FindPropertyRelative("Derivative"),   p.D, p.D, p.D);
-            SetFloat3(tuning.FindPropertyRelative("Integral"),     p.I, p.I, p.I);
-            tuning.FindPropertyRelative("MaxOutput").floatValue     = p.Limit;
+            SetFloat3(tuning.FindPropertyRelative("Derivative"), p.D, p.D, p.D);
+            SetFloat3(tuning.FindPropertyRelative("Integral"), p.I, p.I, p.I);
+            tuning.FindPropertyRelative("MaxOutput").floatValue = p.Limit;
         }
 
         private static void SetFloat3(SerializedProperty prop, float x, float y, float z)
@@ -127,10 +125,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
         private readonly struct PIDPreset
         {
             public readonly string Name, Description;
-            public readonly float  P, D, I, Limit;
+            public readonly float P, D, I, Limit;
 
             public PIDPreset(string name, string description, float p, float d, float i, float limit)
-                => (Name, Description, P, D, I, Limit) = (name, description, p, d, i, limit);
+            {
+                (Name, Description, P, D, I, Limit) = (name, description, p, d, i, limit);
+            }
         }
     }
 }

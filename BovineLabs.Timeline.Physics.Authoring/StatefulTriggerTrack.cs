@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsTriggerInstantiateClip))]
     [TrackClipType(typeof(PhysicsTriggerTeleportClip))]
     [TrackColor(0.8f, 0.8f, 0.1f)]
-    [DisplayName("BovineLabs/Timeline/Physics/Stateful Trigger")]
+    [DisplayName("BovineLabs/Physics/Stateful Trigger")]
     [TrackBindingType(typeof(StatefulTriggerEventAuthoring))]
     public class StatefulTriggerTrack : DOTSTrack
     {

@@ -7,9 +7,9 @@ namespace BovineLabs.Timeline.Physics
     public struct PidTuning
     {
         public float3 Proportional;
-        public float3 Derivative;   // D before I — tune in this order
+        public float3 Derivative; // D before I — tune in this order
         public float3 Integral;
-        public float  MaxOutput;
+        public float MaxOutput;
     }
 
     public struct PidStateData
@@ -17,25 +17,31 @@ namespace BovineLabs.Timeline.Physics
         public float3 IntegralAccumulator;
         public float3 PreviousError;
         public float3 CapturedTargetPosition; // InitialLocal mode: locked on first tick
-        public bool   IsInitialized;
+        public bool IsInitialized;
     }
 
     public static class PidMixer
     {
-        public static PidTuning Lerp(in PidTuning a, in PidTuning b, float s) => new()
+        public static PidTuning Lerp(in PidTuning a, in PidTuning b, float s)
         {
-            Proportional = math.lerp(a.Proportional, b.Proportional, s),
-            Derivative   = math.lerp(a.Derivative,   b.Derivative,   s),
-            Integral     = math.lerp(a.Integral,     b.Integral,     s),
-            MaxOutput    = math.lerp(a.MaxOutput,    b.MaxOutput,    s),
-        };
+            return new PidTuning
+            {
+                Proportional = math.lerp(a.Proportional, b.Proportional, s),
+                Derivative = math.lerp(a.Derivative, b.Derivative, s),
+                Integral = math.lerp(a.Integral, b.Integral, s),
+                MaxOutput = math.lerp(a.MaxOutput, b.MaxOutput, s)
+            };
+        }
 
-        public static PidTuning Add(in PidTuning a, in PidTuning b) => new()
+        public static PidTuning Add(in PidTuning a, in PidTuning b)
         {
-            Proportional = a.Proportional + b.Proportional,
-            Derivative   = a.Derivative   + b.Derivative,
-            Integral     = a.Integral     + b.Integral,
-            MaxOutput    = a.MaxOutput    + b.MaxOutput,
-        };
+            return new PidTuning
+            {
+                Proportional = a.Proportional + b.Proportional,
+                Derivative = a.Derivative + b.Derivative,
+                Integral = a.Integral + b.Integral,
+                MaxOutput = a.MaxOutput + b.MaxOutput
+            };
+        }
     }
 }

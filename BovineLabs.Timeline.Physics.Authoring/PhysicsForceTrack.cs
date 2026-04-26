@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsForceClip))]
     [TrackColor(0.8f, 0.4f, 0.2f)]
     [TrackBindingType(typeof(PhysicsBodyAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Physics/Force")]
+    [DisplayName("BovineLabs/Physics/Force")]
     public class PhysicsForceTrack : DOTSTrack
     {
     }

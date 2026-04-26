@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
         {
             serializedObject.Update();
 
-            var tuningProp  = serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.tuning));
+            var tuningProp = serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.tuning));
             var uniformProp = serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.uniformAxes));
 
             // ── Gains ─────────────────────────────────────────────────────
@@ -29,7 +29,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             EditorGUILayout.LabelField("Destination", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.trackingTarget)));
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetMode)));
-            EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
+            EditorGUILayout.PropertyField(
+                serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
 
             serializedObject.ApplyModifiedProperties();
         }

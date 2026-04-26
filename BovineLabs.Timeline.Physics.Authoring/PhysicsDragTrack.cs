@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsDragClip))]
     [TrackColor(0.2f, 0.4f, 0.8f)]
     [TrackBindingType(typeof(PhysicsBodyAuthoring))]
-    [DisplayName("BovineLabs/Timeline/Physics/Drag (Brakes)")]
+    [DisplayName("BovineLabs/Physics/Drag (Brakes)")]
     public class PhysicsDragTrack : DOTSTrack
     {
     }

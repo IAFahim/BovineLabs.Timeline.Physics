@@ -1,5 +1,6 @@
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.Authoring
@@ -11,7 +12,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public void OnUpdate(ref SystemState state)
         {
             var em = state.EntityManager;
-            var ecb = new Unity.Entities.EntityCommandBuffer(Unity.Collections.Allocator.Temp);
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>().WithAll<PhysicsLinearPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))

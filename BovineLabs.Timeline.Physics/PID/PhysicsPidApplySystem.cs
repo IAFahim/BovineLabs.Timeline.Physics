@@ -126,13 +126,13 @@ namespace BovineLabs.Timeline.Physics
             {
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
-                var states   = chunk.GetNativeArray(ref StateHandle);
-                var actives  = chunk.GetNativeArray(ref ActiveHandle);
+                var states = chunk.GetNativeArray(ref StateHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
 
                 for (var i = 0; i < chunk.Count; i++)
                 {
-                    var facet  = resolved[i];
-                    var s      = states[i];
+                    var facet = resolved[i];
+                    var s = states[i];
                     var config = actives[i].Config;
 
                     if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
@@ -169,8 +169,9 @@ namespace BovineLabs.Timeline.Physics
                     {
                         facet.Velocity.ValueRW = nextVelocity;
 
-                        nextState.CapturedTargetPosition = capturedPos; // TryComputePidForce doesn't know about this field
-                        s.State  = nextState;
+                        nextState.CapturedTargetPosition =
+                            capturedPos; // TryComputePidForce doesn't know about this field
+                        s.State = nextState;
                         states[i] = s;
                     }
                 }

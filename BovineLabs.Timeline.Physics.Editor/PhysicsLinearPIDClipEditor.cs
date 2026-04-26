@@ -11,8 +11,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
         {
             serializedObject.Update();
 
-            var clip        = (PhysicsLinearPIDClip)target;
-            var tuningProp  = serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.tuning));
+            var clip = (PhysicsLinearPIDClip)target;
+            var tuningProp = serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.tuning));
             var uniformProp = serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.uniformAxes));
 
             // ── Gains ─────────────────────────────────────────────────────

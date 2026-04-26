@@ -38,7 +38,8 @@ namespace BovineLabs.Timeline.Physics
             {
                 PhysicsTriggerRotationMode.MatchSelf => new quaternion(self.Value),
                 PhysicsTriggerRotationMode.MatchCollidedEntity => new quaternion(other.Value),
-                PhysicsTriggerRotationMode.AlignToContactNormal => quaternion.LookRotationSafe(contactNormal, math.up()),
+                PhysicsTriggerRotationMode.AlignToContactNormal =>
+                    quaternion.LookRotationSafe(contactNormal, math.up()),
                 PhysicsTriggerRotationMode.Identity => quaternion.identity,
                 _ => quaternion.identity
             };
@@ -81,10 +82,7 @@ namespace BovineLabs.Timeline.Physics
         {
             resolved = Entity.Null;
 
-            if (!TryResolveTarget(targetMode, self, other, targets, customLookup, out var target))
-            {
-                return false;
-            }
+            if (!TryResolveTarget(targetMode, self, other, targets, customLookup, out var target)) return false;
 
             if (linkKey == 0)
             {

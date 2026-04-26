@@ -231,8 +231,8 @@ namespace BovineLabs.Timeline.Physics
             targetPosition = config.TargetMode switch
             {
                 PidLinearTargetMode.TargetLocal or
-                PidLinearTargetMode.InitialLocal => targetTransform.Position +
-                                                    math.rotate(targetTransform.Rotation, config.TargetOffset),
+                    PidLinearTargetMode.InitialLocal => targetTransform.Position +
+                                                        math.rotate(targetTransform.Rotation, config.TargetOffset),
                 PidLinearTargetMode.LineOfSight => ResolveLineOfSight(transform.Position, targetTransform.Position,
                     transform.Rotation, config.TargetOffset),
                 PidLinearTargetMode.World => config.TargetOffset,

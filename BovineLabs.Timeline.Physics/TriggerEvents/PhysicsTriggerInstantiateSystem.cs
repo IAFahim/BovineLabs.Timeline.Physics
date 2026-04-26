@@ -1,6 +1,5 @@
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
-using BovineLabs.Core.EntityCommands;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -19,7 +18,9 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [Configurable][UpdateInGroup(typeof(FixedStepSimulationSystemGroup))][WorldSystemFilter(WorldSystemFilterFlags.Default)]
+    [Configurable]
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
         private EntityQuery _query;
@@ -110,7 +111,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
 
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;[ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
@@ -190,18 +192,15 @@ namespace BovineLabs.Timeline.Physics
             {
                 var selfLtw = LocalToWorldLookup[spawn.Self];
                 var otherLtw = LocalToWorldLookup[spawn.Other];
-                
+
                 var targets = TargetsLookup.HasComponent(spawn.Self) ? TargetsLookup[spawn.Self] : default;
 
-                float3 resolvedPosOffset = spawn.Config.PositionOffset;
+                var resolvedPosOffset = spawn.Config.PositionOffset;
                 if (spawn.Config.PositionOffsetSpace != Target.None)
-                {
-                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
+                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self,
+                            spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
-                    {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, spawn.Config.PositionOffset);
-                    }
-                }
 
                 PhysicsTriggerResolution.TryCalculateTransform(
                     spawn.Config.PositionMode, resolvedPosOffset,
@@ -229,9 +228,7 @@ namespace BovineLabs.Timeline.Physics
                         LinkSources,
                         Links,
                         out var parent))
-                {
                     ECB.AddComponent(chunkIndex, instance, new Parent { Value = parent });
-                }
             }
         }
     }

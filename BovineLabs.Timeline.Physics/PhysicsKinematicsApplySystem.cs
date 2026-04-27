@@ -25,6 +25,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<ActiveForce> _activeForceHandle;
         private ComponentTypeHandle<PhysicsForceState> _forceStateHandle;
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
+        private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
@@ -42,15 +43,18 @@ namespace BovineLabs.Timeline.Physics
                 .Build();
 
             _velocityQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsVelocity>()
+                .WithAllRW<PhysicsVelocity, PhysicsVelocityState>()
                 .WithAll<ActiveVelocity, LocalTransform>()
                 .Build();
 
             _facetHandle.Create(ref state);
             _entityHandle = state.GetEntityTypeHandle();
+            
             _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
             _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
+            
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
+            _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
@@ -65,9 +69,12 @@ namespace BovineLabs.Timeline.Physics
 
             _facetHandle.Update(ref state);
             _entityHandle.Update(ref state);
+            
             _activeForceHandle.Update(ref state);
             _forceStateHandle.Update(ref state);
+            
             _activeVelocityHandle.Update(ref state);
+            _velocityStateHandle.Update(ref state);
 
             _targetsLookup.Update(ref state);
             _targetsCustomLookup.Update(ref state);
@@ -91,6 +98,7 @@ namespace BovineLabs.Timeline.Physics
                 FacetHandle = _facetHandle,
                 EntityHandle = _entityHandle,
                 ActiveVelocityHandle = _activeVelocityHandle,
+                VelocityStateHandle = _velocityStateHandle,
                 TargetsLookup = _targetsLookup,
                 TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
@@ -161,6 +169,7 @@ namespace BovineLabs.Timeline.Physics
             public PhysicsBodyFacet.TypeHandle FacetHandle;
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveVelocityHandle;
+            public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
@@ -172,11 +181,16 @@ namespace BovineLabs.Timeline.Physics
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
                 var velocities = chunk.GetNativeArray(ref ActiveVelocityHandle);
+                var states = chunk.GetNativeArray(ref VelocityStateHandle);
 
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var facet = resolved[i];
                     var config = velocities[i].Config;
+                    var s = states[i];
+
+                    var isInstant = config.Mode == PhysicsVelocityMode.SetInstant || config.Mode == PhysicsVelocityMode.AddInstant;
+                    if (isInstant && s.Fired) continue;
 
                     if (PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
                             in TargetsCustomLookup, in TransformLookup, out var linVel) &&
@@ -185,18 +199,26 @@ namespace BovineLabs.Timeline.Physics
                     {
                         var v = facet.Velocity.ValueRO;
                         
-                        if (config.Mode == PhysicsVelocityMode.Set)
+                        var isSet = config.Mode == PhysicsVelocityMode.SetContinuous || config.Mode == PhysicsVelocityMode.SetInstant;
+                        if (isSet)
                         {
                             v.Linear = linVel;
                             v.Angular = angVel;
                         }
                         else
                         {
-                            v.Linear += linVel * DeltaTime;
-                            v.Angular += angVel * DeltaTime;
+                            var t = isInstant ? 1f : DeltaTime;
+                            v.Linear += linVel * t;
+                            v.Angular += angVel * t;
                         }
                         
                         facet.Velocity.ValueRW = v;
+                        
+                        if (isInstant)
+                        {
+                            s.Fired = true;
+                            states[i] = s;
+                        }
                     }
                 }
             }

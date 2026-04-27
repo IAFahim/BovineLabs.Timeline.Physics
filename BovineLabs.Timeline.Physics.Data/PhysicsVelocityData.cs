@@ -8,8 +8,10 @@ namespace BovineLabs.Timeline.Physics
 {
     public enum PhysicsVelocityMode : byte
     {
-        Set,
-        Add
+        SetContinuous,
+        SetInstant,
+        AddContinuous,
+        AddInstant
     }
 
     public struct PhysicsVelocityData
@@ -18,6 +20,11 @@ namespace BovineLabs.Timeline.Physics
         public float3 Linear;
         public float3 Angular;
         public Target Space;
+    }
+
+    public struct PhysicsVelocityState : IComponentData
+    {
+        public bool Fired;
     }
 
     public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>

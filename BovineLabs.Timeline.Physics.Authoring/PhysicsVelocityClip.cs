@@ -8,10 +8,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsVelocityClip : DOTSClip, ITimelineClipAsset
     {
-        public PhysicsVelocityMode mode = PhysicsVelocityMode.Set;
+        public PhysicsVelocityMode mode = PhysicsVelocityMode.SetInstant;
         public Vector3 linearVelocity = Vector3.forward;
         public Vector3 angularVelocity;
-        public Target space = Target.None;
+        public Target space = Target.Self; // Self mean for my space 
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;

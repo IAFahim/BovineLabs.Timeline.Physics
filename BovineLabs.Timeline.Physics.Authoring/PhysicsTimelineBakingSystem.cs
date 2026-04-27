@@ -58,6 +58,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveVelocity>(target);
                     ecb.SetComponentEnabled<ActiveVelocity>(target, false);
+                    ecb.AddComponent<PhysicsVelocityState>(target);
                 }
             }
 

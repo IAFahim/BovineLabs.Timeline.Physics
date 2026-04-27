@@ -131,7 +131,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated)
+            private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated, in PhysicsVelocityState state)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
@@ -143,16 +143,27 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Drawer.Arrow(transform.Position, targetVel, Color.cyan);
 
                 var pos = transform.Position;
-                var vel = animated.AuthoredData.Mode == PhysicsVelocityMode.Set ? targetVel : baseVel;
+                var vel = baseVel;
+
+                var isInstant = animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant || animated.AuthoredData.Mode == PhysicsVelocityMode.AddInstant;
+                var isSet = animated.AuthoredData.Mode == PhysicsVelocityMode.SetContinuous || animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant;
+
+                if (isInstant && !state.Fired)
+                    vel = isSet ? targetVel : vel + targetVel;
 
                 const float dt = 0.05f;
                 var steps = (int)(2f / dt);
+                
                 for (var i = 0; i < steps; i++)
                 {
-                    if (animated.AuthoredData.Mode == PhysicsVelocityMode.Add)
-                        vel += (Gravity + targetVel) * dt;
-                    else
-                        vel = targetVel; // Overrides gravity while active
+                    if (!isInstant)
+                    {
+                        if (isSet) vel = targetVel; // Overrides gravity
+                        else vel += targetVel * dt; // Continuous add
+                    }
+                    
+                    if (isInstant || !isSet) 
+                        vel += Gravity * dt; // Gravity applies if not SetContinuous
 
                     var nextPos = pos + vel * dt;
                     Drawer.Line(pos, nextPos, new Color(0f, 1f, 1f, 0.5f));

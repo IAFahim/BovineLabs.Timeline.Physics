@@ -8,6 +8,7 @@ namespace BovineLabs.Timeline.Physics
         {
             return new PhysicsVelocityData
             {
+                Mode = s < 0.5f ? a.Mode : b.Mode,
                 Linear = math.lerp(a.Linear, b.Linear, s),
                 Angular = math.lerp(a.Angular, b.Angular, s),
                 Space = s < 0.5f ? a.Space : b.Space
@@ -18,6 +19,7 @@ namespace BovineLabs.Timeline.Physics
         {
             return new PhysicsVelocityData
             {
+                Mode = a.Mode,
                 Linear = a.Linear + b.Linear,
                 Angular = a.Angular + b.Angular,
                 Space = a.Space

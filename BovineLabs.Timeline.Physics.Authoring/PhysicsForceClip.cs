@@ -8,9 +8,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
-        public Vector3 linearForce;
+        public PhysicsForceMode mode = PhysicsForceMode.Impulse;
+        public Vector3 linearForce = new(0, 0, 1);
         public Vector3 angularForce;
-        public Target space = Target.None;
+        public Target space = Target.Self;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -21,6 +22,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsForceData
                 {
+                    Mode = mode,
                     Linear = linearForce,
                     Angular = angularForce,
                     Space = space

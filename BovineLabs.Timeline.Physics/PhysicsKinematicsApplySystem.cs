@@ -23,6 +23,7 @@ namespace BovineLabs.Timeline.Physics
         private PhysicsBodyFacet.TypeHandle _facetHandle;
         private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<ActiveForce> _activeForceHandle;
+        private ComponentTypeHandle<PhysicsForceState> _forceStateHandle;
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
@@ -36,7 +37,7 @@ namespace BovineLabs.Timeline.Physics
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<ApplyVelocityJob>();
 
             _forceQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsVelocity>()
+                .WithAllRW<PhysicsVelocity, PhysicsForceState>()
                 .WithAll<ActiveForce, LocalTransform>()
                 .Build();
 
@@ -48,6 +49,7 @@ namespace BovineLabs.Timeline.Physics
             _facetHandle.Create(ref state);
             _entityHandle = state.GetEntityTypeHandle();
             _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
+            _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
@@ -64,6 +66,7 @@ namespace BovineLabs.Timeline.Physics
             _facetHandle.Update(ref state);
             _entityHandle.Update(ref state);
             _activeForceHandle.Update(ref state);
+            _forceStateHandle.Update(ref state);
             _activeVelocityHandle.Update(ref state);
 
             _targetsLookup.Update(ref state);
@@ -76,6 +79,7 @@ namespace BovineLabs.Timeline.Physics
                 FacetHandle = _facetHandle,
                 EntityHandle = _entityHandle,
                 ActiveForceHandle = _activeForceHandle,
+                ForceStateHandle = _forceStateHandle,
                 TargetsLookup = _targetsLookup,
                 TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
@@ -100,6 +104,7 @@ namespace BovineLabs.Timeline.Physics
             public PhysicsBodyFacet.TypeHandle FacetHandle;
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveForce> ActiveForceHandle;
+            public ComponentTypeHandle<PhysicsForceState> ForceStateHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
@@ -111,11 +116,15 @@ namespace BovineLabs.Timeline.Physics
                 var resolved = FacetHandle.Resolve(chunk);
                 var entities = chunk.GetNativeArray(EntityHandle);
                 var forces = chunk.GetNativeArray(ref ActiveForceHandle);
+                var states = chunk.GetNativeArray(ref ForceStateHandle);
 
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var facet = resolved[i];
                     var config = forces[i].Config;
+                    var s = states[i];
+
+                    if (config.Mode == PhysicsForceMode.Impulse && s.Fired) continue;
 
                     if (!PhysicsMath.TryResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
                             in TargetsCustomLookup, in TransformLookup, out var linForce) ||
@@ -127,11 +136,20 @@ namespace BovineLabs.Timeline.Physics
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, DeltaTime,
+                    var t = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+
+                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, t,
                             out var v1) &&
-                        PhysicsMath.TryApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, DeltaTime,
+                        PhysicsMath.TryApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, t,
                             out var v2))
+                    {
                         facet.Velocity.ValueRW = v2;
+                        if (config.Mode == PhysicsForceMode.Impulse)
+                        {
+                            s.Fired = true;
+                            states[i] = s;
+                        }
+                    }
                 }
             }
         }
@@ -166,8 +184,18 @@ namespace BovineLabs.Timeline.Physics
                             in TargetsCustomLookup, in TransformLookup, out var angVel))
                     {
                         var v = facet.Velocity.ValueRO;
-                        v.Linear += linVel * DeltaTime;
-                        v.Angular += angVel * DeltaTime;
+                        
+                        if (config.Mode == PhysicsVelocityMode.Set)
+                        {
+                            v.Linear = linVel;
+                            v.Angular = angVel;
+                        }
+                        else
+                        {
+                            v.Linear += linVel * DeltaTime;
+                            v.Angular += angVel * DeltaTime;
+                        }
+                        
                         facet.Velocity.ValueRW = v;
                     }
                 }

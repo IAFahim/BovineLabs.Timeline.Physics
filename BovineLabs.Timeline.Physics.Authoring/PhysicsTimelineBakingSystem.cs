@@ -46,6 +46,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveForce>(target);
                     ecb.SetComponentEnabled<ActiveForce>(target, false);
+                    ecb.AddComponent<PhysicsForceState>(target);
                 }
             }
 

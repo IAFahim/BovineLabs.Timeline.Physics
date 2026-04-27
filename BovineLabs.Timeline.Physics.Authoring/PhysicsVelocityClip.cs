@@ -8,6 +8,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsVelocityClip : DOTSClip, ITimelineClipAsset
     {
+        public PhysicsVelocityMode mode = PhysicsVelocityMode.Set;
         public Vector3 linearVelocity = Vector3.forward;
         public Vector3 angularVelocity;
         public Target space = Target.None;
@@ -21,6 +22,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 AuthoredData = new PhysicsVelocityData
                 {
+                    Mode = mode,
                     Linear = linearVelocity,
                     Angular = angularVelocity,
                     Space = space

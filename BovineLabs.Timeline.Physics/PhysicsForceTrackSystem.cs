@@ -30,6 +30,11 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            state.Dependency = new ResetStateJob
+            {
+                StateLookup = state.GetUnsafeComponentLookup<PhysicsForceState>()
+            }.ScheduleParallel(state.Dependency);
+
             state.Dependency = new PrepareForceDataJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob
@@ -70,6 +75,24 @@ namespace BovineLabs.Timeline.Physics
             private void Execute(in TrackBinding binding)
             {
                 if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+            }
+        }
+
+        [BurstCompile]
+        [WithAll(typeof(ClipActive))]
+        [WithNone(typeof(ClipActivePrevious))]
+        private partial struct ResetStateJob : IJobEntity
+        {
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsForceState> StateLookup;
+
+            private void Execute(in TrackBinding binding)
+            {
+                if (StateLookup.HasComponent(binding.Value))
+                {
+                    var s = StateLookup[binding.Value];
+                    s.Fired = false;
+                    StateLookup[binding.Value] = s;
+                }
             }
         }
 

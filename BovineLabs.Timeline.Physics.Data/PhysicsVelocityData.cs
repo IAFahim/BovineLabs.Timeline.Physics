@@ -6,8 +6,15 @@ using Unity.Properties;
 
 namespace BovineLabs.Timeline.Physics
 {
+    public enum PhysicsVelocityMode : byte
+    {
+        Set,
+        Add
+    }
+
     public struct PhysicsVelocityData
     {
+        public PhysicsVelocityMode Mode;
         public float3 Linear;
         public float3 Angular;
         public Target Space;

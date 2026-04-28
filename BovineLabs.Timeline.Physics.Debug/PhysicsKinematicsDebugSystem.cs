@@ -42,7 +42,9 @@ namespace BovineLabs.Timeline.Physics.Debug
             if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
             var drawer = drawSystem.CreateDrawer();
-            var gravity = SystemAPI.HasSingleton<PhysicsStep>() ? SystemAPI.GetSingleton<PhysicsStep>().Gravity : new float3(0, -9.81f, 0);
+            var gravity = SystemAPI.HasSingleton<PhysicsStep>()
+                ? SystemAPI.GetSingleton<PhysicsStep>().Gravity
+                : new float3(0, -9.81f, 0);
 
             _localTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);
@@ -89,8 +91,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var forceVec);
+                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
+                    in TargetsLookup,
+                    in TargetsCustomLookup, in TransformLookup, out var forceVec);
 
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
@@ -99,8 +102,8 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var pos = transform.Position;
                 var vel = baseVel;
-                
-                if (animated.AuthoredData.Mode == PhysicsForceMode.Impulse && !state.Fired) 
+
+                if (animated.AuthoredData.Mode == PhysicsForceMode.Impulse && !state.Fired)
                     vel += forceVec * massInv;
 
                 const float dt = 0.05f;
@@ -108,7 +111,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 for (var i = 0; i < steps; i++)
                 {
                     var accel = Gravity;
-                    if (animated.AuthoredData.Mode == PhysicsForceMode.Continuous) 
+                    if (animated.AuthoredData.Mode == PhysicsForceMode.Continuous)
                         accel += forceVec * massInv;
 
                     vel += accel * dt;
@@ -116,6 +119,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                     Drawer.Line(pos, nextPos, new Color(1f, 0f, 1f, 0.5f));
                     pos = nextPos;
                 }
+
                 Drawer.Point(pos, 0.2f, Color.red);
             }
         }
@@ -131,13 +135,15 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated, in PhysicsVelocityState state)
+            private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated,
+                in PhysicsVelocityState state)
             {
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var targetVel);
+                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
+                    in TargetsLookup,
+                    in TargetsCustomLookup, in TransformLookup, out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
                 Drawer.Arrow(transform.Position, targetVel, Color.cyan);
@@ -145,15 +151,17 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var pos = transform.Position;
                 var vel = baseVel;
 
-                var isInstant = animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant || animated.AuthoredData.Mode == PhysicsVelocityMode.AddInstant;
-                var isSet = animated.AuthoredData.Mode == PhysicsVelocityMode.SetContinuous || animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant;
+                var isInstant = animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant ||
+                                animated.AuthoredData.Mode == PhysicsVelocityMode.AddInstant;
+                var isSet = animated.AuthoredData.Mode == PhysicsVelocityMode.SetContinuous ||
+                            animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant;
 
                 if (isInstant && !state.Fired)
                     vel = isSet ? targetVel : vel + targetVel;
 
                 const float dt = 0.05f;
                 var steps = (int)(2f / dt);
-                
+
                 for (var i = 0; i < steps; i++)
                 {
                     if (!isInstant)
@@ -161,14 +169,15 @@ namespace BovineLabs.Timeline.Physics.Debug
                         if (isSet) vel = targetVel; // Overrides gravity
                         else vel += targetVel * dt; // Continuous add
                     }
-                    
-                    if (isInstant || !isSet) 
+
+                    if (isInstant || !isSet)
                         vel += Gravity * dt; // Gravity applies if not SetContinuous
 
                     var nextPos = pos + vel * dt;
                     Drawer.Line(pos, nextPos, new Color(0f, 1f, 1f, 0.5f));
                     pos = nextPos;
                 }
+
                 Drawer.Point(pos, 0.2f, Color.red);
             }
         }

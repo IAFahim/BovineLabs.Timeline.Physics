@@ -72,7 +72,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 PhysicsMath.ResolveLinearPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var finalPos);
+                    in TargetsCustomLookup, in TransformLookup, out var finalPos);
 
                 Drawer.Line(transform.Position, finalPos, Color.yellow);
                 Drawer.Point(finalPos, 0.2f, Color.red);

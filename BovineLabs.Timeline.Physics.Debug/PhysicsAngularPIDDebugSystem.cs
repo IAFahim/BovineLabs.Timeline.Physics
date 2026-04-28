@@ -72,7 +72,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 PhysicsMath.ResolveAngularPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var finalRot);
+                    in TargetsCustomLookup, in TransformLookup, out var finalRot);
 
                 var forward = math.mul(finalRot, math.forward());
                 var up = math.mul(finalRot, math.up());

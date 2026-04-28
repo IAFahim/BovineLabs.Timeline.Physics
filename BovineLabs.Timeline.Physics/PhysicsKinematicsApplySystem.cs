@@ -49,10 +49,10 @@ namespace BovineLabs.Timeline.Physics
 
             _facetHandle.Create(ref state);
             _entityHandle = state.GetEntityTypeHandle();
-            
+
             _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
             _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
-            
+
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
 
@@ -69,10 +69,10 @@ namespace BovineLabs.Timeline.Physics
 
             _facetHandle.Update(ref state);
             _entityHandle.Update(ref state);
-            
+
             _activeForceHandle.Update(ref state);
             _forceStateHandle.Update(ref state);
-            
+
             _activeVelocityHandle.Update(ref state);
             _velocityStateHandle.Update(ref state);
 
@@ -135,9 +135,9 @@ namespace BovineLabs.Timeline.Physics
                     if (config.Mode == PhysicsForceMode.Impulse && s.Fired) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                            in TargetsCustomLookup, in TransformLookup, out var linForce);
+                        in TargetsCustomLookup, in TransformLookup, out var linForce);
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                            in TargetsCustomLookup, in TransformLookup, out var angForce);
+                        in TargetsCustomLookup, in TransformLookup, out var angForce);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
@@ -146,10 +146,10 @@ namespace BovineLabs.Timeline.Physics
                     var t = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
 
                     PhysicsMath.ApplyLinearForce(facet.Velocity.ValueRO, mass, linForce, t,
-                            out var v1);
+                        out var v1);
                     PhysicsMath.ApplyAngularTorque(v1, mass, facet.Transform.ValueRO, angForce, t,
-                            out var v2);
-                    
+                        out var v2);
+
                     facet.Velocity.ValueRW = v2;
                     if (config.Mode == PhysicsForceMode.Impulse)
                     {
@@ -187,17 +187,19 @@ namespace BovineLabs.Timeline.Physics
                     var config = velocities[i].Config;
                     var s = states[i];
 
-                    var isInstant = config.Mode == PhysicsVelocityMode.SetInstant || config.Mode == PhysicsVelocityMode.AddInstant;
+                    var isInstant = config.Mode == PhysicsVelocityMode.SetInstant ||
+                                    config.Mode == PhysicsVelocityMode.AddInstant;
                     if (isInstant && s.Fired) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                            in TargetsCustomLookup, in TransformLookup, out var linVel);
+                        in TargetsCustomLookup, in TransformLookup, out var linVel);
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                            in TargetsCustomLookup, in TransformLookup, out var angVel);
+                        in TargetsCustomLookup, in TransformLookup, out var angVel);
 
                     var v = facet.Velocity.ValueRO;
-                    
-                    var isSet = config.Mode == PhysicsVelocityMode.SetContinuous || config.Mode == PhysicsVelocityMode.SetInstant;
+
+                    var isSet = config.Mode == PhysicsVelocityMode.SetContinuous ||
+                                config.Mode == PhysicsVelocityMode.SetInstant;
                     if (isSet)
                     {
                         v.Linear = linVel;
@@ -209,9 +211,9 @@ namespace BovineLabs.Timeline.Physics
                         v.Linear += linVel * t;
                         v.Angular += angVel * t;
                     }
-                    
+
                     facet.Velocity.ValueRW = v;
-                    
+
                     if (isInstant)
                     {
                         s.Fired = true;

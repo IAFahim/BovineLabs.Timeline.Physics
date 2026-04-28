@@ -136,8 +136,8 @@ namespace BovineLabs.Timeline.Physics
                     var config = actives[i].Config;
 
                     PhysicsMath.ResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
-                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
-                            out var resolvedTarget);
+                        in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
+                        out var resolvedTarget);
 
                     // InitialLocal: lock the goal to first-tick world position
                     float3 targetPos;
@@ -158,14 +158,14 @@ namespace BovineLabs.Timeline.Physics
                     var error = targetPos - facet.Transform.ValueRO.Position;
 
                     PhysicsMath.ComputePidForce(error, config.Tuning, s.State, DeltaTime,
-                            out var force, out var nextState);
+                        out var force, out var nextState);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
                     PhysicsMath.ApplyLinearForce(facet.Velocity.ValueRO, mass, force, DeltaTime,
-                            out var nextVelocity);
+                        out var nextVelocity);
 
                     facet.Velocity.ValueRW = nextVelocity;
 
@@ -203,19 +203,19 @@ namespace BovineLabs.Timeline.Physics
                     var facet = resolved[i];
 
                     PhysicsMath.ResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
-                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot);
-                    
+                        in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot);
+
                     PhysicsMath.ComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot, out var error);
-                    
+
                     PhysicsMath.ComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
-                            out var torque, out var nextState);
+                        out var torque, out var nextState);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
                     PhysicsMath.ApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque,
-                            DeltaTime, out var nextVelocity);
+                        DeltaTime, out var nextVelocity);
 
                     facet.Velocity.ValueRW = nextVelocity;
 

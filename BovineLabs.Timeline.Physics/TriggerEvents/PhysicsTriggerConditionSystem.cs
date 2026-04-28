@@ -85,7 +85,8 @@ namespace BovineLabs.Timeline.Physics
                         ProcessEvent(self, evt.EntityB, evt.State, in config);
             }
 
-            private void ProcessEvent(Entity self, Entity other, StatefulEventState state, in PhysicsTriggerConditionData config)
+            private void ProcessEvent(Entity self, Entity other, StatefulEventState state,
+                in PhysicsTriggerConditionData config)
             {
                 if (state != config.EventState) return;
 
@@ -101,10 +102,8 @@ namespace BovineLabs.Timeline.Physics
 
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey, self, other,
                         targets, TargetsCustomLookup, LinkSources, Links, out var target))
-                {
                     if (Writers.TryGet(target, out var writer))
                         writer.Trigger(config.Condition, config.Value);
-                }
             }
         }
     }

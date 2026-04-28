@@ -71,14 +71,14 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                if (!PhysicsMath.TryResolveLinearPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var finalPos)) return;
+                PhysicsMath.ResolveLinearPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
+                        in TargetsCustomLookup, in TransformLookup, out var finalPos);
 
                 Drawer.Line(transform.Position, finalPos, Color.yellow);
                 Drawer.Point(finalPos, 0.2f, Color.red);
                 Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", Color.yellow, 12f);
 
-                PhysicsMath.TryDrawLinearPidPrediction(ref Drawer, transform.Position, finalPos,
+                PhysicsMath.DrawLinearPidPrediction(ref Drawer, transform.Position, finalPos,
                     animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))

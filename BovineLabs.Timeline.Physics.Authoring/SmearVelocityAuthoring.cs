@@ -13,7 +13,7 @@ namespace BovineLabs.Timeline.Physics.Smear
         {
             public override void Bake(SmearVelocityAuthoring authoring)
             {
-                var entity = GetEntity(TransformUsageFlags.Dynamic);
+                var entity = GetEntity(TransformUsageFlags.None);
                 var commands = new BakerCommands(this, entity);
                 var builder = new SmearVelocityBuilder()
                     .WithInitialValue(float4.zero);

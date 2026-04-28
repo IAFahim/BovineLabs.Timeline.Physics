@@ -65,8 +65,9 @@ namespace BovineLabs.Timeline.Physics
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var facet = resolved[i];
-                    if (PhysicsMath.TryComputeExponentialDecay(facet.Velocity.ValueRO, drags[i].Config, DeltaTime,
-                            out var vOut)) facet.Velocity.ValueRW = vOut;
+                    PhysicsMath.ComputeExponentialDecay(facet.Velocity.ValueRO, drags[i].Config, DeltaTime,
+                            out var vOut);
+                    facet.Velocity.ValueRW = vOut;
                 }
             }
         }

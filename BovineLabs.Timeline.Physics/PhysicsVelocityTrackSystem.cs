@@ -30,6 +30,8 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _activeLookup.Update(ref state);
+
             state.Dependency = new ResetStateJob
             {
                 StateLookup = state.GetUnsafeComponentLookup<PhysicsVelocityState>()

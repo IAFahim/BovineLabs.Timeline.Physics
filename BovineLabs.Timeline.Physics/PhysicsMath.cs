@@ -11,7 +11,7 @@ namespace BovineLabs.Timeline.Physics
 {
     public static class PhysicsMath
     {
-        public static bool TryResolveSpaceVector(
+        public static void ResolveSpaceVector(
             Target space,
             float3 vector,
             Entity entity,
@@ -23,7 +23,7 @@ namespace BovineLabs.Timeline.Physics
             if (space == Target.None)
             {
                 resolvedVector = vector;
-                return true;
+                return;
             }
 
             var targetEntity = entity;
@@ -33,25 +33,23 @@ namespace BovineLabs.Timeline.Physics
             if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var lt))
             {
                 resolvedVector = math.rotate(lt.Rotation, vector);
-                return true;
+                return;
             }
 
             resolvedVector = vector;
-            return true;
         }
 
-        public static bool TryComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag,
+        public static void ComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag,
             float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
-            if (deltaTime <= 0f) return true;
+            if (deltaTime <= 0f) return;
 
             velocityOut.Linear *= math.exp(-drag.Linear * deltaTime);
             velocityOut.Angular *= math.exp(-drag.Angular * deltaTime);
-            return true;
         }
 
-        public static bool TryDrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos,
+        public static void DrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos,
             PidTuning tuning, float time)
         {
             var pos = startPos;
@@ -95,17 +93,16 @@ namespace BovineLabs.Timeline.Physics
 
             drawer.Cuboid(pos, quaternion.identity, new float3(0.5f), Color.green);
             drawer.Text32(pos + new float3(0, 0.5f, 0), "Predicted", Color.green, 10f);
-            return true;
         }
 
-        public static bool TryDrawAngularPidPrediction(ref Drawer drawer, float3 drawPos, quaternion startRot,
+        public static void DrawAngularPidPrediction(ref Drawer drawer, float3 drawPos, quaternion startRot,
             quaternion targetRot, PidTuning tuning, float time)
         {
             var rot = startRot;
             var vel = float3.zero;
             var integral = float3.zero;
 
-            if (!TryComputeAngularError(rot, targetRot, out var prevError)) return false;
+            ComputeAngularError(rot, targetRot, out var prevError);
 
             const float dt = 0.02f;
             var steps = (int)(time / dt);
@@ -115,7 +112,7 @@ namespace BovineLabs.Timeline.Physics
 
             for (var i = 0; i < steps; i++)
             {
-                if (!TryComputeAngularError(rot, targetRot, out var error)) continue;
+                ComputeAngularError(rot, targetRot, out var error);
 
                 integral += error * dt;
                 integral = math.clamp(integral, -integralMax, integralMax);
@@ -152,17 +149,16 @@ namespace BovineLabs.Timeline.Physics
             drawer.Arrow(drawPos, math.mul(rot, math.forward()), Color.green);
             drawer.Arrow(drawPos, math.mul(rot, math.up()), new Color(0f, 0.5f, 0f));
             drawer.Text32(drawPos + new float3(0, -0.5f, 0), "Predicted", Color.green, 10f);
-            return true;
         }
 
-        public static bool TryComputePidForce(float3 error, PidTuning tuning, PidStateData state, float deltaTime,
+        public static void ComputePidForce(float3 error, PidTuning tuning, PidStateData state, float deltaTime,
             out float3 output, out PidStateData nextState)
         {
             if (deltaTime <= 0f)
             {
                 output = float3.zero;
                 nextState = state;
-                return true;
+                return;
             }
 
             var isInit = state.IsInitialized;
@@ -190,11 +186,9 @@ namespace BovineLabs.Timeline.Physics
                 PreviousError = error,
                 IsInitialized = true
             };
-
-            return true;
         }
 
-        public static bool TryComputeAngularError(quaternion current, quaternion target, out float3 error)
+        public static void ComputeAngularError(quaternion current, quaternion target, out float3 error)
         {
             var delta = math.mul(target, math.conjugate(current));
             var q = delta.value;
@@ -204,15 +198,14 @@ namespace BovineLabs.Timeline.Physics
             if (dot < 1e-6f)
             {
                 error = float3.zero;
-                return true;
+                return;
             }
 
             var angle = 2.0f * math.acos(math.clamp(qPositive.w, -1f, 1f));
             error = qPositive.xyz / math.sqrt(dot) * angle;
-            return true;
         }
 
-        public static bool TryResolveLinearPidTarget(
+        public static void ResolveLinearPidTarget(
             in LocalTransform transform,
             in PhysicsLinearPIDData config,
             Entity entity,
@@ -238,11 +231,9 @@ namespace BovineLabs.Timeline.Physics
                 PidLinearTargetMode.World => config.TargetOffset,
                 _ => transform.Position
             };
-
-            return true;
         }
 
-        public static bool TryResolveAngularPidTarget(
+        public static void ResolveAngularPidTarget(
             in LocalTransform transform,
             in PhysicsAngularPIDData config,
             Entity entity,
@@ -266,8 +257,6 @@ namespace BovineLabs.Timeline.Physics
                 PidAngularTargetMode.World => config.TargetRotation,
                 _ => transform.Rotation
             };
-
-            return true;
         }
 
         private static float3 ResolveLineOfSight(float3 selfPos, float3 targetPos, quaternion selfRot, float3 offset)
@@ -287,16 +276,15 @@ namespace BovineLabs.Timeline.Physics
             return math.mul(baseRot, offsetRot);
         }
 
-        public static bool TryApplyLinearForce(in PhysicsVelocity velocityIn, in PhysicsMass mass, float3 force,
+        public static void ApplyLinearForce(in PhysicsVelocity velocityIn, in PhysicsMass mass, float3 force,
             float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             var invMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
             velocityOut.Linear += force * invMass * deltaTime;
-            return true;
         }
 
-        public static bool TryApplyAngularTorque(in PhysicsVelocity velocityIn, in PhysicsMass mass,
+        public static void ApplyAngularTorque(in PhysicsVelocity velocityIn, in PhysicsMass mass,
             in LocalTransform transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
@@ -304,7 +292,6 @@ namespace BovineLabs.Timeline.Physics
             var localTorque = math.rotate(math.inverse(transform.Rotation), torque);
             var localAngularVelocityChange = localTorque * invInertia * deltaTime;
             velocityOut.Angular += math.rotate(transform.Rotation, localAngularVelocityChange);
-            return true;
         }
     }
 }

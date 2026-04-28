@@ -89,8 +89,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                if (!PhysicsMath.TryResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var forceVec)) return;
+                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
+                        in TargetsCustomLookup, in TransformLookup, out var forceVec);
 
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
@@ -136,8 +136,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var entity = binding.Value;
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
-                if (!PhysicsMath.TryResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var targetVel)) return;
+                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity, in TargetsLookup,
+                        in TargetsCustomLookup, in TransformLookup, out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
                 Drawer.Arrow(transform.Position, targetVel, Color.cyan);

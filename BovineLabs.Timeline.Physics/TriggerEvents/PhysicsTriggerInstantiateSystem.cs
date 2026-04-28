@@ -149,7 +149,7 @@ namespace BovineLabs.Timeline.Physics
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             var dir = math.normalizesafe(selfPos - otherPos);
 
-                            spawns.AddNoResize(new SpawnData
+                            spawns.Add(new SpawnData
                             {
                                 Prefab = prefab,
                                 Self = self,
@@ -172,7 +172,7 @@ namespace BovineLabs.Timeline.Physics
                         var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                         var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
 
-                        spawns.AddNoResize(new SpawnData
+                        spawns.Add(new SpawnData
                         {
                             Prefab = prefab,
                             Self = self,

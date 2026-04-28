@@ -18,7 +18,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
-                if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsLinearPIDState>(target))
+                if (target != Entity.Null && !SystemAPI.HasComponent<ActiveLinearPid>(target))
                 {
                     ecb.AddComponent<ActiveLinearPid>(target);
                     ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
@@ -30,7 +30,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
-                if (target != Entity.Null && !SystemAPI.HasComponent<PhysicsAngularPIDState>(target))
+                if (target != Entity.Null && !SystemAPI.HasComponent<ActiveAngularPid>(target))
                 {
                     ecb.AddComponent<ActiveAngularPid>(target);
                     ecb.SetComponentEnabled<ActiveAngularPid>(target, false);

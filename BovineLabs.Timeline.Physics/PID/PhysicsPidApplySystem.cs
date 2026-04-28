@@ -135,9 +135,9 @@ namespace BovineLabs.Timeline.Physics
                     var s = states[i];
                     var config = actives[i].Config;
 
-                    if (!PhysicsMath.TryResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
+                    PhysicsMath.ResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
                             in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
-                            out var resolvedTarget)) continue;
+                            out var resolvedTarget);
 
                     // InitialLocal: lock the goal to first-tick world position
                     float3 targetPos;
@@ -157,23 +157,22 @@ namespace BovineLabs.Timeline.Physics
 
                     var error = targetPos - facet.Transform.ValueRO.Position;
 
-                    if (!PhysicsMath.TryComputePidForce(error, config.Tuning, s.State, DeltaTime,
-                            out var force, out var nextState)) continue;
+                    PhysicsMath.ComputePidForce(error, config.Tuning, s.State, DeltaTime,
+                            out var force, out var nextState);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyLinearForce(facet.Velocity.ValueRO, mass, force, DeltaTime,
-                            out var nextVelocity))
-                    {
-                        facet.Velocity.ValueRW = nextVelocity;
+                    PhysicsMath.ApplyLinearForce(facet.Velocity.ValueRO, mass, force, DeltaTime,
+                            out var nextVelocity);
 
-                        nextState.CapturedTargetPosition =
-                            capturedPos; // TryComputePidForce doesn't know about this field
-                        s.State = nextState;
-                        states[i] = s;
-                    }
+                    facet.Velocity.ValueRW = nextVelocity;
+
+                    nextState.CapturedTargetPosition =
+                        capturedPos; // TryComputePidForce doesn't know about this field
+                    s.State = nextState;
+                    states[i] = s;
                 }
             }
         }
@@ -203,27 +202,26 @@ namespace BovineLabs.Timeline.Physics
                 {
                     var facet = resolved[i];
 
-                    if (!PhysicsMath.TryResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
-                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot) ||
-                        !PhysicsMath.TryComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot,
-                            out var error) ||
-                        !PhysicsMath.TryComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
-                            out var torque, out var nextState))
-                        continue;
+                    PhysicsMath.ResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
+                            in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot);
+                    
+                    PhysicsMath.ComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot, out var error);
+                    
+                    PhysicsMath.ComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
+                            out var torque, out var nextState);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    if (PhysicsMath.TryApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque,
-                            DeltaTime, out var nextVelocity))
-                    {
-                        facet.Velocity.ValueRW = nextVelocity;
+                    PhysicsMath.ApplyAngularTorque(facet.Velocity.ValueRO, mass, facet.Transform.ValueRO, torque,
+                            DeltaTime, out var nextVelocity);
 
-                        var s = states[i];
-                        s.State = nextState;
-                        states[i] = s;
-                    }
+                    facet.Velocity.ValueRW = nextVelocity;
+
+                    var s = states[i];
+                    s.State = nextState;
+                    states[i] = s;
                 }
             }
         }

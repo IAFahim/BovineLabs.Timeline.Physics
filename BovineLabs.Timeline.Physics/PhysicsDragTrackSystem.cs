@@ -30,6 +30,8 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _activeLookup.Update(ref state);
+
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob

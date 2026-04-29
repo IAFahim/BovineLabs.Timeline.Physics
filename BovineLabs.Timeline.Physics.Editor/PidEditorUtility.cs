@@ -18,6 +18,14 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
 
         // ── Public API ────────────────────────────────────────────────────
 
+        public static void DrawStrength(SerializedProperty strengthProp)
+        {
+            EditorGUILayout.PropertyField(strengthProp,
+                new GUIContent("Strength",
+                    "Output force multiplier. 0 = no effect, 1 = full PID force, >1 = amplified.\n" +
+                    "Useful for blending PID in/out via Timeline clip weight or curves."));
+        }
+
         public static void DrawGains(Object target, SerializedProperty tuning, SerializedProperty uniform)
         {
             uniform.boolValue = EditorGUILayout.Toggle(

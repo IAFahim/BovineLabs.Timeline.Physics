@@ -11,7 +11,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsVelocityMode mode = PhysicsVelocityMode.SetInstant;
         public Vector3 linearVelocity = Vector3.forward;
         public Vector3 angularVelocity;
-        public Target space = Target.Self; // Self mean for my space 
+        public Target space = Target.Self;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;

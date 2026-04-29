@@ -160,6 +160,8 @@ namespace BovineLabs.Timeline.Physics
                     PhysicsMath.ComputePidForce(error, config.Tuning, s.State, DeltaTime,
                         out var force, out var nextState);
 
+                    force *= config.Strength; // scale after MaxOutput clamp
+
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
                         : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
@@ -209,6 +211,8 @@ namespace BovineLabs.Timeline.Physics
 
                     PhysicsMath.ComputePidForce(error, actives[i].Config.Tuning, states[i].State, DeltaTime,
                         out var torque, out var nextState);
+
+                    torque *= actives[i].Config.Strength;
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO

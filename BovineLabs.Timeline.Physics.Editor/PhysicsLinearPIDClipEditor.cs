@@ -33,6 +33,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.targetMode)));
             EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.targetOffset)));
 
+            EditorGUILayout.Space(6);
+
+            // ── Influence ─────────────────────────────────────────────────
+            EditorGUILayout.LabelField("Influence", EditorStyles.boldLabel);
+            PidEditorUtility.DrawStrength(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.strength)));
+
             // ── Warning: only fire when the combo actually breaks ─────────
             if (clip.trackingTarget == Target.Self && clip.targetMode == PidLinearTargetMode.TargetLocal)
             {

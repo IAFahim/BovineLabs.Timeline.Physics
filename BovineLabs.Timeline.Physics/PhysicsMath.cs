@@ -205,6 +205,7 @@ namespace BovineLabs.Timeline.Physics
             error = qPositive.xyz / math.sqrt(dot) * angle;
         }
 
+
         public static void ResolveLinearPidTarget(
             in LocalTransform transform,
             in PhysicsLinearPIDData config,
@@ -224,11 +225,19 @@ namespace BovineLabs.Timeline.Physics
             targetPosition = config.TargetMode switch
             {
                 PidLinearTargetMode.TargetLocal or
-                    PidLinearTargetMode.InitialLocal => targetTransform.Position +
-                                                        math.rotate(targetTransform.Rotation, config.TargetOffset),
-                PidLinearTargetMode.LineOfSight => ResolveLineOfSight(transform.Position, targetTransform.Position,
-                    transform.Rotation, config.TargetOffset),
+                    PidLinearTargetMode.InitialLocal =>
+                    targetTransform.Position + math.rotate(targetTransform.Rotation, config.TargetOffset),
+
+                PidLinearTargetMode.LineOfSight =>
+                    ResolveLineOfSight(transform.Position, targetTransform.Position,
+                        transform.Rotation, config.TargetOffset),
+
                 PidLinearTargetMode.World => config.TargetOffset,
+
+                // Reflected point: self + (self - target). PID error = goal - self = self - target → pushes away.
+                PidLinearTargetMode.FleeFromTarget =>
+                    transform.Position + (transform.Position - targetTransform.Position),
+
                 _ => transform.Position
             };
         }
@@ -251,13 +260,30 @@ namespace BovineLabs.Timeline.Physics
 
             targetRotation = config.TargetMode switch
             {
-                PidAngularTargetMode.MatchTarget => math.mul(targetTransform.Rotation, config.TargetRotation),
-                PidAngularTargetMode.LookAtTarget => ResolveLookAtTarget(transform.Position, targetTransform.Position,
-                    transform.Rotation, config.TargetRotation),
+                PidAngularTargetMode.MatchTarget =>
+                    math.mul(targetTransform.Rotation, config.TargetRotation),
+
+                PidAngularTargetMode.LookAtTarget =>
+                    ResolveLookAtTarget(transform.Position, targetTransform.Position,
+                        transform.Rotation, config.TargetRotation),
+
                 PidAngularTargetMode.World => config.TargetRotation,
+
+                // Face directly away: negate the look direction
+                PidAngularTargetMode.FleeFromTarget =>
+                    ResolveLookAtTarget(transform.Position,
+                        transform.Position + (transform.Position - targetTransform.Position), // mirrored point
+                        transform.Rotation, config.TargetRotation),
+
+                // Copy target rotation but flipped 180° around world Y
+                PidAngularTargetMode.MatchTargetOpposite =>
+                    math.mul(math.mul(targetTransform.Rotation, quaternion.RotateY(math.PI)),
+                        config.TargetRotation),
+
                 _ => transform.Rotation
             };
         }
+
 
         private static float3 ResolveLineOfSight(float3 selfPos, float3 targetPos, quaternion selfRot, float3 offset)
         {

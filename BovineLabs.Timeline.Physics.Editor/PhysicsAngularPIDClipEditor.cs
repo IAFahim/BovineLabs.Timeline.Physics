@@ -32,6 +32,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             EditorGUILayout.PropertyField(
                 serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.targetRotationEuler)));
 
+            EditorGUILayout.Space(6);
+
+            // ── Influence ─────────────────────────────────────────────────
+            EditorGUILayout.LabelField("Influence", EditorStyles.boldLabel);
+            PidEditorUtility.DrawStrength(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.strength)));
+
             serializedObject.ApplyModifiedProperties();
         }
     }

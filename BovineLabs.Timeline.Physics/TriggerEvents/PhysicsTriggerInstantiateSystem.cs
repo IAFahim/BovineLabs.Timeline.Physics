@@ -8,6 +8,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -211,11 +212,16 @@ namespace BovineLabs.Timeline.Physics
                 var instance = ECB.Instantiate(chunkIndex, spawn.Prefab);
                 ECB.SetComponent(chunkIndex, instance, transform);
 
+                // Resolve Target Link Override
+                var spawnTarget = spawn.Other;
+                if (spawn.Config.TargetLinkKey != 0 && EntityLinkResolver.TryResolve(spawn.Other, spawn.Config.TargetLinkKey, LinkSources, Links, out var resolvedTarget))
+                    spawnTarget = resolvedTarget;
+
                 ECB.SetComponent(chunkIndex, instance, new Targets
                 {
                     Owner = targets.Owner,
                     Source = targets.Source,
-                    Target = spawn.Other
+                    Target = spawnTarget
                 });
 
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(

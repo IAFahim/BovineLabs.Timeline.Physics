@@ -20,5 +20,6 @@ namespace BovineLabs.Timeline.Physics
 
         public Target AssignParent;
         public ushort AssignParentLinkKey;
+        public ushort TargetLinkKey;
     }
 }

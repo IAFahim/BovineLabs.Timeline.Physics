@@ -25,20 +25,21 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target assignParent = Target.None;
         public EntityLinkSchema assignParentLink;
 
+        [Header("Target Override")]
+        [Tooltip("Resolves link on collided entity. Assigns to spawned entity Targets.Target.")]
+        public EntityLinkSchema targetLinkOverride;
+
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (objectDefinition == null)
-            {
-                Debug.LogError($"{nameof(PhysicsTriggerInstantiateClip)} '{name}' needs {nameof(objectDefinition)}.");
-                return;
-            }
+            if (objectDefinition == null) return;
 
             context.Baker.DependsOn(objectDefinition);
 
-            if (!EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var linkKey)) linkKey = 0;
+            if (!EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
+            if (!EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
             {
@@ -50,7 +51,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 RotationMode = rotationMode,
                 RotationOffsetEuler = math.radians(rotationOffset),
                 AssignParent = assignParent,
-                AssignParentLinkKey = linkKey
+                AssignParentLinkKey = parentKey,
+                TargetLinkKey = targetKey
             });
 
             base.Bake(clipEntity, context);

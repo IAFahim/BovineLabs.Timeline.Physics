@@ -77,7 +77,7 @@ namespace BovineLabs.Timeline.Physics
             in Targets targets,
             in ComponentLookup<TargetsCustom> customLookup,
             in ComponentLookup<EntityLinkSource> sources,
-            in BufferLookup<EntityLink> links,
+            in BufferLookup<EntityLinkEntry> links,
             out Entity resolved)
         {
             resolved = Entity.Null;

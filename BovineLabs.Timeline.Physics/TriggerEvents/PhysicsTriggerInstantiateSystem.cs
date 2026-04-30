@@ -35,7 +35,7 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
         private ComponentLookup<EntityLinkSource> _linkSourceLookup;
-        private BufferLookup<EntityLink> _linkLookup;
+        private BufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Child> _childLookup;
 
         [BurstCompile]
@@ -58,7 +58,7 @@ namespace BovineLabs.Timeline.Physics
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
             _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
-            _linkLookup = state.GetBufferLookup<EntityLink>(true);
+            _linkLookup = state.GetBufferLookup<EntityLinkEntry>(true);
             _childLookup = state.GetBufferLookup<Child>(true);
         }
 
@@ -123,7 +123,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
             [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
-            [ReadOnly] public BufferLookup<EntityLink> Links;
+            [ReadOnly] public BufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Child> ChildLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,

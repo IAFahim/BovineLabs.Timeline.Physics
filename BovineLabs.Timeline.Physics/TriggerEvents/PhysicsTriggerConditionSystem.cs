@@ -19,7 +19,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private ComponentLookup<EntityLinkSource> _linkSourceLookup;
-        private BufferLookup<EntityLink> _linkLookup;
+        private BufferLookup<EntityLinkEntry> _linkLookup;
         private ComponentLookup<PhysicsCollider> _colliderLookup;
         private ConditionEventWriter.Lookup _writers;
 
@@ -29,7 +29,7 @@ namespace BovineLabs.Timeline.Physics
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
-            _linkLookup = state.GetBufferLookup<EntityLink>(true);
+            _linkLookup = state.GetBufferLookup<EntityLinkEntry>(true);
             _colliderLookup = state.GetComponentLookup<PhysicsCollider>(true);
             _writers.Create(ref state);
         }
@@ -64,7 +64,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
-            [ReadOnly] public BufferLookup<EntityLink> Links;
+            [ReadOnly] public BufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public ComponentLookup<PhysicsCollider> ColliderLookup;
             public ConditionEventWriter.Lookup Writers;
 

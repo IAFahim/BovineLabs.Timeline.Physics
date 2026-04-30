@@ -1,4 +1,6 @@
+using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.EntityCommands;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -6,6 +8,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -36,6 +39,7 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
         private ComponentLookup<EntityLinkSource> _linkSourceLookup;
         private BufferLookup<EntityLink> _linkLookup;
+        private BufferLookup<Child> _childLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -60,6 +64,7 @@ namespace BovineLabs.Timeline.Physics
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
             _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetBufferLookup<EntityLink>(true);
+            _childLookup = state.GetBufferLookup<Child>(true);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -81,8 +86,9 @@ namespace BovineLabs.Timeline.Physics
             _collisionEventsLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
+            _childLookup.Update(ref state);
 
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+            var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new TeleportJob
@@ -99,7 +105,8 @@ namespace BovineLabs.Timeline.Physics
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup,
                 LinkSources = _linkSourceLookup,
-                Links = _linkLookup
+                Links = _linkLookup,
+                ChildLookup = _childLookup
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -121,6 +128,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
             [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public BufferLookup<EntityLink> Links;
+            [ReadOnly] public BufferLookup<Child> ChildLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -189,9 +197,11 @@ namespace BovineLabs.Timeline.Physics
                     selfLtw, otherLtw, contactPoint, contactNormal,
                     out var transform);
 
+                var commands = new CommandBufferParallelCommands(ECB, chunkIndex, targetToMove);
+
                 using (Lock.Acquire(targetToMove))
                 {
-                    if (PhysicsTriggerResolution.TryResolveLinkedTarget(
+                    if (cfg.AssignParent != Target.None && PhysicsTriggerResolution.TryResolveLinkedTarget(
                             cfg.AssignParent,
                             cfg.AssignParentLinkKey,
                             self,
@@ -200,30 +210,19 @@ namespace BovineLabs.Timeline.Physics
                             TargetsCustomLookup,
                             LinkSources,
                             Links,
-                            out var parent))
+                            out var parent) && parent != Entity.Null && LocalToWorldLookup.TryGetComponent(parent, out var parentLtw))
                     {
-                        ECB.AddComponent(chunkIndex, targetToMove, new Parent { Value = parent });
+                        var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
+                        var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
+                        transform = LocalTransform.FromMatrix(localMatrix);
 
-                        if (LocalToWorldLookup.TryGetComponent(parent, out var parentLtw))
-                        {
-                            var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
-                            var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
-                            TransformLookup[targetToMove] = LocalTransform.FromMatrix(localMatrix);
-                        }
-                        else
-                        {
-                            var lt = TransformLookup[targetToMove];
-                            lt.Position = transform.Position;
-                            lt.Rotation = transform.Rotation;
-                            TransformLookup[targetToMove] = lt;
-                        }
+                        var childs = ChildLookup.HasBuffer(parent) ? ChildLookup[parent] : default;
+                        TransformUtility.SetupParent(ref commands, parent, targetToMove, parentLtw, transform, childs);
                     }
-                    else
+
+                    if (TransformLookup.HasComponent(targetToMove))
                     {
-                        var lt = TransformLookup[targetToMove];
-                        lt.Position = transform.Position;
-                        lt.Rotation = transform.Rotation;
-                        TransformLookup[targetToMove] = lt;
+                        TransformLookup[targetToMove] = transform;
                     }
 
                     if (cfg.ResetVelocity && VelocityLookup.HasComponent(targetToMove))

@@ -34,7 +34,11 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (objectDefinition == null) return;
+            if (objectDefinition == null)
+            {
+                Debug.LogError($"{nameof(PhysicsTriggerInstantiateClip)} '{name}' needs {nameof(objectDefinition)}.");
+                return;
+            }
 
             context.Baker.DependsOn(objectDefinition);
 

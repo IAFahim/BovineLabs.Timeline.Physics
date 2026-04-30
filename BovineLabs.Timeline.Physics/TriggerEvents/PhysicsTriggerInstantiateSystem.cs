@@ -1,5 +1,6 @@
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.EntityCommands;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
@@ -35,6 +36,7 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
         private ComponentLookup<EntityLinkSource> _linkSourceLookup;
         private BufferLookup<EntityLink> _linkLookup;
+        private BufferLookup<Child> _childLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -57,6 +59,7 @@ namespace BovineLabs.Timeline.Physics
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
             _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetBufferLookup<EntityLink>(true);
+            _childLookup = state.GetBufferLookup<Child>(true);
         }
 
         [BurstCompile]
@@ -71,8 +74,9 @@ namespace BovineLabs.Timeline.Physics
             _collisionEventsLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
+            _childLookup.Update(ref state);
 
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+            var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new InstantiateGatherJob
@@ -88,7 +92,8 @@ namespace BovineLabs.Timeline.Physics
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup,
                 LinkSources = _linkSourceLookup,
-                Links = _linkLookup
+                Links = _linkLookup,
+                ChildLookup = _childLookup
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -119,6 +124,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
             [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public BufferLookup<EntityLink> Links;
+            [ReadOnly] public BufferLookup<Child> ChildLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -191,31 +197,46 @@ namespace BovineLabs.Timeline.Physics
 
             private void Spawn(int chunkIndex, in SpawnData spawn)
             {
-                var selfLtw = LocalToWorldLookup[spawn.Self];
-                var otherLtw = LocalToWorldLookup[spawn.Other];
-
                 var targets = TargetsLookup.HasComponent(spawn.Self) ? TargetsLookup[spawn.Self] : default;
+
+                var spawnTarget = spawn.Other;
+                if (spawn.Config.TargetLinkKey != 0)
+                {
+                    if (PhysicsTriggerResolution.TryResolveLinkedTarget(
+                        Target.Target, spawn.Config.TargetLinkKey, spawn.Self, spawn.Other, targets, TargetsCustomLookup, LinkSources, Links, out var resolvedTarget))
+                    {
+                        spawnTarget = resolvedTarget;
+                    }
+                }
+
+                Entity parent = Entity.Null;
+                if (spawn.Config.AssignParent != Target.None)
+                {
+                    PhysicsTriggerResolution.TryResolveLinkedTarget(
+                        spawn.Config.AssignParent, spawn.Config.AssignParentLinkKey, spawn.Self, spawn.Other, targets, TargetsCustomLookup, LinkSources, Links, out parent);
+                }
+
+                var selfLtw = LocalToWorldLookup[spawn.Self];
+                var targetLtw = LocalToWorldLookup.HasComponent(spawnTarget) ? LocalToWorldLookup[spawnTarget] : LocalToWorldLookup[spawn.Other];
 
                 var resolvedPosOffset = spawn.Config.PositionOffset;
                 if (spawn.Config.PositionOffsetSpace != Target.None)
-                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self,
-                            spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
+                {
+                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
+                    {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, spawn.Config.PositionOffset);
+                    }
+                }
 
                 PhysicsTriggerResolution.TryCalculateTransform(
                     spawn.Config.PositionMode, resolvedPosOffset,
                     spawn.Config.RotationMode, spawn.Config.RotationOffsetEuler,
-                    selfLtw, otherLtw, spawn.ContactPoint, spawn.ContactNormal,
+                    selfLtw, targetLtw, spawn.ContactPoint, spawn.ContactNormal,
                     out var transform);
 
                 var instance = ECB.Instantiate(chunkIndex, spawn.Prefab);
-                ECB.SetComponent(chunkIndex, instance, transform);
-
-                // Resolve Target Link Override
-                var spawnTarget = spawn.Other;
-                if (spawn.Config.TargetLinkKey != 0 && EntityLinkResolver.TryResolve(spawn.Other, spawn.Config.TargetLinkKey, LinkSources, Links, out var resolvedTarget))
-                    spawnTarget = resolvedTarget;
+                var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
                 ECB.SetComponent(chunkIndex, instance, new Targets
                 {
@@ -224,17 +245,17 @@ namespace BovineLabs.Timeline.Physics
                     Target = spawnTarget
                 });
 
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        spawn.Config.AssignParent,
-                        spawn.Config.AssignParentLinkKey,
-                        spawn.Self,
-                        spawn.Other,
-                        targets,
-                        TargetsCustomLookup,
-                        LinkSources,
-                        Links,
-                        out var parent))
-                    ECB.AddComponent(chunkIndex, instance, new Parent { Value = parent });
+                if (parent != Entity.Null && LocalToWorldLookup.TryGetComponent(parent, out var parentLtw))
+                {
+                    var worldMatrix = float4x4.TRS(transform.Position, transform.Rotation, transform.Scale);
+                    var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
+                    transform = LocalTransform.FromMatrix(localMatrix);
+
+                    var childs = ChildLookup.HasBuffer(parent) ? ChildLookup[parent] : default;
+                    TransformUtility.SetupParent(ref commands, parent, instance, parentLtw, transform, childs);
+                }
+
+                ECB.SetComponent(chunkIndex, instance, transform); // Updates LocalTransform so ParentSystem doesn't override with Identity
             }
         }
     }

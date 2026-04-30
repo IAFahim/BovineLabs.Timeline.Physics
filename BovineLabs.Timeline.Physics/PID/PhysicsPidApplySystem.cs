@@ -139,7 +139,6 @@ namespace BovineLabs.Timeline.Physics
                         in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
                         out var resolvedTarget);
 
-                    // InitialLocal: lock the goal to first-tick world position
                     float3 targetPos;
                     if (config.TargetMode == PidLinearTargetMode.InitialLocal)
                     {
@@ -152,7 +151,6 @@ namespace BovineLabs.Timeline.Physics
                         targetPos = resolvedTarget;
                     }
 
-                    // Preserve captured position across the PID state update
                     var capturedPos = s.State.CapturedTargetPosition;
 
                     var error = targetPos - facet.Transform.ValueRO.Position;
@@ -160,7 +158,7 @@ namespace BovineLabs.Timeline.Physics
                     PhysicsMath.ComputePidForce(error, config.Tuning, s.State, DeltaTime,
                         out var force, out var nextState);
 
-                    force *= config.Strength; // scale after MaxOutput clamp
+                    force *= config.Strength;
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
@@ -172,7 +170,7 @@ namespace BovineLabs.Timeline.Physics
                     facet.Velocity.ValueRW = nextVelocity;
 
                     nextState.CapturedTargetPosition =
-                        capturedPos; // TryComputePidForce doesn't know about this field
+                        capturedPos;
                     s.State = nextState;
                     states[i] = s;
                 }

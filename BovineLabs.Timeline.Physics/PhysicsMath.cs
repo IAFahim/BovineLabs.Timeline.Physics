@@ -234,7 +234,6 @@ namespace BovineLabs.Timeline.Physics
 
                 PidLinearTargetMode.World => config.TargetOffset,
 
-                // Reflected point: self + (self - target). PID error = goal - self = self - target → pushes away.
                 PidLinearTargetMode.FleeFromTarget =>
                     transform.Position + (transform.Position - targetTransform.Position),
 
@@ -269,13 +268,10 @@ namespace BovineLabs.Timeline.Physics
 
                 PidAngularTargetMode.World => config.TargetRotation,
 
-                // Face directly away: negate the look direction
                 PidAngularTargetMode.FleeFromTarget =>
                     ResolveLookAtTarget(transform.Position,
-                        transform.Position + (transform.Position - targetTransform.Position), // mirrored point
-                        transform.Rotation, config.TargetRotation),
+                        transform.Position + (transform.Position - targetTransform.Position), transform.Rotation, config.TargetRotation),
 
-                // Copy target rotation but flipped 180° around world Y
                 PidAngularTargetMode.MatchTargetOpposite =>
                     math.mul(math.mul(targetTransform.Rotation, quaternion.RotateY(math.PI)),
                         config.TargetRotation),

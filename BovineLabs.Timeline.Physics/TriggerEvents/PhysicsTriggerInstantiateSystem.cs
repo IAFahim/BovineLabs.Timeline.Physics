@@ -9,7 +9,6 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -107,7 +106,6 @@ namespace BovineLabs.Timeline.Physics
             public float3 ContactNormal;
         }
 
-        [BurstCompile]
         private struct InstantiateGatherJob : IJobChunkWorkerBeginEnd
         {
             public EntityCommandBuffer.ParallelWriter ECB;
@@ -132,9 +130,6 @@ namespace BovineLabs.Timeline.Physics
                 var configs = chunk.GetNativeArray(ref DataHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
 
-                using var spawnsPool = PooledNativeList<SpawnData>.Make();
-                var spawns = spawnsPool.List;
-
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var self = trackBindings[i].Value;
@@ -146,6 +141,8 @@ namespace BovineLabs.Timeline.Physics
                         continue;
                     }
 
+                    var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
@@ -156,15 +153,7 @@ namespace BovineLabs.Timeline.Physics
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             var dir = math.normalizesafe(selfPos - otherPos);
 
-                            spawns.Add(new SpawnData
-                            {
-                                Prefab = prefab,
-                                Self = self,
-                                Other = evt.EntityB,
-                                Config = cfg,
-                                ContactPoint = midpoint,
-                                ContactNormal = dir
-                            });
+                            Spawn(unfilteredChunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets);
                         }
 
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
@@ -179,63 +168,56 @@ namespace BovineLabs.Timeline.Physics
                         var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                         var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
 
-                        spawns.Add(new SpawnData
-                        {
-                            Prefab = prefab,
-                            Self = self,
-                            Other = evt.EntityB,
-                            Config = cfg,
-                            ContactPoint = pt,
-                            ContactNormal = normal
-                        });
+                        Spawn(unfilteredChunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets);
                     }
                 }
-
-                var spawnsArray = spawns.AsArray();
-                for (var i = 0; i < spawnsArray.Length; i++) Spawn(unfilteredChunkIndex, in spawnsArray.ElementAtRO(i));
             }
 
-            private void Spawn(int chunkIndex, in SpawnData spawn)
+            private void Spawn(int chunkIndex, Entity prefab, Entity self, Entity other,
+                in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets)
             {
-                var targets = TargetsLookup.HasComponent(spawn.Self) ? TargetsLookup[spawn.Self] : default;
-
-                var spawnTarget = spawn.Other;
-                if (spawn.Config.TargetLinkKey != 0)
+                var spawnTarget = other;
+                if (cfg.TargetLinkKey != 0)
                 {
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        Target.Target, spawn.Config.TargetLinkKey, spawn.Self, spawn.Other, targets, TargetsCustomLookup, LinkSources, Links, out var resolvedTarget))
+                            Target.Target, cfg.TargetLinkKey, self, other, targets, TargetsCustomLookup, LinkSources,
+                            Links, out var resolvedTarget))
                     {
                         spawnTarget = resolvedTarget;
                     }
                 }
 
                 Entity parent = Entity.Null;
-                if (spawn.Config.AssignParent != Target.None)
+                if (cfg.AssignParent != Target.None)
                 {
                     PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        spawn.Config.AssignParent, spawn.Config.AssignParentLinkKey, spawn.Self, spawn.Other, targets, TargetsCustomLookup, LinkSources, Links, out parent);
+                        cfg.AssignParent, cfg.AssignParentLinkKey, self, other, targets, TargetsCustomLookup,
+                        LinkSources, Links, out parent);
                 }
 
-                var selfLtw = LocalToWorldLookup[spawn.Self];
-                var targetLtw = LocalToWorldLookup.HasComponent(spawnTarget) ? LocalToWorldLookup[spawnTarget] : LocalToWorldLookup[spawn.Other];
+                var selfLtw = LocalToWorldLookup[self];
+                var targetLtw = LocalToWorldLookup.HasComponent(spawnTarget)
+                    ? LocalToWorldLookup[spawnTarget]
+                    : LocalToWorldLookup[other];
 
-                var resolvedPosOffset = spawn.Config.PositionOffset;
-                if (spawn.Config.PositionOffsetSpace != Target.None)
+                var resolvedPosOffset = cfg.PositionOffset;
+                if (cfg.PositionOffsetSpace != Target.None)
                 {
-                    if (PhysicsTriggerResolution.TryResolveTarget(spawn.Config.PositionOffsetSpace, spawn.Self, spawn.Other, targets, TargetsCustomLookup, out var spaceEntity)
+                    if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets,
+                            TargetsCustomLookup, out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
                     {
-                        resolvedPosOffset = math.rotate(spaceLtw.Rotation, spawn.Config.PositionOffset);
+                        resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
                     }
                 }
 
                 PhysicsTriggerResolution.TryCalculateTransform(
-                    spawn.Config.PositionMode, resolvedPosOffset,
-                    spawn.Config.RotationMode, spawn.Config.RotationOffsetEuler,
-                    selfLtw, targetLtw, spawn.ContactPoint, spawn.ContactNormal,
+                    cfg.PositionMode, resolvedPosOffset,
+                    cfg.RotationMode, cfg.RotationOffsetEuler,
+                    selfLtw, targetLtw, contactPoint, contactNormal,
                     out var transform);
 
-                var instance = ECB.Instantiate(chunkIndex, spawn.Prefab);
+                var instance = ECB.Instantiate(chunkIndex, prefab);
                 var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
                 ECB.SetComponent(chunkIndex, instance, new Targets
@@ -255,7 +237,7 @@ namespace BovineLabs.Timeline.Physics
                     TransformUtility.SetupParent(ref commands, parent, instance, parentLtw, transform, childs);
                 }
 
-                ECB.SetComponent(chunkIndex, instance, transform); // Updates LocalTransform so ParentSystem doesn't override with Identity
+                ECB.SetComponent(chunkIndex, instance, transform);
             }
         }
     }

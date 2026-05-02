@@ -1,6 +1,7 @@
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
+using BovineLabs.Core.Utility;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -13,47 +14,52 @@ namespace BovineLabs.Timeline.Physics
     {
         private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> _blendImpl;
         private UnsafeComponentLookup<ActiveForce> _activeLookup;
+        private UnsafeComponentLookup<PhysicsForceState> _stateLookup;
+        private EntityLock _entityLock;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetUnsafeComponentLookup<ActiveForce>();
+            _activeLookup = state.GetUnsafeComponentLookup<ActiveForce>(false);
+            _stateLookup = state.GetUnsafeComponentLookup<PhysicsForceState>(false);
+            _entityLock = new EntityLock(Allocator.Persistent);
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _blendImpl.OnDestroy(ref state);
+            _entityLock.Dispose();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _activeLookup.Update(ref state);
+            _stateLookup.Update(ref state);
 
             state.Dependency = new ResetStateJob
             {
-                StateLookup = state.GetUnsafeComponentLookup<PhysicsForceState>()
+                StateLookup = _stateLookup,
+                EntityLock = _entityLock
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = new PrepareForceDataJob().ScheduleParallel(state.Dependency);
 
             state.Dependency = new DisableStaleJob
             {
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activeLookup,
+                EntityLock = _entityLock
             }.ScheduleParallel(state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
-
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
                 ActiveLookup = _activeLookup,
-                ECB = ecb.AsParallelWriter()
+                EntityLock = _entityLock
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -67,18 +73,6 @@ namespace BovineLabs.Timeline.Physics
             }
         }
 
-        [BurstCompile]
-        [WithNone(typeof(TimelineActive))]
-        [WithAll(typeof(TimelineActivePrevious))]
-        private partial struct DisableStaleJob : IJobEntity
-        {
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
-
-            private void Execute(in TrackBinding binding)
-            {
-                if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
-            }
-        }
 
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
@@ -86,14 +80,38 @@ namespace BovineLabs.Timeline.Physics
         private partial struct ResetStateJob : IJobEntity
         {
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsForceState> StateLookup;
+            public EntityLock EntityLock;
 
             private void Execute(in TrackBinding binding)
             {
-                if (StateLookup.HasComponent(binding.Value))
+                if (binding.Value == Entity.Null) return;
+                using (EntityLock.Acquire(binding.Value))
                 {
-                    var s = StateLookup[binding.Value];
-                    s.Fired = false;
-                    StateLookup[binding.Value] = s;
+                    if (StateLookup.HasComponent(binding.Value))
+                    {
+                        var s = StateLookup[binding.Value];
+                        s.Fired = false;
+                        StateLookup[binding.Value] = s;
+                    }
+                }
+            }
+        }
+
+        [BurstCompile]
+        [WithNone(typeof(TimelineActive))]
+        [WithAll(typeof(TimelineActivePrevious))]
+        private partial struct DisableStaleJob : IJobEntity
+        {
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
+            public EntityLock EntityLock;
+
+            private void Execute(in TrackBinding binding)
+            {
+                if (binding.Value == Entity.Null) return;
+                using (EntityLock.Acquire(binding.Value))
+                {
+                    if (ActiveLookup.HasComponent(binding.Value))
+                        ActiveLookup.SetComponentEnabled(binding.Value, false);
                 }
             }
         }
@@ -102,19 +120,23 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsForceData>>.ReadOnly BlendData;
-            [ReadOnly] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
+            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveForce> ActiveLookup;
+            public EntityLock EntityLock;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveForce>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveForce
+                using (EntityLock.Acquire(entity))
                 {
-                    Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
-                });
+                    if (!ActiveLookup.HasComponent(entity)) return;
+
+                    ActiveLookup.SetComponentEnabled(entity, true);
+                    ActiveLookup[entity] = new ActiveForce
+                    {
+                        Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
+                    };
+                }
             }
         }
     }

@@ -1,4 +1,6 @@
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
@@ -18,9 +20,9 @@ namespace BovineLabs.Timeline.Physics
     {
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<TargetsCustom> _targetsCustomLookup;
-        private ComponentLookup<EntityLinkSource> _linkSourceLookup;
-        private BufferLookup<EntityLinkEntry> _linkLookup;
-        private ComponentLookup<PhysicsCollider> _colliderLookup;
+        private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
+        private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private ConditionEventWriter.Lookup _writers;
 
         [BurstCompile]
@@ -28,9 +30,9 @@ namespace BovineLabs.Timeline.Physics
         {
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
-            _linkSourceLookup = state.GetComponentLookup<EntityLinkSource>(true);
-            _linkLookup = state.GetBufferLookup<EntityLinkEntry>(true);
-            _colliderLookup = state.GetComponentLookup<PhysicsCollider>(true);
+            _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
+            _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
             _writers.Create(ref state);
         }
 
@@ -63,9 +65,9 @@ namespace BovineLabs.Timeline.Physics
         {
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
-            [ReadOnly] public ComponentLookup<EntityLinkSource> LinkSources;
-            [ReadOnly] public BufferLookup<EntityLinkEntry> Links;
-            [ReadOnly] public ComponentLookup<PhysicsCollider> ColliderLookup;
+            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
+            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
+            [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
             public ConditionEventWriter.Lookup Writers;
 
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;

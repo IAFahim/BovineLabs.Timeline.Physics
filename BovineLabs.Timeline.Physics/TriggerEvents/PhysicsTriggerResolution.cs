@@ -1,3 +1,4 @@
+using BovineLabs.Core.Iterators;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
@@ -76,8 +77,8 @@ namespace BovineLabs.Timeline.Physics
             Entity other,
             in Targets targets,
             in ComponentLookup<TargetsCustom> customLookup,
-            in ComponentLookup<EntityLinkSource> sources,
-            in BufferLookup<EntityLinkEntry> links,
+            in UnsafeComponentLookup<EntityLinkSource> sources,
+            in UnsafeBufferLookup<EntityLinkEntry> links,
             out Entity resolved)
         {
             resolved = Entity.Null;

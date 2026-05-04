@@ -80,6 +80,7 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(in TrackBinding binding)
             {
+                if (binding.Value == Entity.Null) return;
                 if (StateLookup.HasComponent(binding.Value))
                 {
                     var state = StateLookup[binding.Value];
@@ -98,6 +99,7 @@ namespace BovineLabs.Timeline.Physics
 
             private void Execute(in TrackBinding binding)
             {
+                if (binding.Value == Entity.Null) return;
                 if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
             }
         }

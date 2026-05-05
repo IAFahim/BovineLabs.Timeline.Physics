@@ -9,7 +9,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
-        public Vector3 linearForce = new(0, 0, 1);
+        public Vector3 linearForce = new(0, 0, 0);
         public Vector3 angularForce;
         public Target space = Target.Self;
 

@@ -41,7 +41,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
-            var drawer = drawSystem.CreateDrawer();
+            var drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
+            if (!drawer.IsEnabled) return;
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
                 ? SystemAPI.GetSingleton<PhysicsStep>().Gravity
                 : new float3(0, -9.81f, 0);

@@ -39,7 +39,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
-            var drawer = drawSystem.CreateDrawer();
+            var drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
+            if (!drawer.IsEnabled) return;
 
             _localTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);

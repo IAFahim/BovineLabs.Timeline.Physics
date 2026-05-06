@@ -2,6 +2,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,6 +11,7 @@ namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(PhysicsLinearPIDTrackSystem))]
+    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> _blendImpl;

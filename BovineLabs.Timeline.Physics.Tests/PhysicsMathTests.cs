@@ -89,8 +89,10 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var vel = new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = float3.zero };
 
-            PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 1f, Angular = 0f }, 1f, out var low);
-            PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 5f, Angular = 0f }, 1f, out var high);
+            PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 1f, Angular = 0f }, 1f,
+                out var low);
+            PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 5f, Angular = 0f }, 1f,
+                out var high);
 
             Assert.Less(high.Linear.x, low.Linear.x);
         }
@@ -112,8 +114,12 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_ZeroDt_ZeroOutput_UnchangedState()
         {
-            var tuning = new PidTuning { Proportional = new float3(1f), Derivative = new float3(1f), Integral = new float3(1f), MaxOutput = 100f };
-            var state = new PidStateData { IsInitialized = true, PreviousError = new float3(1, 0, 0), IntegralAccumulator = float3.zero };
+            var tuning = new PidTuning
+            {
+                Proportional = new float3(1f), Derivative = new float3(1f), Integral = new float3(1f), MaxOutput = 100f
+            };
+            var state = new PidStateData
+                { IsInitialized = true, PreviousError = new float3(1, 0, 0), IntegralAccumulator = float3.zero };
 
             PhysicsMath.ComputePidForce(new float3(5, 0, 0), tuning, state, 0f, out var output, out var next);
 
@@ -137,7 +143,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_Uninitialized_UsesCurrentErrorAsPrevious()
         {
-            var tuning = new PidTuning { Proportional = new float3(1f), Derivative = float3.zero, Integral = float3.zero, MaxOutput = 1000f };
+            var tuning = new PidTuning
+                { Proportional = new float3(1f), Derivative = float3.zero, Integral = float3.zero, MaxOutput = 1000f };
             var state = new PidStateData { IsInitialized = false };
 
             PhysicsMath.ComputePidForce(new float3(10, 0, 0), tuning, state, 1f, out var output, out var next);
@@ -153,7 +160,10 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_Initialized_UsesStoredPreviousError()
         {
-            var tuning = new PidTuning { Proportional = new float3(1f), Derivative = new float3(1f), Integral = float3.zero, MaxOutput = 1000f };
+            var tuning = new PidTuning
+            {
+                Proportional = new float3(1f), Derivative = new float3(1f), Integral = float3.zero, MaxOutput = 1000f
+            };
             var state = new PidStateData { IsInitialized = true, PreviousError = new float3(5, 0, 0) };
 
             PhysicsMath.ComputePidForce(new float3(10, 0, 0), tuning, state, 1f, out var output, out var next);
@@ -166,7 +176,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_IntegralAccumulates()
         {
-            var tuning = new PidTuning { Proportional = float3.zero, Derivative = float3.zero, Integral = new float3(2f), MaxOutput = 1000f };
+            var tuning = new PidTuning
+                { Proportional = float3.zero, Derivative = float3.zero, Integral = new float3(2f), MaxOutput = 1000f };
             var state = new PidStateData { IsInitialized = true, IntegralAccumulator = new float3(3, 0, 0) };
 
             PhysicsMath.ComputePidForce(new float3(1, 0, 0), tuning, state, 1f, out _, out var next);
@@ -177,7 +188,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_MaxOutput_ClampsForce()
         {
-            var tuning = new PidTuning { Proportional = new float3(1000f), Derivative = float3.zero, Integral = float3.zero, MaxOutput = 5f };
+            var tuning = new PidTuning
+                { Proportional = new float3(1000f), Derivative = float3.zero, Integral = float3.zero, MaxOutput = 5f };
             var state = new PidStateData();
 
             PhysicsMath.ComputePidForce(new float3(1, 0, 0), tuning, state, 1f, out var output, out _);
@@ -189,7 +201,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_IntegralClamped_ByMaxOutput()
         {
-            var tuning = new PidTuning { Proportional = float3.zero, Derivative = float3.zero, Integral = new float3(1f), MaxOutput = 1f };
+            var tuning = new PidTuning
+                { Proportional = float3.zero, Derivative = float3.zero, Integral = new float3(1f), MaxOutput = 1f };
             var state = new PidStateData { IsInitialized = true, IntegralAccumulator = new float3(100, 0, 0) };
 
             PhysicsMath.ComputePidForce(new float3(100, 0, 0), tuning, state, 1f, out _, out var next);
@@ -201,7 +214,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_AllZeroGains_ZeroOutput()
         {
-            var tuning = new PidTuning { Proportional = float3.zero, Derivative = float3.zero, Integral = float3.zero, MaxOutput = 100f };
+            var tuning = new PidTuning
+                { Proportional = float3.zero, Derivative = float3.zero, Integral = float3.zero, MaxOutput = 100f };
             var state = new PidStateData();
 
             PhysicsMath.ComputePidForce(new float3(10, 20, 30), tuning, state, 1f, out var output, out _);

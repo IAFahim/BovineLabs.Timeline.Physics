@@ -1,9 +1,9 @@
-using BovineLabs.Timeline.Physics;
-using BovineLabs.Timeline.Physics.Smear;
 using BovineLabs.Testing;
+using BovineLabs.Timeline.Physics.Smear;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
@@ -32,31 +32,31 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void SmearVelocity_OnEntity()
         {
-            var entity = this.Manager.CreateEntity(typeof(SmearVelocity));
-            Assert.IsTrue(this.Manager.HasComponent<SmearVelocity>(entity));
+            var entity = Manager.CreateEntity(typeof(SmearVelocity));
+            Assert.IsTrue(Manager.HasComponent<SmearVelocity>(entity));
 
-            this.Manager.SetComponentData(entity, new SmearVelocity { Value = new float4(5, 6, 7, 8) });
-            Assert.AreEqual(new float4(5, 6, 7, 8), this.Manager.GetComponentData<SmearVelocity>(entity).Value);
+            Manager.SetComponentData(entity, new SmearVelocity { Value = new float4(5, 6, 7, 8) });
+            Assert.AreEqual(new float4(5, 6, 7, 8), Manager.GetComponentData<SmearVelocity>(entity).Value);
         }
 
         [Test]
         public void ActiveVelocity_EnableableComponent()
         {
-            var entity = this.Manager.CreateEntity(typeof(ActiveVelocity));
-            Assert.IsTrue(this.Manager.IsComponentEnabled<ActiveVelocity>(entity));
+            var entity = Manager.CreateEntity(typeof(ActiveVelocity));
+            Assert.IsTrue(Manager.IsComponentEnabled<ActiveVelocity>(entity));
 
-            this.Manager.SetComponentEnabled<ActiveVelocity>(entity, false);
-            Assert.IsFalse(this.Manager.IsComponentEnabled<ActiveVelocity>(entity));
+            Manager.SetComponentEnabled<ActiveVelocity>(entity, false);
+            Assert.IsFalse(Manager.IsComponentEnabled<ActiveVelocity>(entity));
         }
 
         [Test]
         public void ActiveDrag_EnableableComponent()
         {
-            var entity = this.Manager.CreateEntity(typeof(ActiveDrag));
-            Assert.IsTrue(this.Manager.IsComponentEnabled<ActiveDrag>(entity));
+            var entity = Manager.CreateEntity(typeof(ActiveDrag));
+            Assert.IsTrue(Manager.IsComponentEnabled<ActiveDrag>(entity));
 
-            this.Manager.SetComponentEnabled<ActiveDrag>(entity, false);
-            Assert.IsFalse(this.Manager.IsComponentEnabled<ActiveDrag>(entity));
+            Manager.SetComponentEnabled<ActiveDrag>(entity, false);
+            Assert.IsFalse(Manager.IsComponentEnabled<ActiveDrag>(entity));
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputeExponentialDecay_KnownValue()
         {
-            var vel = new Unity.Physics.PhysicsVelocity { Linear = new float3(1, 0, 0), Angular = float3.zero };
+            var vel = new PhysicsVelocity { Linear = new float3(1, 0, 0), Angular = float3.zero };
             var drag = new PhysicsDragData { Linear = 1f, Angular = 0f };
 
             PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
@@ -96,7 +96,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void ComputePidForce_ZeroDt_ZeroOutput()
         {
-            var tuning = new PidTuning { Proportional = float3.zero, Integral = float3.zero, Derivative = float3.zero, MaxOutput = 0f };
+            var tuning = new PidTuning
+                { Proportional = float3.zero, Integral = float3.zero, Derivative = float3.zero, MaxOutput = 0f };
             var state = new PidStateData();
 
             PhysicsMath.ComputePidForce(new float3(1, 2, 3), tuning, state, 0f, out var output, out var nextState);

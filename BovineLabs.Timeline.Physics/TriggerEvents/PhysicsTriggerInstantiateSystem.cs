@@ -178,22 +178,16 @@ namespace BovineLabs.Timeline.Physics
             {
                 var spawnTarget = other;
                 if (cfg.TargetLinkKey != 0)
-                {
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(
                             Target.Target, cfg.TargetLinkKey, self, other, targets, TargetsCustomLookup, LinkSources,
                             Links, out var resolvedTarget))
-                    {
                         spawnTarget = resolvedTarget;
-                    }
-                }
 
-                Entity parent = Entity.Null;
+                var parent = Entity.Null;
                 if (cfg.AssignParent != Target.None)
-                {
                     PhysicsTriggerResolution.TryResolveLinkedTarget(
                         cfg.AssignParent, cfg.AssignParentLinkKey, self, other, targets, TargetsCustomLookup,
                         LinkSources, Links, out parent);
-                }
 
                 var selfLtw = LocalToWorldLookup[self];
                 var targetLtw = LocalToWorldLookup.HasComponent(spawnTarget)
@@ -202,14 +196,10 @@ namespace BovineLabs.Timeline.Physics
 
                 var resolvedPosOffset = cfg.PositionOffset;
                 if (cfg.PositionOffsetSpace != Target.None)
-                {
                     if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets,
                             TargetsCustomLookup, out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
-                    {
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
-                    }
-                }
 
                 PhysicsTriggerResolution.TryCalculateTransform(
                     cfg.PositionMode, resolvedPosOffset,

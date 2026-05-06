@@ -16,7 +16,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         public void Lerp_S0_ReturnsAValues()
         {
             var a = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(1, 2, 3), new float3(4, 5, 6), Target.Self);
-            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60), Target.Source);
+            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60),
+                Target.Source);
             var mixer = new PhysicsVelocityMixer();
 
             var result = mixer.Lerp(a, b, 0f);
@@ -31,7 +32,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         public void Lerp_S1_ReturnsBValues()
         {
             var a = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(1, 2, 3), new float3(4, 5, 6), Target.Self);
-            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60), Target.Source);
+            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60),
+                Target.Source);
             var mixer = new PhysicsVelocityMixer();
 
             var result = mixer.Lerp(a, b, 1f);
@@ -72,7 +74,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         public void Lerp_S05_InterpolatesLinearAngular()
         {
             var a = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(0, 0, 0), new float3(0, 0, 0), Target.Self);
-            var b = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(10, 20, 30), new float3(40, 50, 60), Target.Self);
+            var b = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(10, 20, 30), new float3(40, 50, 60),
+                Target.Self);
             var mixer = new PhysicsVelocityMixer();
 
             var result = mixer.Lerp(a, b, 0.5f);
@@ -85,7 +88,8 @@ namespace BovineLabs.Timeline.Physics.Tests
         public void Add_SumsLinearAngular_TakesAMode()
         {
             var a = MakeVD(PhysicsVelocityMode.SetContinuous, new float3(1, 2, 3), new float3(4, 5, 6), Target.Self);
-            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60), Target.Source);
+            var b = MakeVD(PhysicsVelocityMode.AddInstant, new float3(10, 20, 30), new float3(40, 50, 60),
+                Target.Source);
             var mixer = new PhysicsVelocityMixer();
 
             var result = mixer.Add(a, b);

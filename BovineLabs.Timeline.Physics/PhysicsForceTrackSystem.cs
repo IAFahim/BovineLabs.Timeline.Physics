@@ -3,6 +3,7 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Core.Utility;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -10,6 +11,7 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     public partial struct PhysicsForceTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> _blendImpl;
@@ -21,8 +23,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetUnsafeComponentLookup<ActiveForce>(false);
-            _stateLookup = state.GetUnsafeComponentLookup<PhysicsForceState>(false);
+            _activeLookup = state.GetUnsafeComponentLookup<ActiveForce>();
+            _stateLookup = state.GetUnsafeComponentLookup<PhysicsForceState>();
             _entityLock = new EntityLock(Allocator.Persistent);
         }
 

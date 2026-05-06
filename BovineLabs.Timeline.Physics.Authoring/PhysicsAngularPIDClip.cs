@@ -24,9 +24,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PidAngularTargetMode targetMode = PidAngularTargetMode.LookAtTarget;
         public Vector3 targetRotationEuler = Vector3.zero;
 
-        [Header("Influence")]
-        [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")]
-        [Min(0f)] public float strength = 1f;
+        [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]
+        public float strength = 1f;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;

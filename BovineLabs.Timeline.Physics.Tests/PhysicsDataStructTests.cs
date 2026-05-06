@@ -1,6 +1,4 @@
-using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Physics.Smear;
 using NUnit.Framework;

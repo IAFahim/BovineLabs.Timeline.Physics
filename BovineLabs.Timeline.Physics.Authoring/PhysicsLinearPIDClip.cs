@@ -23,9 +23,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PidLinearTargetMode targetMode = PidLinearTargetMode.TargetLocal;
         public Vector3 targetOffset = new(0, 0, 0);
 
-        [Header("Influence")]
-        [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")]
-        [Min(0f)] public float strength = 1f;
+        [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]
+        public float strength = 1f;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;

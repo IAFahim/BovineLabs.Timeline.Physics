@@ -270,7 +270,8 @@ namespace BovineLabs.Timeline.Physics
 
                 PidAngularTargetMode.FleeFromTarget =>
                     ResolveLookAtTarget(transform.Position,
-                        transform.Position + (transform.Position - targetTransform.Position), transform.Rotation, config.TargetRotation),
+                        transform.Position + (transform.Position - targetTransform.Position), transform.Rotation,
+                        config.TargetRotation),
 
                 PidAngularTargetMode.MatchTargetOpposite =>
                     math.mul(math.mul(targetTransform.Rotation, quaternion.RotateY(math.PI)),

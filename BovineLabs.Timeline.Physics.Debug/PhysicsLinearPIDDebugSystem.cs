@@ -52,10 +52,10 @@ namespace BovineLabs.Timeline.Physics.Debug
             _targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
+            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
+            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
 
             Drawer drawer;
             if (!PhysicsLinearPIDDebugSystemConfig.Enabled.Data)

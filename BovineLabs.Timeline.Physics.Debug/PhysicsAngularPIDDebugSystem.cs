@@ -45,6 +45,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<DrawSystem.Singleton>();
             _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);

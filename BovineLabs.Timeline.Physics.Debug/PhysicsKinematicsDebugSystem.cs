@@ -1,5 +1,7 @@
 #if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
@@ -15,6 +17,22 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Debug
 {
+    [Configurable]
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
+    public static class PhysicsKinematicsDebugSystemConfig
+    {
+        private const string DrawForced = "physicskinematicsdebugsystem.force-draw";
+        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+
+        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
+        internal static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<PhysicsKinematicsDebugSystemForced>();
+
+        private struct PhysicsKinematicsDebugSystemForced
+        {
+        }
+    }
+
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
@@ -41,8 +59,13 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
-            var drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
-            if (!drawer.IsEnabled) return;
+            Drawer drawer;
+            if (!PhysicsKinematicsDebugSystemConfig.Enabled.Data)
+            {
+                drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
+                if (!drawer.IsEnabled) return;
+            }
+            else drawer = drawSystem.CreateDrawer();
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
                 ? SystemAPI.GetSingleton<PhysicsStep>().Gravity
                 : new float3(0, -9.81f, 0);

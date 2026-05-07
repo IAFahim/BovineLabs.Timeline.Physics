@@ -1,5 +1,7 @@
 #if UNITY_EDITOR || BL_DEBUG
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
@@ -15,6 +17,21 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Debug
 {
+    [Configurable]
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
+    public static class PhysicsLinearPIDDebugSystemConfig
+    {
+        private const string DrawForced = "physicslinearpiddebugsystem.force-draw";
+        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+
+        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
+        internal static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<PhysicsLinearPIDDebugSystemForced>();
+
+        private struct PhysicsLinearPIDDebugSystemForced { }
+    }
+
+
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
@@ -39,8 +56,13 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             if (!SystemAPI.TryGetSingleton<DrawSystem.Singleton>(out var drawSystem)) return;
 
-            var drawer = drawSystem.CreateDrawer<PhysicsLinearPIDDebugSystem>();
-            if(!drawer.IsEnabled) return; 
+            Drawer drawer;
+            if (!PhysicsLinearPIDDebugSystemConfig.Enabled.Data)
+            {
+                drawer = drawSystem.CreateDrawer<PhysicsLinearPIDDebugSystem>();
+                if (!drawer.IsEnabled) return;
+            }
+            else drawer = drawSystem.CreateDrawer();
 
             _localTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);

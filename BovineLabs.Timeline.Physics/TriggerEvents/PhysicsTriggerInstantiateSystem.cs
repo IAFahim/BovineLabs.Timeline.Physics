@@ -17,6 +17,8 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
 
+using EntityCache = BovineLabs.Core.Extensions.EntityCache;
+
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
@@ -141,7 +143,8 @@ namespace BovineLabs.Timeline.Physics
                         continue;
                     }
 
-                    var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                    var selfCache = EntityCache.Create(TargetsLookup, self);
+                    var targets = TargetsLookup.TryGetComponent(ref selfCache, out var selfTargets) ? selfTargets : default;
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
@@ -223,7 +226,8 @@ namespace BovineLabs.Timeline.Physics
                     var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
                     transform = LocalTransform.FromMatrix(localMatrix);
 
-                    var childs = ChildLookup.HasBuffer(parent) ? ChildLookup[parent] : default;
+                    var parentCache = EntityCache.Create(ChildLookup, parent);
+                    var childs = ChildLookup.TryGetBuffer(ref parentCache, out var parentChilds) ? parentChilds : default;
                     TransformUtility.SetupParent(ref commands, parent, instance, parentLtw, transform, childs);
                 }
 

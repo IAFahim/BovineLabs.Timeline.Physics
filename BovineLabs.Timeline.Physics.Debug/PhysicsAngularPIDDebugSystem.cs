@@ -1,7 +1,7 @@
 #if UNITY_EDITOR || BL_DEBUG
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
-using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
@@ -18,7 +18,8 @@ using UnityEngine;
 namespace BovineLabs.Timeline.Physics.Debug
 {
     [Configurable]
-    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented",
+        Justification = "Using see cref")]
     public static class PhysicsAngularPIDDebugSystemConfig
     {
         private const string DrawForced = "physicsangularpiddebugsystem.force-draw";
@@ -28,7 +29,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         internal static readonly SharedStatic<bool> Enabled =
             SharedStatic<bool>.GetOrCreate<PhysicsAngularPIDDebugSystemForced>();
 
-        private struct PhysicsAngularPIDDebugSystemForced { }
+        private struct PhysicsAngularPIDDebugSystemForced
+        {
+        }
     }
 
 
@@ -63,7 +66,10 @@ namespace BovineLabs.Timeline.Physics.Debug
                 drawer = drawSystem.CreateDrawer<PhysicsAngularPIDDebugSystem>();
                 if (!drawer.IsEnabled) return;
             }
-            else drawer = drawSystem.CreateDrawer();
+            else
+            {
+                drawer = drawSystem.CreateDrawer();
+            }
 
             _localTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);

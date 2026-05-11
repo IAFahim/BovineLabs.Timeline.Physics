@@ -1,7 +1,7 @@
 #if UNITY_EDITOR || BL_DEBUG
+using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
-using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
@@ -18,7 +18,8 @@ using UnityEngine;
 namespace BovineLabs.Timeline.Physics.Debug
 {
     [Configurable]
-    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
+    [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented",
+        Justification = "Using see cref")]
     public static class PhysicsKinematicsDebugSystemConfig
     {
         private const string DrawForced = "physicskinematicsdebugsystem.force-draw";
@@ -66,7 +67,11 @@ namespace BovineLabs.Timeline.Physics.Debug
                 drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
                 if (!drawer.IsEnabled) return;
             }
-            else drawer = drawSystem.CreateDrawer();
+            else
+            {
+                drawer = drawSystem.CreateDrawer();
+            }
+
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
                 ? SystemAPI.GetSingleton<PhysicsStep>().Gravity
                 : new float3(0, -9.81f, 0);

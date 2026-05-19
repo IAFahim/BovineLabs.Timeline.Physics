@@ -16,8 +16,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Angular drag multiplier. 0 = no drag. 50 = instant stop (at 50hz).")]
         public float angularDrag = 5f;
 
-        [Header("Stat Multiplier (Optional)")]
-        public StatSchemaObject strengthStat;
+        [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
+
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
@@ -27,7 +27,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1)) 
+            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
             context.Baker.AddComponent(clipEntity, new PhysicsDragAnimated

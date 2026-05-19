@@ -4,7 +4,6 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -106,7 +105,8 @@ namespace BovineLabs.Timeline.Physics
                     var config = drags[i].Config;
 
                     var targets = TargetsLookup.HasComponent(entity) ? TargetsLookup[entity] : default;
-                    float multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources, Links, StatLookup);
+                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
+                        Links, StatLookup);
 
                     if (multiplier <= 0.00001f) continue;
 

@@ -28,8 +28,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]
         public float strength = 1f;
 
-        [Header("Stat Multiplier (Optional)")]
-        public StatSchemaObject strengthStat;
+        [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
+
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
@@ -39,7 +39,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1)) 
+            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
             context.Baker.AddComponent(clipEntity, new PhysicsLinearPIDAnimated

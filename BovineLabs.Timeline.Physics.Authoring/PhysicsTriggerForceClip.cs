@@ -4,7 +4,6 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -28,11 +27,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Stat Multiplier (Optional)")]
         [Tooltip("If set, multiplies the base magnitude by the target's stat value.")]
         public StatSchemaObject strengthStat;
+
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
-        [Header("Apply To Target")]
-        public Target applyTo = Target.Target;
+        [Header("Apply To Target")] public Target applyTo = Target.Target;
+
         public EntityLinkSchema applyToLink;
 
         public override double duration => 1;
@@ -41,11 +41,11 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1)) 
+            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
             ushort applyToKey = 0;
-            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2)) 
+            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2))
                 applyToKey = k2;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerForceData

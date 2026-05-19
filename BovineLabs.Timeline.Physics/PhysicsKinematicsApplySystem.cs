@@ -4,7 +4,6 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -157,7 +156,8 @@ namespace BovineLabs.Timeline.Physics
                         continue;
 
                     var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    float multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources, Links, StatLookup);
+                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources,
+                        Links, StatLookup);
 
                     if (math.abs(multiplier) < 1e-5f)
                         continue;
@@ -221,7 +221,8 @@ namespace BovineLabs.Timeline.Physics
                         continue;
 
                     var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    float multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources, Links, StatLookup);
+                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources,
+                        Links, StatLookup);
 
                     if (math.abs(multiplier) < 1e-5f)
                         continue;
@@ -240,8 +241,8 @@ namespace BovineLabs.Timeline.Physics
                     if (isSet)
                     {
                         var current = currentVelocities[i];
-                        linearDelta = (linVel * multiplier) - current.Linear;
-                        angularDelta = (angVel * multiplier) - current.Angular;
+                        linearDelta = linVel * multiplier - current.Linear;
+                        angularDelta = angVel * multiplier - current.Angular;
                     }
                     else
                     {

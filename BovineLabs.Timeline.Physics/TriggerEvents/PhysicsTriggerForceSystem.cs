@@ -1,17 +1,15 @@
-using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
+using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
@@ -100,7 +98,6 @@ namespace BovineLabs.Timeline.Physics
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
 
                 if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                {
                     foreach (var evt in triggers)
                     {
                         if (evt.State != cfg.EventState || !LtwLookup.HasComponent(evt.EntityB)) continue;
@@ -109,10 +106,8 @@ namespace BovineLabs.Timeline.Physics
                         var midpoint = (selfPos + otherPos) * 0.5f;
                         ProcessEvent(self, evt.EntityB, in cfg, midpoint, in targets);
                     }
-                }
 
                 if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                {
                     foreach (var evt in collisions)
                     {
                         if (evt.State != cfg.EventState || !LtwLookup.HasComponent(evt.EntityB)) continue;
@@ -122,7 +117,6 @@ namespace BovineLabs.Timeline.Physics
                         var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                         ProcessEvent(self, evt.EntityB, in cfg, pt, in targets);
                     }
-                }
             }
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint,
@@ -132,7 +126,8 @@ namespace BovineLabs.Timeline.Physics
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
-                float multiplier = StatStrengthUtility.Resolve(in cfg.Strength, self, targets, LinkSources, Links, StatLookup);
+                var multiplier =
+                    StatStrengthUtility.Resolve(in cfg.Strength, self, targets, LinkSources, Links, StatLookup);
 
                 if (math.abs(multiplier) < 1e-5f || math.abs(cfg.Magnitude) < 1e-5f) return;
 
@@ -154,7 +149,7 @@ namespace BovineLabs.Timeline.Physics
                         var dir = origin - targetLtw.Position;
                         var lenSq = math.lengthsq(dir);
                         if (lenSq > 1e-5f)
-                            force = (dir / math.sqrt(lenSq)) * magnitude;
+                            force = dir / math.sqrt(lenSq) * magnitude;
                         break;
                     }
                     case PhysicsTriggerForceType.Vortex:
@@ -172,14 +167,12 @@ namespace BovineLabs.Timeline.Physics
                 }
 
                 if (math.lengthsq(force) > 1e-5f)
-                {
                     Gathered.Enqueue(new GatheredForce
                     {
                         Target = targetToApply,
                         Force = force,
                         Mode = cfg.Mode
                     });
-                }
             }
         }
 

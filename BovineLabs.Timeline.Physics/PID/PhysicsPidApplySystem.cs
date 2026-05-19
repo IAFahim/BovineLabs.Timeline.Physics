@@ -4,7 +4,6 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -174,18 +173,17 @@ namespace BovineLabs.Timeline.Physics
                         out var force, out var nextState);
 
                     var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    float multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, entities[i], targets, LinkSources, Links, StatLookup);
+                    var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, entities[i], targets,
+                        LinkSources, Links, StatLookup);
 
                     force *= config.Strength * multiplier;
 
                     if (math.lengthsq(force) > 1e-5f)
-                    {
                         bufferAccessor[i].Add(new PendingForce
                         {
                             Linear = force * DeltaTime,
                             Angular = float3.zero
                         });
-                    }
 
                     nextState.CapturedTargetPosition = capturedPos;
                     s.State = nextState;
@@ -233,18 +231,17 @@ namespace BovineLabs.Timeline.Physics
                         out var torque, out var nextState);
 
                     var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    float multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, entities[i], targets, LinkSources, Links, StatLookup);
+                    var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, entities[i], targets,
+                        LinkSources, Links, StatLookup);
 
                     torque *= config.Strength * multiplier;
 
                     if (math.lengthsq(torque) > 1e-5f)
-                    {
                         bufferAccessor[i].Add(new PendingForce
                         {
                             Linear = float3.zero,
                             Angular = torque * DeltaTime
                         });
-                    }
 
                     var s = states[i];
                     s.State = nextState;

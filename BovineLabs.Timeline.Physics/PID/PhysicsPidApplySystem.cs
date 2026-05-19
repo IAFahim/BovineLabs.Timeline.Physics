@@ -172,6 +172,9 @@ namespace BovineLabs.Timeline.Physics
                     PhysicsMath.ComputePidForce(error, config.Tuning, s.State, DeltaTime,
                         out var force, out var nextState);
 
+                    // Preserve captured position for InitialLocal mode
+                    nextState.CapturedTargetPosition = capturedPos;
+
                     var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, entities[i], targets,
                         LinkSources, Links, StatLookup);
@@ -185,7 +188,6 @@ namespace BovineLabs.Timeline.Physics
                             Angular = float3.zero
                         });
 
-                    nextState.CapturedTargetPosition = capturedPos;
                     s.State = nextState;
                     states[i] = s;
                 }

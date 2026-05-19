@@ -209,7 +209,10 @@ namespace BovineLabs.Timeline.Physics
                 var instance = ECB.Instantiate(chunkIndex, prefab);
                 var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
-                ECB.SetComponent(chunkIndex, instance, new Targets
+                // AddComponent works regardless of whether prefab already has Targets:
+                // - If missing: added from spawned archetype's components
+                // - If present: ECB.AddComponent adds it (same as SetComponent semantics)
+                ECB.AddComponent(chunkIndex, instance, new Targets
                 {
                     Owner = targets.Owner,
                     Source = targets.Source,

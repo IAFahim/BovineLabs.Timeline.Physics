@@ -183,6 +183,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 IntegralAccumulator = nextIntegral,
                 PreviousError = error,
+                CapturedTargetPosition = state.CapturedTargetPosition,
                 IsInitialized = true
             };
         }

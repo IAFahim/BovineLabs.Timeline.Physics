@@ -26,6 +26,13 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
                     "Useful for blending PID in/out via Timeline clip weight or curves."));
         }
 
+        public static void DrawStatSection(SerializedObject serializedObject)
+        {
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("strengthStat"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("readStatFrom"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("readStatLink"));
+        }
+
         public static void DrawGains(Object target, SerializedProperty tuning, SerializedProperty uniform)
         {
             uniform.boolValue = EditorGUILayout.Toggle(

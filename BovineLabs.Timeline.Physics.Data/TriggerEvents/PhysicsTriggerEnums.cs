@@ -1,3 +1,5 @@
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics
 {
     public enum PhysicsTriggerPositionMode : byte

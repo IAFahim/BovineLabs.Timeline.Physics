@@ -23,6 +23,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<ActiveLinearPid>(target);
                     ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
                     ecb.AddComponent<PhysicsLinearPIDState>(target);
+                    EnsureAccumulationBuffers(ref ecb, target, em);
                 }
             }
 
@@ -35,6 +36,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<ActiveAngularPid>(target);
                     ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
                     ecb.AddComponent<PhysicsAngularPIDState>(target);
+                    EnsureAccumulationBuffers(ref ecb, target, em);
                 }
             }
 
@@ -47,6 +49,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<ActiveForce>(target);
                     ecb.SetComponentEnabled<ActiveForce>(target, false);
                     ecb.AddComponent<PhysicsForceState>(target);
+                    EnsureAccumulationBuffers(ref ecb, target, em);
                 }
             }
 
@@ -59,6 +62,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<ActiveVelocity>(target);
                     ecb.SetComponentEnabled<ActiveVelocity>(target, false);
                     ecb.AddComponent<PhysicsVelocityState>(target);
+                    EnsureAccumulationBuffers(ref ecb, target, em);
                 }
             }
 
@@ -75,6 +79,15 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             ecb.Playback(em);
             ecb.Dispose();
+        }
+
+        private static void EnsureAccumulationBuffers(ref EntityCommandBuffer ecb, Entity target, EntityManager em)
+        {
+            if (!em.HasBuffer<PendingForce>(target))
+                ecb.AddBuffer<PendingForce>(target);
+
+            if (!em.HasBuffer<PendingVelocity>(target))
+                ecb.AddBuffer<PendingVelocity>(target);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsTriggerForceType forceType = PhysicsTriggerForceType.Radial;
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
 
-        [Tooltip("Base magnitude. For radial: Positive pushes out (Explosion), Negative pulls in (Implosion).")]
+        [Tooltip("Base magnitude. For radial: Positive pulls in (Implosion), Negative pushes out (Explosion).")]
         public float magnitude = 10f;
 
         [Tooltip("Used only when Force Type is Directional.")]
@@ -56,9 +56,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 Magnitude = magnitude,
                 Direction = direction,
                 OriginMode = originMode,
-                StrengthStat = strengthStat != null ? strengthStat.Key : default,
-                ReadStatFrom = readStatFrom,
-                ReadStatLinkKey = readStatKey,
+                Strength = new StatStrengthConfig
+                {
+                    Stat = strengthStat != null ? strengthStat.Key : default,
+                    ReadFrom = readStatFrom,
+                    LinkKey = readStatKey
+                },
                 ApplyTo = applyTo,
                 ApplyToLinkKey = applyToKey
             });

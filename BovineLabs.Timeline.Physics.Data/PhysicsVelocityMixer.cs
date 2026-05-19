@@ -11,7 +11,8 @@ namespace BovineLabs.Timeline.Physics
                 Mode = s < 0.5f ? a.Mode : b.Mode,
                 Linear = math.lerp(a.Linear, b.Linear, s),
                 Angular = math.lerp(a.Angular, b.Angular, s),
-                Space = s < 0.5f ? a.Space : b.Space
+                Space = s < 0.5f ? a.Space : b.Space,
+                Strength = s < 0.5f ? a.Strength : b.Strength
             };
         }
 
@@ -22,7 +23,8 @@ namespace BovineLabs.Timeline.Physics
                 Mode = a.Mode,
                 Linear = a.Linear + b.Linear,
                 Angular = a.Angular + b.Angular,
-                Space = a.Space
+                Space = a.Space,
+                Strength = a.Strength
             };
         }
     }

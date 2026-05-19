@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics
         public PidAngularTargetMode TargetMode;
         public quaternion TargetRotation;
         public float Strength;
+        public StatStrengthConfig StrengthStat;
     }
 
     public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>
@@ -41,7 +42,8 @@ namespace BovineLabs.Timeline.Physics
                 TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
                 TargetRotation = math.slerp(a.TargetRotation, b.TargetRotation, s),
-                Strength = math.lerp(a.Strength, b.Strength, s)
+                Strength = math.lerp(a.Strength, b.Strength, s),
+                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
             };
         }
 
@@ -53,7 +55,8 @@ namespace BovineLabs.Timeline.Physics
                 TrackingTarget = a.TrackingTarget,
                 TargetMode = a.TargetMode,
                 TargetRotation = math.mul(a.TargetRotation, b.TargetRotation),
-                Strength = a.Strength + b.Strength
+                Strength = a.Strength + b.Strength,
+                StrengthStat = a.StrengthStat
             };
         }
     }

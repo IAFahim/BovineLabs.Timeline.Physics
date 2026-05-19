@@ -22,9 +22,7 @@ namespace BovineLabs.Timeline.Physics
         public float3 Direction;
         public PhysicsTriggerPositionMode OriginMode;
 
-        public StatKey StrengthStat;
-        public Target ReadStatFrom;
-        public ushort ReadStatLinkKey;
+        public StatStrengthConfig Strength;
 
         public Target ApplyTo;
         public ushort ApplyToLinkKey;

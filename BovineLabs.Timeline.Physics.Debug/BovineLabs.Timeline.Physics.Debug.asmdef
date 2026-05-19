@@ -13,7 +13,8 @@
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms",
-    "BovineLabs.Reaction.Data"
+    "BovineLabs.Reaction.Data",
+    "BovineLabs.Essence.Data"
   ],
   "includePlatforms": [
     "Editor"

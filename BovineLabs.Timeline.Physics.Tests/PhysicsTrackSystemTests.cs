@@ -79,7 +79,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(1, 0, 0), Angular = float3.zero };
             var drag = new PhysicsDragData { Linear = 1f, Angular = 0f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, 1f, out var result);
 
             Assert.AreEqual(math.exp(-1f), result.Linear.x, 0.0001f);
             Assert.AreEqual(0f, result.Linear.y, 0.0001f);

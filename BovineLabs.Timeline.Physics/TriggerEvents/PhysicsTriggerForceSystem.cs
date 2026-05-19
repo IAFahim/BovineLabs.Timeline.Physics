@@ -24,8 +24,7 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
         private BufferLookup<Stat> _statLookup;
-        private ComponentLookup<PhysicsVelocity> _velocityLookup;
-        private ComponentLookup<PhysicsMass> _massLookup;
+        private BufferLookup<PendingForce> _pendingForceLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -35,8 +34,7 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
-            _velocityLookup = state.GetComponentLookup<PhysicsVelocity>();
-            _massLookup = state.GetComponentLookup<PhysicsMass>(true);
+            _pendingForceLookup = state.GetBufferLookup<PendingForce>();
         }
 
         [BurstCompile]
@@ -47,15 +45,14 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup.Update(ref state);
             _ltwLookup.Update(ref state);
             _statLookup.Update(ref state);
-            _velocityLookup.Update(ref state);
-            _massLookup.Update(ref state);
+            _pendingForceLookup.Update(ref state);
 
-            var pendingForces = new NativeQueue<PendingForce>(state.WorldUpdateAllocator);
+            var gathered = new NativeQueue<GatheredForce>(state.WorldUpdateAllocator);
 
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
-                PendingForces = pendingForces.AsParallelWriter(),
+                Gathered = gathered.AsParallelWriter(),
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -65,16 +62,15 @@ namespace BovineLabs.Timeline.Physics
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(state.Dependency);
 
-            state.Dependency = new ApplyJob
+            state.Dependency = new AppendJob
             {
-                PendingForces = pendingForces,
+                Gathered = gathered,
                 DeltaTime = SystemAPI.Time.DeltaTime,
-                VelocityLookup = _velocityLookup,
-                MassLookup = _massLookup
+                PendingForceLookup = _pendingForceLookup
             }.Schedule(state.Dependency);
         }
 
-        private struct PendingForce
+        private struct GatheredForce
         {
             public Entity Target;
             public float3 Force;
@@ -86,8 +82,8 @@ namespace BovineLabs.Timeline.Physics
         private partial struct GatherJob : IJobEntity
         {
             public float DeltaTime;
-            public NativeQueue<PendingForce>.ParallelWriter PendingForces;
-            
+            public NativeQueue<GatheredForce>.ParallelWriter Gathered;
+
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
@@ -129,35 +125,22 @@ namespace BovineLabs.Timeline.Physics
                 }
             }
 
-            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint, in Targets targets)
+            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint,
+                in Targets targets)
             {
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
-                float multiplier = 1f;
-                if (cfg.StrengthStat.Value != 0)
-                {
-                    if (PhysicsTriggerResolution.TryResolveLinkedTarget(
-                            cfg.ReadStatFrom, cfg.ReadStatLinkKey, self, other, targets, LinkSources,
-                            Links, out var statEntity))
-                    {
-                        if (StatLookup.TryGetBuffer(statEntity, out var statsBuffer))
-                        {
-                            multiplier = statsBuffer.AsMap().GetValueFloat(cfg.StrengthStat);
-                        }
-                    }
-                }
+                float multiplier = StatStrengthUtility.Resolve(in cfg.Strength, self, targets, LinkSources, Links, StatLookup);
 
                 if (math.abs(multiplier) < 1e-5f || math.abs(cfg.Magnitude) < 1e-5f) return;
 
                 var selfLtw = LtwLookup[self];
-                
-                // If target doesn't have LocalToWorld, default to collision other for position resolving
                 var targetLtw = LtwLookup.HasComponent(targetToApply) ? LtwLookup[targetToApply] : LtwLookup[other];
                 var magnitude = cfg.Magnitude * multiplier;
 
-                float3 force = float3.zero;
+                var force = float3.zero;
 
                 switch (cfg.ForceType)
                 {
@@ -166,33 +149,31 @@ namespace BovineLabs.Timeline.Physics
                         break;
                     case PhysicsTriggerForceType.Radial:
                     {
-                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint, out var origin);
-                        var dir = targetLtw.Position - origin;
+                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint,
+                            out var origin);
+                        var dir = origin - targetLtw.Position;
                         var lenSq = math.lengthsq(dir);
                         if (lenSq > 1e-5f)
-                        {
                             force = (dir / math.sqrt(lenSq)) * magnitude;
-                        }
                         break;
                     }
                     case PhysicsTriggerForceType.Vortex:
                     {
-                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint, out var origin);
+                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint,
+                            out var origin);
                         var offset = targetLtw.Position - origin;
                         var up = math.rotate(selfLtw.Rotation, math.up());
                         var projOffset = offset - math.dot(offset, up) * up;
                         var lenSq = math.lengthsq(projOffset);
                         if (lenSq > 1e-5f)
-                        {
                             force = math.normalize(math.cross(up, projOffset)) * magnitude;
-                        }
                         break;
                     }
                 }
 
                 if (math.lengthsq(force) > 1e-5f)
                 {
-                    PendingForces.Enqueue(new PendingForce
+                    Gathered.Enqueue(new GatheredForce
                     {
                         Target = targetToApply,
                         Force = force,
@@ -203,27 +184,26 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        private struct ApplyJob : IJob
+        private struct AppendJob : IJob
         {
-            public NativeQueue<PendingForce> PendingForces;
+            public NativeQueue<GatheredForce> Gathered;
             public float DeltaTime;
-            public ComponentLookup<PhysicsVelocity> VelocityLookup;
-            [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
+            public BufferLookup<PendingForce> PendingForceLookup;
 
             public void Execute()
             {
-                while (PendingForces.TryDequeue(out var pending))
+                while (Gathered.TryDequeue(out var entry))
                 {
-                    if (!VelocityLookup.TryGetComponent(pending.Target, out var velocity)) continue;
+                    if (!PendingForceLookup.TryGetBuffer(entry.Target, out var buffer))
+                        continue;
 
-                    var mass = MassLookup.TryGetComponent(pending.Target, out var m)
-                        ? m
-                        : Unity.Physics.PhysicsMass.CreateKinematic(Unity.Physics.MassProperties.UnitSphere);
+                    var timeScale = entry.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
 
-                    var t = pending.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-
-                    PhysicsMath.ApplyLinearForce(velocity, mass, pending.Force, t, out var newVelocity);
-                    VelocityLookup[pending.Target] = newVelocity;
+                    buffer.Add(new PendingForce
+                    {
+                        Linear = entry.Force * timeScale,
+                        Angular = float3.zero
+                    });
                 }
             }
         }

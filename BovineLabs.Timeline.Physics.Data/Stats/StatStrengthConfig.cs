@@ -9,8 +9,6 @@ namespace BovineLabs.Timeline.Physics
         public Target ReadFrom;
         public ushort LinkKey;
 
-        public bool IsEnabled => Stat.Value != 0;
-
-        public static readonly StatStrengthConfig None = default;
+        public bool IsEnabled() => Stat.Value != 0;
     }
 }

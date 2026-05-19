@@ -14,7 +14,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(1, 2, 3), Angular = new float3(4, 5, 6) };
             var drag = new PhysicsDragData { Linear = 2f, Angular = 3f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 0f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 0f, 1f, out var result);
 
             Assert.AreEqual(vel.Linear.x, result.Linear.x);
             Assert.AreEqual(vel.Linear.y, result.Linear.y);
@@ -30,7 +30,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = new float3(0, 10, 0) };
             var drag = new PhysicsDragData { Linear = 1f, Angular = 1f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, -1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, -1f, 1f, out var result);
 
             Assert.AreEqual(vel.Linear, result.Linear);
             Assert.AreEqual(vel.Angular, result.Angular);
@@ -42,7 +42,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(5, 6, 7), Angular = new float3(8, 9, 10) };
             var drag = new PhysicsDragData { Linear = 0f, Angular = 0f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, 1f, out var result);
 
             Assert.AreEqual(vel.Linear, result.Linear);
             Assert.AreEqual(vel.Angular, result.Angular);
@@ -54,7 +54,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(100, 0, 0), Angular = float3.zero };
             var drag = new PhysicsDragData { Linear = 1f, Angular = 0f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, 1f, out var result);
 
             Assert.Less(result.Linear.x, 100f);
             Assert.Greater(result.Linear.x, 0f);
@@ -66,7 +66,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = float3.zero, Angular = new float3(0, 50, 0) };
             var drag = new PhysicsDragData { Linear = 0f, Angular = 2f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, 1f, out var result);
 
             Assert.Less(result.Angular.y, 50f);
             Assert.Greater(result.Angular.y, 0f);
@@ -78,7 +78,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(1, 1, 1), Angular = new float3(1, 1, 1) };
             var drag = new PhysicsDragData { Linear = 100f, Angular = 100f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, out var result);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 1f, 1f, out var result);
 
             Assert.Less(math.length(result.Linear), 0.01f);
             Assert.Less(math.length(result.Angular), 0.01f);
@@ -90,9 +90,9 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = float3.zero };
 
             PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 1f, Angular = 0f }, 1f,
-                out var low);
+                1f, out var low);
             PhysicsMath.ComputeExponentialDecay(vel, new PhysicsDragData { Linear = 5f, Angular = 0f }, 1f,
-                out var high);
+                1f, out var high);
 
             Assert.Less(high.Linear.x, low.Linear.x);
         }
@@ -103,8 +103,8 @@ namespace BovineLabs.Timeline.Physics.Tests
             var vel = new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = float3.zero };
             var drag = new PhysicsDragData { Linear = 1f, Angular = 0f };
 
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 0.5f, out var shortDt);
-            PhysicsMath.ComputeExponentialDecay(vel, drag, 2f, out var longDt);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 0.5f, 1f, out var shortDt);
+            PhysicsMath.ComputeExponentialDecay(vel, drag, 2f, 1f, out var longDt);
 
             Assert.Less(longDt.Linear.x, shortDt.Linear.x);
         }

@@ -1,5 +1,7 @@
+using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -26,11 +28,20 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]
         public float strength = 1f;
 
+        [Header("Stat Multiplier (Optional)")]
+        public StatSchemaObject strengthStat;
+        public Target readStatFrom = Target.Self;
+        public EntityLinkSchema readStatLink;
+
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            ushort readStatKey = 0;
+            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1)) 
+                readStatKey = k1;
+
             context.Baker.AddComponent(clipEntity, new PhysicsLinearPIDAnimated
             {
                 AuthoredData = new PhysicsLinearPIDData
@@ -39,7 +50,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     TrackingTarget = trackingTarget,
                     TargetMode = targetMode,
                     TargetOffset = targetOffset,
-                    Strength = strength
+                    Strength = strength,
+                    StrengthStat = new StatStrengthConfig
+                    {
+                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        ReadFrom = readStatFrom,
+                        LinkKey = readStatKey
+                    }
                 }
             });
 

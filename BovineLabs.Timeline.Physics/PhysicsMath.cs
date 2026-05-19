@@ -39,13 +39,13 @@ namespace BovineLabs.Timeline.Physics
         }
 
         public static void ComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag,
-            float deltaTime, out PhysicsVelocity velocityOut)
+            float deltaTime, float multiplier, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             if (deltaTime <= 0f) return;
 
-            velocityOut.Linear *= math.exp(-drag.Linear * deltaTime);
-            velocityOut.Angular *= math.exp(-drag.Angular * deltaTime);
+            velocityOut.Linear *= math.exp(-drag.Linear * multiplier * deltaTime);
+            velocityOut.Angular *= math.exp(-drag.Angular * multiplier * deltaTime);
         }
 
         public static void DrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos,

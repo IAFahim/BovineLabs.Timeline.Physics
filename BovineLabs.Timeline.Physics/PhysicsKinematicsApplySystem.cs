@@ -28,7 +28,6 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
@@ -57,7 +56,6 @@ namespace BovineLabs.Timeline.Physics
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
         }
 
@@ -77,7 +75,6 @@ namespace BovineLabs.Timeline.Physics
             _velocityStateHandle.Update(ref state);
 
             _targetsLookup.Update(ref state);
-            _targetsCustomLookup.Update(ref state);
             _transformLookup.Update(ref state);
 
             state.Dependency = new ApplyForceJob
@@ -88,7 +85,6 @@ namespace BovineLabs.Timeline.Physics
                 ActiveForceHandle = _activeForceHandle,
                 ForceStateHandle = _forceStateHandle,
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
             }.ScheduleParallel(_forceQuery, state.Dependency);
 
@@ -100,7 +96,6 @@ namespace BovineLabs.Timeline.Physics
                 ActiveVelocityHandle = _activeVelocityHandle,
                 VelocityStateHandle = _velocityStateHandle,
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
             }.ScheduleParallel(_velocityQuery, state.Dependency);
         }
@@ -115,7 +110,6 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsForceState> ForceStateHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -135,9 +129,9 @@ namespace BovineLabs.Timeline.Physics
                     if (config.Mode == PhysicsForceMode.Impulse && s.Fired) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var linForce);
+                        in TransformLookup, out var linForce);
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var angForce);
+                        in TransformLookup, out var angForce);
 
                     var mass = facet.Mass.IsValid
                         ? facet.Mass.ValueRO
@@ -170,7 +164,6 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -192,9 +185,9 @@ namespace BovineLabs.Timeline.Physics
                     if (isInstant && s.Fired) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var linVel);
+                        in TransformLookup, out var linVel);
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                        in TargetsCustomLookup, in TransformLookup, out var angVel);
+                        in TransformLookup, out var angVel);
 
                     var v = facet.Velocity.ValueRO;
 

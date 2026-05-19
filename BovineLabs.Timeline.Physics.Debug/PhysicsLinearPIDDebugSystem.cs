@@ -43,7 +43,6 @@ namespace BovineLabs.Timeline.Physics.Debug
         private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -52,7 +51,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -74,15 +72,13 @@ namespace BovineLabs.Timeline.Physics.Debug
             _localTransformLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _targetsLookup.Update(ref state);
-            _targetsCustomsLookup.Update(ref state);
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
                 TransformLookup = _localTransformLookup,
                 VelocityLookup = _velocityLookup,
-                TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomsLookup
+                TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
         }
 
@@ -94,7 +90,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
             private void Execute(in TrackBinding binding, in PhysicsLinearPIDAnimated animated, in LocalTime localTime)
             {
@@ -102,7 +97,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 PhysicsMath.ResolveLinearPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                    in TargetsCustomLookup, in TransformLookup, out var finalPos);
+                    in TransformLookup, out var finalPos);
 
                 Drawer.Line(transform.Position, finalPos, Color.yellow);
                 Drawer.Point(finalPos, 0.2f, Color.red);

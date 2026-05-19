@@ -43,7 +43,6 @@ namespace BovineLabs.Timeline.Physics.Debug
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<PhysicsMass> _massLookup;
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -53,7 +52,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _massLookup = state.GetComponentLookup<PhysicsMass>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomsLookup = state.GetComponentLookup<TargetsCustom>(true);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -80,7 +78,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             _velocityLookup.Update(ref state);
             _massLookup.Update(ref state);
             _targetsLookup.Update(ref state);
-            _targetsCustomsLookup.Update(ref state);
 
             state.Dependency = new DrawForceJob
             {
@@ -89,8 +86,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 TransformLookup = _localTransformLookup,
                 VelocityLookup = _velocityLookup,
                 MassLookup = _massLookup,
-                TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomsLookup
+                TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
 
             state.Dependency = new DrawVelocityJob
@@ -99,8 +95,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Gravity = gravity,
                 TransformLookup = _localTransformLookup,
                 VelocityLookup = _velocityLookup,
-                TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomsLookup
+                TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
         }
 
@@ -114,7 +109,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
             private void Execute(in TrackBinding binding, in PhysicsForceAnimated animated, in PhysicsForceState state)
             {
@@ -122,8 +116,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
-                    in TargetsLookup,
-                    in TargetsCustomLookup, in TransformLookup, out var forceVec);
+                    in TargetsLookup, in TransformLookup, out var forceVec);
 
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
@@ -163,7 +156,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
 
             private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated,
                 in PhysicsVelocityState state)
@@ -172,8 +164,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
 
                 PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
-                    in TargetsLookup,
-                    in TargetsCustomLookup, in TransformLookup, out var targetVel);
+                    in TargetsLookup, in TransformLookup, out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
                 Drawer.Arrow(transform.Position, targetVel, Color.cyan);

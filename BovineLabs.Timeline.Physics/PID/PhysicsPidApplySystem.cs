@@ -31,7 +31,6 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<ActiveAngularPid> _activeAngularHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeComponentLookup<LocalTransform> _transformLookup;
 
         [BurstCompile]
@@ -60,7 +59,6 @@ namespace BovineLabs.Timeline.Physics
             _activeAngularHandle = state.GetComponentTypeHandle<ActiveAngularPid>(true);
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
         }
 
@@ -80,7 +78,6 @@ namespace BovineLabs.Timeline.Physics
             _activeAngularHandle.Update(ref state);
 
             _targetsLookup.Update(ref state);
-            _targetsCustomLookup.Update(ref state);
             _transformLookup.Update(ref state);
 
             state.Dependency = new ApplyLinearJob
@@ -91,7 +88,6 @@ namespace BovineLabs.Timeline.Physics
                 StateHandle = _linearStateHandle,
                 ActiveHandle = _activeLinearHandle,
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
             }.ScheduleParallel(_linearQuery, state.Dependency);
 
@@ -103,7 +99,6 @@ namespace BovineLabs.Timeline.Physics
                 StateHandle = _angularStateHandle,
                 ActiveHandle = _activeAngularHandle,
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 TransformLookup = _transformLookup
             }.ScheduleParallel(_angularQuery, state.Dependency);
         }
@@ -118,7 +113,6 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<ActiveLinearPid> ActiveHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -136,7 +130,7 @@ namespace BovineLabs.Timeline.Physics
                     var config = actives[i].Config;
 
                     PhysicsMath.ResolveLinearPidTarget(facet.Transform.ValueRO, config, entities[i],
-                        in TargetsLookup, in TargetsCustomLookup, in TransformLookup,
+                        in TargetsLookup, in TransformLookup,
                         out var resolvedTarget);
 
                     float3 targetPos;
@@ -187,7 +181,6 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<ActiveAngularPid> ActiveHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -203,7 +196,7 @@ namespace BovineLabs.Timeline.Physics
                     var facet = resolved[i];
 
                     PhysicsMath.ResolveAngularPidTarget(facet.Transform.ValueRO, actives[i].Config, entities[i],
-                        in TargetsLookup, in TargetsCustomLookup, in TransformLookup, out var targetRot);
+                        in TargetsLookup, in TransformLookup, out var targetRot);
 
                     PhysicsMath.ComputeAngularError(facet.Transform.ValueRO.Rotation, targetRot, out var error);
 

@@ -20,7 +20,6 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
@@ -32,7 +31,6 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
@@ -45,7 +43,6 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             _targetsLookup.Update(ref state);
-            _targetsCustomLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _ltwLookup.Update(ref state);
@@ -60,7 +57,6 @@ namespace BovineLabs.Timeline.Physics
                 DeltaTime = SystemAPI.Time.DeltaTime,
                 PendingForces = pendingForces.AsParallelWriter(),
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 LtwLookup = _ltwLookup,
@@ -93,7 +89,6 @@ namespace BovineLabs.Timeline.Physics
             public NativeQueue<PendingForce>.ParallelWriter PendingForces;
             
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
@@ -137,14 +132,14 @@ namespace BovineLabs.Timeline.Physics
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint, in Targets targets)
             {
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, TargetsCustomLookup, LinkSources,
+                        cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
                 float multiplier = 1f;
                 if (cfg.StrengthStat.Value != 0)
                 {
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(
-                            cfg.ReadStatFrom, cfg.ReadStatLinkKey, self, other, targets, TargetsCustomLookup, LinkSources,
+                            cfg.ReadStatFrom, cfg.ReadStatLinkKey, self, other, targets, LinkSources,
                             Links, out var statEntity))
                     {
                         if (StatLookup.TryGetBuffer(statEntity, out var statsBuffer))

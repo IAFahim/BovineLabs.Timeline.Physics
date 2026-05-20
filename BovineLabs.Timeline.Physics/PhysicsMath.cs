@@ -16,7 +16,6 @@ namespace BovineLabs.Timeline.Physics
             float3 vector,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in ComponentLookup<TargetsCustom> customLookup,
             in UnsafeComponentLookup<LocalTransform> transformLookup,
             out float3 resolvedVector)
         {
@@ -28,7 +27,7 @@ namespace BovineLabs.Timeline.Physics
 
             var targetEntity = entity;
             if (space != Target.Self && targetsLookup.TryGetComponent(entity, out var targets))
-                targetEntity = targets.Get(space, entity, customLookup);
+                targetEntity = targets.Get(space, entity);
 
             if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var lt))
             {
@@ -40,13 +39,13 @@ namespace BovineLabs.Timeline.Physics
         }
 
         public static void ComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag,
-            float deltaTime, out PhysicsVelocity velocityOut)
+            float deltaTime, float multiplier, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             if (deltaTime <= 0f) return;
 
-            velocityOut.Linear *= math.exp(-drag.Linear * deltaTime);
-            velocityOut.Angular *= math.exp(-drag.Angular * deltaTime);
+            velocityOut.Linear *= math.exp(-drag.Linear * multiplier * deltaTime);
+            velocityOut.Angular *= math.exp(-drag.Angular * multiplier * deltaTime);
         }
 
         public static void DrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos,
@@ -184,6 +183,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 IntegralAccumulator = nextIntegral,
                 PreviousError = error,
+                CapturedTargetPosition = state.CapturedTargetPosition,
                 IsInitialized = true
             };
         }
@@ -211,13 +211,12 @@ namespace BovineLabs.Timeline.Physics
             in PhysicsLinearPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in ComponentLookup<TargetsCustom> targetsCustoms,
             in UnsafeComponentLookup<LocalTransform> transformLookup,
             out float3 targetPosition)
         {
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
-                targetEntity = targets.Get(config.TrackingTarget, entity, targetsCustoms);
+                targetEntity = targets.Get(config.TrackingTarget, entity);
 
             if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
                 targetTransform = transform;
@@ -246,13 +245,12 @@ namespace BovineLabs.Timeline.Physics
             in PhysicsAngularPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in ComponentLookup<TargetsCustom> targetsCustoms,
             in UnsafeComponentLookup<LocalTransform> transformLookup,
             out quaternion targetRotation)
         {
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
-                targetEntity = targets.Get(config.TrackingTarget, entity, targetsCustoms);
+                targetEntity = targets.Get(config.TrackingTarget, entity);
 
             if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
                 targetTransform = transform;

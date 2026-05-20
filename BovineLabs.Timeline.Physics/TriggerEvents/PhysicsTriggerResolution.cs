@@ -53,7 +53,6 @@ namespace BovineLabs.Timeline.Physics
             Entity self,
             Entity other,
             in Targets targets,
-            in ComponentLookup<TargetsCustom> customLookup,
             out Entity target)
         {
             target = mode switch
@@ -62,8 +61,7 @@ namespace BovineLabs.Timeline.Physics
                 Target.Target => other,
                 Target.Owner => targets.Owner,
                 Target.Source => targets.Source,
-                Target.Custom0 => customLookup.TryGetComponent(self, out var custom) ? custom.Target0 : Entity.Null,
-                Target.Custom1 => customLookup.TryGetComponent(self, out var custom) ? custom.Target1 : Entity.Null,
+                Target.Custom => targets.Custom,
                 _ => Entity.Null
             };
 
@@ -76,14 +74,13 @@ namespace BovineLabs.Timeline.Physics
             Entity self,
             Entity other,
             in Targets targets,
-            in ComponentLookup<TargetsCustom> customLookup,
             in UnsafeComponentLookup<EntityLinkSource> sources,
             in UnsafeBufferLookup<EntityLinkEntry> links,
             out Entity resolved)
         {
             resolved = Entity.Null;
 
-            if (!TryResolveTarget(targetMode, self, other, targets, customLookup, out var target)) return false;
+            if (!TryResolveTarget(targetMode, self, other, targets, out var target)) return false;
 
             if (linkKey == 0)
             {

@@ -31,7 +31,6 @@ namespace BovineLabs.Timeline.Physics
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
@@ -54,7 +53,6 @@ namespace BovineLabs.Timeline.Physics
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
@@ -69,7 +67,6 @@ namespace BovineLabs.Timeline.Physics
             _dataHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
-            _targetsCustomLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
             _collisionEventsLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
@@ -88,7 +85,6 @@ namespace BovineLabs.Timeline.Physics
                 DataHandle = _dataHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
                 CollisionEventsLookup = _collisionEventsLookup,
                 LinkSources = _linkSourceLookup,
@@ -118,7 +114,6 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -183,14 +178,14 @@ namespace BovineLabs.Timeline.Physics
                 var spawnTarget = other;
                 if (cfg.TargetLinkKey != 0)
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(
-                            Target.Target, cfg.TargetLinkKey, self, other, targets, TargetsCustomLookup, LinkSources,
+                            Target.Target, cfg.TargetLinkKey, self, other, targets, LinkSources,
                             Links, out var resolvedTarget))
                         spawnTarget = resolvedTarget;
 
                 var parent = Entity.Null;
                 if (cfg.AssignParent != Target.None)
                     PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        cfg.AssignParent, cfg.AssignParentLinkKey, self, other, targets, TargetsCustomLookup,
+                        cfg.AssignParent, cfg.AssignParentLinkKey, self, other, targets,
                         LinkSources, Links, out parent);
 
                 var selfLtw = LocalToWorldLookup[self];
@@ -201,7 +196,7 @@ namespace BovineLabs.Timeline.Physics
                 var resolvedPosOffset = cfg.PositionOffset;
                 if (cfg.PositionOffsetSpace != Target.None)
                     if (PhysicsTriggerResolution.TryResolveTarget(cfg.PositionOffsetSpace, self, other, targets,
-                            TargetsCustomLookup, out var spaceEntity)
+                            out var spaceEntity)
                         && LocalToWorldLookup.TryGetComponent(spaceEntity, out var spaceLtw))
                         resolvedPosOffset = math.rotate(spaceLtw.Rotation, cfg.PositionOffset);
 
@@ -214,7 +209,10 @@ namespace BovineLabs.Timeline.Physics
                 var instance = ECB.Instantiate(chunkIndex, prefab);
                 var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
-                ECB.SetComponent(chunkIndex, instance, new Targets
+                // AddComponent works regardless of whether prefab already has Targets:
+                // - If missing: added from spawned archetype's components
+                // - If present: ECB.AddComponent adds it (same as SetComponent semantics)
+                ECB.AddComponent(chunkIndex, instance, new Targets
                 {
                     Owner = targets.Owner,
                     Source = targets.Source,

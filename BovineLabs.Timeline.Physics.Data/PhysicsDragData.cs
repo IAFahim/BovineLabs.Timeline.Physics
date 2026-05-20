@@ -9,6 +9,7 @@ namespace BovineLabs.Timeline.Physics
     {
         public float Linear;
         public float Angular;
+        public StatStrengthConfig Strength;
     }
 
     public struct PhysicsDragAnimated : IAnimatedComponent<PhysicsDragData>
@@ -29,7 +30,8 @@ namespace BovineLabs.Timeline.Physics
             return new PhysicsDragData
             {
                 Linear = math.lerp(a.Linear, b.Linear, s),
-                Angular = math.lerp(a.Angular, b.Angular, s)
+                Angular = math.lerp(a.Angular, b.Angular, s),
+                Strength = s < 0.5f ? a.Strength : b.Strength
             };
         }
 
@@ -38,7 +40,8 @@ namespace BovineLabs.Timeline.Physics
             return new PhysicsDragData
             {
                 Linear = a.Linear + b.Linear,
-                Angular = a.Angular + b.Angular
+                Angular = a.Angular + b.Angular,
+                Strength = a.Strength
             };
         }
     }

@@ -1,6 +1,7 @@
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
+using BovineLabs.Core.Utility;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
@@ -15,28 +16,35 @@ namespace BovineLabs.Timeline.Physics
     {
         private TrackBlendImpl<PhysicsVelocityData, PhysicsVelocityAnimated> _blendImpl;
         private UnsafeComponentLookup<ActiveVelocity> _activeLookup;
+        private UnsafeComponentLookup<PhysicsVelocityState> _stateLookup;
+        private EntityLock _stateLock;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
             _activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
+            _stateLookup = state.GetUnsafeComponentLookup<PhysicsVelocityState>();
+            _stateLock = new EntityLock(Allocator.Persistent);
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _blendImpl.OnDestroy(ref state);
+            _stateLock.Dispose();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _activeLookup.Update(ref state);
+            _stateLookup.Update(ref state);
 
             state.Dependency = new ResetStateJob
             {
-                StateLookup = state.GetUnsafeComponentLookup<PhysicsVelocityState>()
+                StateLookup = _stateLookup,
+                EntityLock = _stateLock
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
@@ -89,15 +97,19 @@ namespace BovineLabs.Timeline.Physics
         private partial struct ResetStateJob : IJobEntity
         {
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsVelocityState> StateLookup;
+            public EntityLock EntityLock;
 
             private void Execute(in TrackBinding binding)
             {
                 if (binding.Value == Entity.Null) return;
-                if (StateLookup.HasComponent(binding.Value))
+                using (EntityLock.Acquire(binding.Value))
                 {
-                    var s = StateLookup[binding.Value];
-                    s.Fired = false;
-                    StateLookup[binding.Value] = s;
+                    if (StateLookup.HasComponent(binding.Value))
+                    {
+                        var s = StateLookup[binding.Value];
+                        s.Fired = false;
+                        StateLookup[binding.Value] = s;
+                    }
                 }
             }
         }

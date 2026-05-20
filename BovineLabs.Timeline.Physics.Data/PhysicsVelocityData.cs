@@ -20,6 +20,7 @@ namespace BovineLabs.Timeline.Physics
         public float3 Linear;
         public float3 Angular;
         public Target Space;
+        public StatStrengthConfig Strength;
     }
 
     public struct PhysicsVelocityState : IComponentData

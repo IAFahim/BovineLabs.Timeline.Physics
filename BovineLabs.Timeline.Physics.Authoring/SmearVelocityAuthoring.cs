@@ -1,9 +1,10 @@
 using BovineLabs.Core.Authoring.EntityCommands;
+using BovineLabs.Timeline.Physics.Smear;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BovineLabs.Timeline.Physics.Smear
+namespace BovineLabs.Timeline.Physics.Authoring
 {
     [DisallowMultipleComponent]
     [AddComponentMenu("Smear/Smear Velocity Authoring")]

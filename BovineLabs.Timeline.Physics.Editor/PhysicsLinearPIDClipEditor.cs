@@ -39,6 +39,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             EditorGUILayout.LabelField("Influence", EditorStyles.boldLabel);
             PidEditorUtility.DrawStrength(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.strength)));
 
+            EditorGUILayout.Space(6);
+
+            // ── Stat Multiplier ────────────────────────────────────────────
+            EditorGUILayout.LabelField("Stat Multiplier", EditorStyles.boldLabel);
+            PidEditorUtility.DrawStatSection(serializedObject);
+
             // ── Warning: only fire when the combo actually breaks ─────────
             if (clip.trackingTarget == Target.Self && clip.targetMode == PidLinearTargetMode.TargetLocal)
             {

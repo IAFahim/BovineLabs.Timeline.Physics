@@ -38,6 +38,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             EditorGUILayout.LabelField("Influence", EditorStyles.boldLabel);
             PidEditorUtility.DrawStrength(serializedObject.FindProperty(nameof(PhysicsAngularPIDClip.strength)));
 
+            EditorGUILayout.Space(6);
+
+            // ── Stat Multiplier ────────────────────────────────────────────
+            EditorGUILayout.LabelField("Stat Multiplier", EditorStyles.boldLabel);
+            PidEditorUtility.DrawStatSection(serializedObject);
+
             serializedObject.ApplyModifiedProperties();
         }
     }

@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics
         public PidLinearTargetMode TargetMode;
         public float3 TargetOffset;
         public float Strength; // NEW: output force multiplier, default 1
+        public StatStrengthConfig StrengthStat;
     }
 
     public struct PhysicsLinearPIDAnimated : IAnimatedComponent<PhysicsLinearPIDData>
@@ -41,7 +42,8 @@ namespace BovineLabs.Timeline.Physics
                 TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
                 TargetOffset = math.lerp(a.TargetOffset, b.TargetOffset, s),
-                Strength = math.lerp(a.Strength, b.Strength, s)
+                Strength = math.lerp(a.Strength, b.Strength, s),
+                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
             };
         }
 
@@ -53,7 +55,8 @@ namespace BovineLabs.Timeline.Physics
                 TrackingTarget = a.TrackingTarget,
                 TargetMode = a.TargetMode,
                 TargetOffset = a.TargetOffset + b.TargetOffset,
-                Strength = a.Strength + b.Strength
+                Strength = a.Strength + b.Strength,
+                StrengthStat = a.StrengthStat
             };
         }
     }

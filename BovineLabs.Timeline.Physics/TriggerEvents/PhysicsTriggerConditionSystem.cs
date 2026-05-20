@@ -19,7 +19,6 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
-        private ComponentLookup<TargetsCustom> _targetsCustomLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
@@ -29,7 +28,6 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _targetsCustomLookup = state.GetComponentLookup<TargetsCustom>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
@@ -40,7 +38,6 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             _targetsLookup.Update(ref state);
-            _targetsCustomLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _colliderLookup.Update(ref state);
@@ -49,7 +46,6 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new InvokeJob
             {
                 TargetsLookup = _targetsLookup,
-                TargetsCustomLookup = _targetsCustomLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 ColliderLookup = _colliderLookup,
@@ -64,7 +60,6 @@ namespace BovineLabs.Timeline.Physics
         private partial struct InvokeJob : IJobEntity
         {
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public ComponentLookup<TargetsCustom> TargetsCustomLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
@@ -103,7 +98,7 @@ namespace BovineLabs.Timeline.Physics
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
 
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey, self, other,
-                        targets, TargetsCustomLookup, LinkSources, Links, out var target))
+                        targets, LinkSources, Links, out var target))
                     if (Writers.TryGet(target, out var writer))
                         writer.Trigger(config.Condition, config.Value);
             }

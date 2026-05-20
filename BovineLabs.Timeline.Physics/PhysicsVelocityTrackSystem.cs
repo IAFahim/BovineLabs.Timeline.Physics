@@ -5,6 +5,7 @@ using BovineLabs.Core.Utility;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -16,43 +17,63 @@ namespace BovineLabs.Timeline.Physics
     {
         private TrackBlendImpl<PhysicsVelocityData, PhysicsVelocityAnimated> _blendImpl;
         private UnsafeComponentLookup<ActiveVelocity> _activeLookup;
-        private UnsafeComponentLookup<PhysicsVelocityState> _stateLookup;
-        private EntityLock _stateLock;
+
+        private EntityQuery _resetQuery;
+        private EntityQuery _prepareQuery;
+        private EntityQuery _disableStaleQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
             _activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
-            _stateLookup = state.GetUnsafeComponentLookup<PhysicsVelocityState>();
-            _stateLock = new EntityLock(Allocator.Persistent);
+
+            _resetQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsVelocityState>()
+                .WithAll<ClipActive>()
+                .WithNone<ClipActivePrevious>()
+                .Build();
+
+            _prepareQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsVelocityAnimated>()
+                .WithAll<ClipActive>()
+                .Build();
+
+            _disableStaleQuery = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, TimelineActivePrevious>()
+                .WithNone<TimelineActive>()
+                .Build();
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
             _blendImpl.OnDestroy(ref state);
-            _stateLock.Dispose();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _activeLookup.Update(ref state);
-            _stateLookup.Update(ref state);
 
+            var stateType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityState>();
             state.Dependency = new ResetStateJob
             {
-                StateLookup = _stateLookup,
-                EntityLock = _stateLock
-            }.ScheduleParallel(state.Dependency);
+                StateTypeHandle = stateType
+            }.ScheduleParallel(_resetQuery, state.Dependency);
 
-            state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
+            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityAnimated>();
+            state.Dependency = new PrepareJob
+            {
+                AnimatedTypeHandle = animatedType
+            }.ScheduleParallel(_prepareQuery, state.Dependency);
 
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             state.Dependency = new DisableStaleJob
             {
+                TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activeLookup
-            }.ScheduleParallel(state.Dependency);
+            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
 
@@ -68,48 +89,56 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct PrepareJob : IJobEntity
+        private struct PrepareJob : IJobChunk
         {
-            private void Execute(ref PhysicsVelocityAnimated animated)
+            public ComponentTypeHandle<PhysicsVelocityAnimated> AnimatedTypeHandle;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                animated.Value = animated.AuthoredData;
+                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var animated = animateds[i];
+                    animated.Value = animated.AuthoredData;
+                    animateds[i] = animated;
+                }
             }
         }
 
         [BurstCompile]
-        [WithNone(typeof(TimelineActive))]
-        [WithAll(typeof(TimelineActivePrevious))]
-        private partial struct DisableStaleJob : IJobEntity
+        private struct DisableStaleJob : IJobChunk
         {
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
 
-            private void Execute(in TrackBinding binding)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (binding.Value == Entity.Null) return;
-                if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var binding = bindings[i];
+                    if (binding.Value == Entity.Null) continue;
+                    if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                }
             }
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        [WithNone(typeof(ClipActivePrevious))]
-        private partial struct ResetStateJob : IJobEntity
+        private struct ResetStateJob : IJobChunk
         {
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<PhysicsVelocityState> StateLookup;
-            public EntityLock EntityLock;
+            public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
 
-            private void Execute(in TrackBinding binding)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (binding.Value == Entity.Null) return;
-                using (EntityLock.Acquire(binding.Value))
+                var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
-                    if (StateLookup.HasComponent(binding.Value))
-                    {
-                        var s = StateLookup[binding.Value];
-                        s.Fired = false;
-                        StateLookup[binding.Value] = s;
-                    }
+                    var state = states[i];
+                    state.Fired = false;
+                    states[i] = state;
                 }
             }
         }

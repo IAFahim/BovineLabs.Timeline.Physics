@@ -4,6 +4,7 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -17,250 +18,218 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
-        private EntityQuery _forceQuery;
-        private EntityQuery _velocityQuery;
-
-        private EntityTypeHandle _entityHandle;
-        private ComponentTypeHandle<ActiveForce> _activeForceHandle;
-        private ComponentTypeHandle<PhysicsForceState> _forceStateHandle;
-        private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
-        private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
-        private ComponentTypeHandle<LocalTransform> _transformHandle;
-        private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
-        private BufferTypeHandle<PendingForce> _pendingForceHandle;
-        private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
-
         private ComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<LocalTransform> _transformLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
 
+        private EntityQuery _forceQuery;
+        private EntityQuery _velocityQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            JobChunkWorkerBeginEndExtensions.EarlyJobInit<AppendForceJob>();
-            JobChunkWorkerBeginEndExtensions.EarlyJobInit<AppendVelocityJob>();
-
-            _forceQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PendingForce, PhysicsForceState>()
-                .WithAll<ActiveForce, LocalTransform>()
-                .Build();
-
-            _velocityQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PendingVelocity, PhysicsVelocityState>()
-                .WithAll<ActiveVelocity, LocalTransform, PhysicsVelocity>()
-                .Build();
-
-            _entityHandle = state.GetEntityTypeHandle();
-            _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
-            _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
-            _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
-            _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
-            _transformHandle = state.GetComponentTypeHandle<LocalTransform>(true);
-            _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>(true);
-            _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
-            _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
-
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
+
+            _forceQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsForceState>()
+                .WithAll<TrackBinding, PhysicsForceAnimated, ClipActive>()
+                .Build();
+
+            _velocityQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsVelocityState>()
+                .WithAll<TrackBinding, PhysicsVelocityAnimated, ClipActive>()
+                .Build();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var dt = SystemAPI.Time.DeltaTime;
-            if (dt <= 0.0001f) return;
 
-            _entityHandle.Update(ref state);
-            _activeForceHandle.Update(ref state);
-            _forceStateHandle.Update(ref state);
-            _activeVelocityHandle.Update(ref state);
-            _velocityStateHandle.Update(ref state);
-            _transformHandle.Update(ref state);
-            _physicsVelocityHandle.Update(ref state);
-            _pendingForceHandle.Update(ref state);
-            _pendingVelocityHandle.Update(ref state);
             _targetsLookup.Update(ref state);
             _transformLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
 
+            var ecbSys = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb1 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecb2 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
+            var forceAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsForceAnimated>(true);
+            var forceStateType = SystemAPI.GetComponentTypeHandle<PhysicsForceState>();
+
             state.Dependency = new AppendForceJob
             {
                 DeltaTime = dt,
-                EntityHandle = _entityHandle,
-                ActiveForceHandle = _activeForceHandle,
-                ForceStateHandle = _forceStateHandle,
-                PendingForceHandle = _pendingForceHandle,
+                TrackBindingTypeHandle = bindingType,
+                AnimatedTypeHandle = forceAnimatedType,
+                StateTypeHandle = forceStateType,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup
+                StatLookup = _statLookup,
+                ECB = ecb1
             }.ScheduleParallel(_forceQuery, state.Dependency);
+
+            var velocityAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityAnimated>(true);
+            var velocityStateType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityState>();
 
             state.Dependency = new AppendVelocityJob
             {
                 DeltaTime = dt,
-                EntityHandle = _entityHandle,
-                ActiveVelocityHandle = _activeVelocityHandle,
-                VelocityStateHandle = _velocityStateHandle,
-                TransformHandle = _transformHandle,
-                PhysicsVelocityHandle = _physicsVelocityHandle,
-                PendingVelocityHandle = _pendingVelocityHandle,
+                TrackBindingTypeHandle = bindingType,
+                AnimatedTypeHandle = velocityAnimatedType,
+                StateTypeHandle = velocityStateType,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup
+                StatLookup = _statLookup,
+                ECB = ecb2
             }.ScheduleParallel(_velocityQuery, state.Dependency);
         }
 
         [BurstCompile]
-        private struct AppendForceJob : IJobChunkWorkerBeginEnd
+        private struct AppendForceJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public EntityTypeHandle EntityHandle;
-            [ReadOnly] public ComponentTypeHandle<ActiveForce> ActiveForceHandle;
-            public ComponentTypeHandle<PhysicsForceState> ForceStateHandle;
-            public BufferTypeHandle<PendingForce> PendingForceHandle;
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsForceAnimated> AnimatedTypeHandle;
+            public ComponentTypeHandle<PhysicsForceState> StateTypeHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var entities = chunk.GetNativeArray(EntityHandle);
-                var forces = chunk.GetNativeArray(ref ActiveForceHandle);
-                var states = chunk.GetNativeArray(ref ForceStateHandle);
-                var bufferAccessor = chunk.GetBufferAccessor(ref PendingForceHandle);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var states = chunk.GetNativeArray(ref StateTypeHandle);
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
-                    var config = forces[i].Config;
-                    var s = states[i];
+                    var binding = bindings[i];
+                    var body = binding.Value;
+                    if (body == Entity.Null) continue;
 
-                    if (config.Mode == PhysicsForceMode.Impulse && s.Fired)
-                        continue;
+                    var animated = animateds[i];
+                    var state = states[i];
 
-                    var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources,
-                        Links, StatLookup);
+                    var config = animated.Value;
+                    if (config.Mode == PhysicsForceMode.Impulse && state.Fired) continue;
+                    if (config.Mode == PhysicsForceMode.Continuous && DeltaTime <= 0.0001f) continue;
 
-                    if (math.abs(multiplier) < 1e-5f)
-                        continue;
+                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
+                        LinkSources, Links, StatLookup);
 
-                    PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                        in TransformLookup, out var linForce);
-                    PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                        in TransformLookup, out var angForce);
+                    var skip = math.abs(multiplier) < 1e-5f;
 
-                    var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-
-                    bufferAccessor[i].Add(new PendingForce
+                    if (!skip)
                     {
-                        Linear = linForce * timeScale * multiplier,
-                        Angular = angForce * timeScale * multiplier
-                    });
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                            in TransformLookup, out var linForce);
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
+                            in TransformLookup, out var angForce);
+
+                        var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingForce
+                        {
+                            Linear = linForce * timeScale * multiplier,
+                            Angular = angForce * timeScale * multiplier
+                        });
+                    }
 
                     if (config.Mode == PhysicsForceMode.Impulse)
                     {
-                        s.Fired = true;
-                        states[i] = s;
+                        state.Fired = true;
+                        states[i] = state;
                     }
                 }
             }
         }
 
         [BurstCompile]
-        private struct AppendVelocityJob : IJobChunkWorkerBeginEnd
+        private struct AppendVelocityJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public EntityTypeHandle EntityHandle;
-            [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveVelocityHandle;
-            public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
-            [ReadOnly] public ComponentTypeHandle<LocalTransform> TransformHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
-            public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsVelocityAnimated> AnimatedTypeHandle;
+            public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var entities = chunk.GetNativeArray(EntityHandle);
-                var velocities = chunk.GetNativeArray(ref ActiveVelocityHandle);
-                var states = chunk.GetNativeArray(ref VelocityStateHandle);
-                var currentVelocities = chunk.GetNativeArray(ref PhysicsVelocityHandle);
-                var bufferAccessor = chunk.GetBufferAccessor(ref PendingVelocityHandle);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var states = chunk.GetNativeArray(ref StateTypeHandle);
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
-                    var config = velocities[i].Config;
-                    var s = states[i];
+                    var binding = bindings[i];
+                    var body = binding.Value;
+                    if (body == Entity.Null) continue;
 
-                    var isInstant = config.Mode == PhysicsVelocityMode.SetInstant ||
-                                    config.Mode == PhysicsVelocityMode.AddInstant;
-                    if (isInstant && s.Fired)
-                        continue;
+                    var animated = animateds[i];
+                    var state = states[i];
 
-                    var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
-                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets, LinkSources,
-                        Links, StatLookup);
+                    var config = animated.Value;
+                    var isInstant = config.Mode == PhysicsVelocityMode.AddInstant;
+                    var isAdd = config.Mode == PhysicsVelocityMode.AddContinuous || isInstant;
+                    if (!isAdd) continue;
 
-                    if (math.abs(multiplier) < 1e-5f)
-                        continue;
+                    if (isInstant && state.Fired) continue;
+                    if (!isInstant && DeltaTime <= 0.0001f) continue;
 
-                    PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                        in TransformLookup, out var linVel);
-                    PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                        in TransformLookup, out var angVel);
+                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
+                        LinkSources, Links, StatLookup);
 
-                    var isSet = config.Mode == PhysicsVelocityMode.SetContinuous ||
-                                config.Mode == PhysicsVelocityMode.SetInstant;
+                    var skip = math.abs(multiplier) < 1e-5f;
 
-                    float3 linearDelta;
-                    float3 angularDelta;
-
-                    if (isSet)
+                    if (!skip)
                     {
-                        var current = currentVelocities[i];
-                        linearDelta = linVel * multiplier - current.Linear;
-                        angularDelta = angVel * multiplier - current.Angular;
-                    }
-                    else
-                    {
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                            in TransformLookup, out var linVel);
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
+                            in TransformLookup, out var angVel);
+
                         var timeScale = isInstant ? 1f : DeltaTime;
-                        linearDelta = linVel * timeScale * multiplier;
-                        angularDelta = angVel * timeScale * multiplier;
+                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingVelocity
+                        {
+                            Linear = linVel * timeScale * multiplier,
+                            Angular = angVel * timeScale * multiplier
+                        });
                     }
-
-                    bufferAccessor[i].Add(new PendingVelocity
-                    {
-                        Linear = linearDelta,
-                        Angular = angularDelta
-                    });
 
                     if (isInstant)
                     {
-                        s.Fired = true;
-                        states[i] = s;
+                        state.Fired = true;
+                        states[i] = state;
                     }
                 }
             }

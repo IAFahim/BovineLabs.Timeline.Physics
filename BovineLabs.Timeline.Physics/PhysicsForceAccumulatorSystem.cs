@@ -5,12 +5,11 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
     public partial struct PhysicsForceAccumulatorSystem : ISystem

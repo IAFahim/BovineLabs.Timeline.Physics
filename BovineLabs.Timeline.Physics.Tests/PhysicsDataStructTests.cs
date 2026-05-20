@@ -1,6 +1,5 @@
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Physics.Smear;
 using NUnit.Framework;
 using Unity.Mathematics;
 
@@ -356,24 +355,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(20f, result.Strength, 0.001f);
             Assert.AreEqual(a.TargetMode, result.TargetMode);
             Assert.AreEqual(a.TrackingTarget, result.TrackingTarget);
-        }
-    }
-
-    [TestFixture]
-    public class SmearVelocityStructTests
-    {
-        [Test]
-        public void Default_ZeroValue()
-        {
-            var s = new SmearVelocity();
-            Assert.AreEqual(float4.zero, s.Value);
-        }
-
-        [Test]
-        public void Field_SetCorrectly()
-        {
-            var s = new SmearVelocity { Value = new float4(1, 2, 3, 4) };
-            Assert.AreEqual(new float4(1, 2, 3, 4), s.Value);
         }
     }
 

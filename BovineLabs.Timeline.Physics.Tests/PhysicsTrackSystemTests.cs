@@ -1,5 +1,4 @@
 using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics.Smear;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,35 +8,6 @@ namespace BovineLabs.Timeline.Physics.Tests
 {
     public class PhysicsTrackSystemTests : ECSTestsFixture
     {
-        [Test]
-        public void SmearVelocity_IsComponentData()
-        {
-            Assert.IsTrue(typeof(IComponentData).IsAssignableFrom(typeof(SmearVelocity)));
-        }
-
-        [Test]
-        public void SmearVelocity_DefaultZero()
-        {
-            var sv = new SmearVelocity();
-            Assert.AreEqual(float4.zero, sv.Value);
-        }
-
-        [Test]
-        public void SmearVelocity_SetValue()
-        {
-            var sv = new SmearVelocity { Value = new float4(1, 2, 3, 4) };
-            Assert.AreEqual(new float4(1, 2, 3, 4), sv.Value);
-        }
-
-        [Test]
-        public void SmearVelocity_OnEntity()
-        {
-            var entity = Manager.CreateEntity(typeof(SmearVelocity));
-            Assert.IsTrue(Manager.HasComponent<SmearVelocity>(entity));
-
-            Manager.SetComponentData(entity, new SmearVelocity { Value = new float4(5, 6, 7, 8) });
-            Assert.AreEqual(new float4(5, 6, 7, 8), Manager.GetComponentData<SmearVelocity>(entity).Value);
-        }
 
         [Test]
         public void ActiveVelocity_EnableableComponent()

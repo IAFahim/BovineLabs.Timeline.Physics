@@ -48,6 +48,7 @@ namespace BovineLabs.Timeline.Physics
             velocityOut.Angular *= math.exp(-drag.Angular * multiplier * deltaTime);
         }
 
+#if UNITY_EDITOR || BL_DEBUG
         public static void DrawLinearPidPrediction(ref Drawer drawer, float3 startPos, float3 targetPos,
             PidTuning tuning, float time)
         {
@@ -149,6 +150,7 @@ namespace BovineLabs.Timeline.Physics
             drawer.Arrow(drawPos, math.mul(rot, math.up()), new Color(0f, 0.5f, 0f));
             drawer.Text32(drawPos + new float3(0, -0.5f, 0), "Predicted", Color.green, 10f);
         }
+#endif
 
         public static void ComputePidForce(float3 error, PidTuning tuning, PidStateData state, float deltaTime,
             out float3 output, out PidStateData nextState)
@@ -165,8 +167,17 @@ namespace BovineLabs.Timeline.Physics
             var integral = math.select(float3.zero, state.IntegralAccumulator, isInit);
 
             var nextIntegral = integral + error * deltaTime;
-            var integralMax = tuning.MaxOutput / math.max(tuning.Integral, 0.001f);
-            nextIntegral = math.clamp(nextIntegral, -integralMax, integralMax);
+            
+            if (math.all(tuning.Integral <= 0f))
+            {
+                nextIntegral = float3.zero;
+            }
+            else
+            {
+                var safeIntegral = math.max(tuning.Integral, new float3(0.001f));
+                var integralMax = tuning.MaxOutput / safeIntegral;
+                nextIntegral = math.clamp(nextIntegral, -integralMax, integralMax);
+            }
 
             var derivative = (error - prevError) / deltaTime;
 
@@ -272,7 +283,7 @@ namespace BovineLabs.Timeline.Physics
                         config.TargetRotation),
 
                 PidAngularTargetMode.MatchTargetOpposite =>
-                    math.mul(math.mul(targetTransform.Rotation, quaternion.RotateY(math.PI)),
+                    math.mul(math.mul(targetTransform.Rotation, quaternion.AxisAngle(math.up(), math.PI)),
                         config.TargetRotation),
 
                 _ => transform.Rotation

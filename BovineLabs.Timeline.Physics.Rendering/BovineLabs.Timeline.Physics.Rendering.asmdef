@@ -1,0 +1,28 @@
+{
+  "name": "BovineLabs.Timeline.Physics.Rendering",
+  "rootNamespace": "",
+  "references": [
+    "Unity.Entities.Graphics",
+    "Unity.Entities",
+    "Unity.Collections",
+    "Unity.Burst",
+    "Unity.Transforms",
+    "Unity.Physics",
+    "Unity.Mathematics",
+    "BovineLabs.Timeline.Physics",
+    "BovineLabs.Timeline.Physics.Data",
+    "BovineLabs.Timeline",
+    "BovineLabs.Timeline.Data",
+    "BovineLabs.Core",
+    "BovineLabs.Core.Extensions"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": true,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

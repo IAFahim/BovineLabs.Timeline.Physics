@@ -4,6 +4,7 @@ using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -16,11 +17,24 @@ namespace BovineLabs.Timeline.Physics
         private TrackBlendImpl<PhysicsDragData, PhysicsDragAnimated> _blendImpl;
         private UnsafeComponentLookup<ActiveDrag> _activeLookup;
 
+        private EntityQuery _prepareQuery;
+        private EntityQuery _disableStaleQuery;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
             _activeLookup = state.GetUnsafeComponentLookup<ActiveDrag>();
+
+            _prepareQuery = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsDragAnimated>()
+                .WithAll<ClipActive>()
+                .Build();
+
+            _disableStaleQuery = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, TimelineActivePrevious>()
+                .WithNone<TimelineActive>()
+                .Build();
         }
 
         [BurstCompile]
@@ -34,12 +48,18 @@ namespace BovineLabs.Timeline.Physics
         {
             _activeLookup.Update(ref state);
 
-            state.Dependency = new PrepareJob().ScheduleParallel(state.Dependency);
+            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsDragAnimated>();
+            state.Dependency = new PrepareJob
+            {
+                AnimatedTypeHandle = animatedType
+            }.ScheduleParallel(_prepareQuery, state.Dependency);
 
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             state.Dependency = new DisableStaleJob
             {
+                TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activeLookup
-            }.ScheduleParallel(state.Dependency);
+            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
 
@@ -55,26 +75,39 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct PrepareJob : IJobEntity
+        private struct PrepareJob : IJobChunk
         {
-            private void Execute(ref PhysicsDragAnimated animated)
+            public ComponentTypeHandle<PhysicsDragAnimated> AnimatedTypeHandle;
+
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                animated.Value = animated.AuthoredData;
+                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var animated = animateds[i];
+                    animated.Value = animated.AuthoredData;
+                    animateds[i] = animated;
+                }
             }
         }
 
         [BurstCompile]
-        [WithNone(typeof(TimelineActive))]
-        [WithAll(typeof(TimelineActivePrevious))]
-        private partial struct DisableStaleJob : IJobEntity
+        private struct DisableStaleJob : IJobChunk
         {
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
 
-            private void Execute(in TrackBinding binding)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                if (binding.Value == Entity.Null) return;
-                if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var binding = bindings[i];
+                    if (binding.Value == Entity.Null) continue;
+                    if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                }
             }
         }
 

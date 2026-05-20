@@ -3,7 +3,7 @@ using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [InternalBufferCapacity(2)]
+    [InternalBufferCapacity(16)]
     public struct PendingVelocity : IBufferElementData
     {
         public float3 Linear;

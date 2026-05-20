@@ -3,12 +3,14 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
+using System.Runtime.CompilerServices;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics
 {
     public static class StatStrengthUtility
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Resolve(
             in StatStrengthConfig config,
             Entity self,

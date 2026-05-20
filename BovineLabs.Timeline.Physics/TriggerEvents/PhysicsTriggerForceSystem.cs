@@ -6,6 +6,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Jobs;
@@ -14,7 +15,7 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(PhysicsModifierGroup))]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
@@ -23,6 +24,8 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
         private BufferLookup<Stat> _statLookup;
         private BufferLookup<PendingForce> _pendingForceLookup;
+
+        private EntityQuery _query;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -33,6 +36,10 @@ namespace BovineLabs.Timeline.Physics
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
+
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, PhysicsTriggerForceData, ClipActive>()
+                .Build();
         }
 
         [BurstCompile]
@@ -47,10 +54,17 @@ namespace BovineLabs.Timeline.Physics
 
             var gathered = new NativeQueue<GatheredForce>(state.WorldUpdateAllocator);
 
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
+            var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerForceData>(true);
+            var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
+
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
                 Gathered = gathered.AsParallelWriter(),
+                TrackBindingTypeHandle = bindingType,
+                PhysicsTriggerForceDataTypeHandle = configType,
+                ClipActivePreviousTypeHandle = activePrevType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -58,7 +72,7 @@ namespace BovineLabs.Timeline.Physics
                 StatLookup = _statLookup,
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
-            }.ScheduleParallel(state.Dependency);
+            }.ScheduleParallel(_query, state.Dependency);
 
             state.Dependency = new AppendJob
             {
@@ -76,11 +90,14 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct GatherJob : IJobEntity
+        private struct GatherJob : IJobChunk
         {
             public float DeltaTime;
             public NativeQueue<GatheredForce>.ParallelWriter Gathered;
+
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -90,33 +107,46 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsTriggerForceData cfg)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var self = binding.Value;
-                if (self == Entity.Null) return;
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
 
-                var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
 
-                if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                    foreach (var evt in triggers)
-                    {
-                        if (evt.State != cfg.EventState || !LtwLookup.HasComponent(evt.EntityB)) continue;
-                        var selfPos = LtwLookup[self].Position;
-                        var otherPos = LtwLookup[evt.EntityB].Position;
-                        var midpoint = (selfPos + otherPos) * 0.5f;
-                        ProcessEvent(self, evt.EntityB, in cfg, midpoint, in targets);
-                    }
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var binding = bindings[i];
+                    var self = binding.Value;
+                    if (self == Entity.Null) continue;
 
-                if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                    foreach (var evt in collisions)
-                    {
-                        if (evt.State != cfg.EventState || !LtwLookup.HasComponent(evt.EntityB)) continue;
-                        var selfPos = LtwLookup[self].Position;
-                        var otherPos = LtwLookup[evt.EntityB].Position;
-                        var hasContact = evt.TryGetDetails(out var details);
-                        var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                        ProcessEvent(self, evt.EntityB, in cfg, pt, in targets);
-                    }
+                    var config = configs[i];
+                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
+
+                    var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+
+                    if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                        foreach (var evt in triggers)
+                        {
+                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) || !LtwLookup.HasComponent(evt.EntityB)) continue;
+                            var selfPos = LtwLookup[self].Position;
+                            var otherPos = LtwLookup[evt.EntityB].Position;
+                            var midpoint = (selfPos + otherPos) * 0.5f;
+                            ProcessEvent(self, evt.EntityB, in config, midpoint, in targets);
+                        }
+
+                    if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                        foreach (var evt in collisions)
+                        {
+                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) || !LtwLookup.HasComponent(evt.EntityB)) continue;
+                            var selfPos = LtwLookup[self].Position;
+                            var otherPos = LtwLookup[evt.EntityB].Position;
+                            var hasContact = evt.TryGetDetails(out var details);
+                            var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
+                            ProcessEvent(self, evt.EntityB, in config, pt, in targets);
+                        }
+                }
             }
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint,

@@ -16,7 +16,6 @@
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",
-    "Unity.Entities.Graphics",
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms",

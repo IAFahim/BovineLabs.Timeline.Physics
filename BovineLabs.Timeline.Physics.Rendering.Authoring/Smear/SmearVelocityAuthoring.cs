@@ -10,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [AddComponentMenu("Smear/Smear Velocity Authoring")]
     public class SmearVelocityAuthoring : MonoBehaviour
     {
-        private class Baker : Baker<SmearVelocityAuthoring>
+        private class Baker : Unity.Entities.Baker<SmearVelocityAuthoring>
         {
             public override void Bake(SmearVelocityAuthoring authoring)
             {

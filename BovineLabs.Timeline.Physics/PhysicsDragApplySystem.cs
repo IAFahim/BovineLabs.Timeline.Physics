@@ -16,8 +16,7 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(BeforePhysicsSystemGroup))]
-    [UpdateAfter(typeof(PhysicsForceAccumulatorSystem))]
+    [UpdateInGroup(typeof(PhysicsModifierGroup))]
     public partial struct PhysicsDragApplySystem : ISystem
     {
         private EntityQuery _query;
@@ -107,6 +106,8 @@ namespace BovineLabs.Timeline.Physics
                     var targets = TargetsLookup.HasComponent(entity) ? TargetsLookup[entity] : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
                         Links, StatLookup);
+
+                    multiplier = Unity.Mathematics.math.max(0f, multiplier);
 
                     if (multiplier <= 0.00001f) continue;
 

@@ -8,6 +8,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
+using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Physics;
@@ -15,7 +16,7 @@ using Unity.Physics;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
+    [UpdateInGroup(typeof(PhysicsModifierGroup))]
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
@@ -23,6 +24,8 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private ConditionEventWriter.Lookup _writers;
+
+        private EntityQuery _query;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -32,6 +35,10 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
             _writers.Create(ref state);
+
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, PhysicsTriggerConditionData, ClipActive>()
+                .Build();
         }
 
         [BurstCompile]
@@ -43,8 +50,15 @@ namespace BovineLabs.Timeline.Physics
             _colliderLookup.Update(ref state);
             _writers.Update(ref state);
 
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
+            var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerConditionData>(true);
+            var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
+
             state.Dependency = new InvokeJob
             {
+                TrackBindingTypeHandle = bindingType,
+                PhysicsTriggerConditionDataTypeHandle = configType,
+                ClipActivePreviousTypeHandle = activePrevType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -52,13 +66,16 @@ namespace BovineLabs.Timeline.Physics
                 Writers = _writers,
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
-            }.ScheduleParallel(state.Dependency);
+            }.ScheduleParallel(_query, state.Dependency);
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct InvokeJob : IJobEntity
+        private struct InvokeJob : IJobChunk
         {
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerConditionData> PhysicsTriggerConditionDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
+
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
@@ -68,24 +85,37 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            private void Execute(in TrackBinding binding, in PhysicsTriggerConditionData config)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var self = binding.Value;
-                if (self == Entity.Null) return;
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+                var configs = chunk.GetNativeArray(ref PhysicsTriggerConditionDataTypeHandle);
 
-                if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                    foreach (var evt in triggers)
-                        ProcessEvent(self, evt.EntityB, evt.State, in config);
+                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
 
-                if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                    foreach (var evt in collisions)
-                        ProcessEvent(self, evt.EntityB, evt.State, in config);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var binding = bindings[i];
+                    var self = binding.Value;
+                    if (self == Entity.Null) continue;
+
+                    var config = configs[i];
+                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
+
+                    if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                        foreach (var evt in triggers)
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, isFirstFrame);
+
+                    if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                        foreach (var evt in collisions)
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, isFirstFrame);
+                }
             }
 
             private void ProcessEvent(Entity self, Entity other, StatefulEventState state,
-                in PhysicsTriggerConditionData config)
+                in PhysicsTriggerConditionData config, bool isFirstFrame)
             {
-                if (state != config.EventState) return;
+                if (!StatefulEventMatching.Matches(state, config.EventState, isFirstFrame, false)) return;
 
                 if (config.CollidesWithMask != 0)
                 {

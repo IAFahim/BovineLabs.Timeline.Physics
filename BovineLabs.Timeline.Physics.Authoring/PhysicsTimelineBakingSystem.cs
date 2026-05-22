@@ -22,10 +22,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
             // 1. Linear PID
-            foreach (var (binding, clipEntity) in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsLinearPIDAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
-                .WithEntityAccess())
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsLinearPIDAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
@@ -41,10 +40,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             }
 
             // 2. Angular PID
-            foreach (var (binding, clipEntity) in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsAngularPIDAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
-                .WithEntityAccess())
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsAngularPIDAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
@@ -60,10 +58,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             }
 
             // 3. Force
-            foreach (var (binding, clipEntity) in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsForceAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
-                .WithEntityAccess())
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsForceAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
@@ -79,10 +76,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             }
 
             // 4. Velocity
-            foreach (var (binding, clipEntity) in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsVelocityAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
-                .WithEntityAccess())
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsVelocityAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
@@ -99,8 +95,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             // 5. Drag
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
-                .WithAll<PhysicsDragAnimated>()
-                .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+                         .WithAll<PhysicsDragAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;

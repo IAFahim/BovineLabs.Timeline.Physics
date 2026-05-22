@@ -5,9 +5,13 @@ namespace BovineLabs.Timeline.Physics
 {
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateBefore(typeof(PhysicsSystemGroup))]
-    public partial class PhysicsProducerGroup : ComponentSystemGroup { }
+    public partial class PhysicsProducerGroup : ComponentSystemGroup
+    {
+    }
 
     [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [UpdateAfter(typeof(PhysicsSystemGroup))]
-    public partial class PhysicsModifierGroup : ComponentSystemGroup { }
+    public partial class PhysicsModifierGroup : ComponentSystemGroup
+    {
+    }
 }

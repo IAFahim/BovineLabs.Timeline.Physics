@@ -107,7 +107,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
@@ -129,7 +130,8 @@ namespace BovineLabs.Timeline.Physics
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
-                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) || !LtwLookup.HasComponent(evt.EntityB)) continue;
+                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
+                                !LtwLookup.HasComponent(evt.EntityB)) continue;
                             var selfPos = LtwLookup[self].Position;
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var midpoint = (selfPos + otherPos) * 0.5f;
@@ -139,7 +141,8 @@ namespace BovineLabs.Timeline.Physics
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                         foreach (var evt in collisions)
                         {
-                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) || !LtwLookup.HasComponent(evt.EntityB)) continue;
+                            if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
+                                !LtwLookup.HasComponent(evt.EntityB)) continue;
                             var selfPos = LtwLookup[self].Position;
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var hasContact = evt.TryGetDetails(out var details);

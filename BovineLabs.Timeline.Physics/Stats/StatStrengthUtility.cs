@@ -1,9 +1,9 @@
+using System.Runtime.CompilerServices;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
-using System.Runtime.CompilerServices;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics

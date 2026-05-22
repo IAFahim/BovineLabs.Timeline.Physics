@@ -9,8 +9,8 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
@@ -108,7 +108,7 @@ namespace BovineLabs.Timeline.Physics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
                         Links, StatLookup);
 
-                    multiplier = Unity.Mathematics.math.max(0f, multiplier);
+                    multiplier = math.max(0f, multiplier);
 
                     if (multiplier <= 0.00001f) continue;
 

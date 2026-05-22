@@ -1,5 +1,3 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
@@ -32,7 +30,7 @@ namespace BovineLabs.Timeline.Physics
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious>()
+                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsDragAnimated>()
                 .WithNone<TimelineActive>()
                 .Build();
         }
@@ -81,7 +79,8 @@ namespace BovineLabs.Timeline.Physics
         {
             public ComponentTypeHandle<PhysicsDragAnimated> AnimatedTypeHandle;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -101,7 +100,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<ActiveDrag> ActiveLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -109,7 +109,7 @@ namespace BovineLabs.Timeline.Physics
                 {
                     var target = bindings[i].Value;
                     if (target == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(target)) 
+                    if (ActiveLookup.HasComponent(target))
                         ECB.SetComponentEnabled<ActiveDrag>(unfilteredChunkIndex, target, false);
                 }
             }

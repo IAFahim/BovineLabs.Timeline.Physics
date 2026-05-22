@@ -1,6 +1,5 @@
 using BovineLabs.Testing;
 using NUnit.Framework;
-using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 
@@ -8,7 +7,6 @@ namespace BovineLabs.Timeline.Physics.Tests
 {
     public class PhysicsTrackSystemTests : ECSTestsFixture
     {
-
         [Test]
         public void ActiveVelocity_EnableableComponent()
         {

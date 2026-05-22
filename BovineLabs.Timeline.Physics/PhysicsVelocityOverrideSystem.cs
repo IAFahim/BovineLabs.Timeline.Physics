@@ -11,7 +11,6 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
@@ -24,7 +23,6 @@ namespace BovineLabs.Timeline.Physics
         private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
         private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
-        private ComponentTypeHandle<LocalToWorld> _transformHandle;
         private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
@@ -46,7 +44,6 @@ namespace BovineLabs.Timeline.Physics
             _entityHandle = state.GetEntityTypeHandle();
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
-            _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
             _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
@@ -65,7 +62,6 @@ namespace BovineLabs.Timeline.Physics
             _entityHandle.Update(ref state);
             _activeVelocityHandle.Update(ref state);
             _velocityStateHandle.Update(ref state);
-            _transformHandle.Update(ref state);
             _physicsVelocityHandle.Update(ref state);
             _targetsLookup.Update(ref state);
             _transformLookup.Update(ref state);
@@ -78,7 +74,6 @@ namespace BovineLabs.Timeline.Physics
                 EntityHandle = _entityHandle,
                 ActiveVelocityHandle = _activeVelocityHandle,
                 VelocityStateHandle = _velocityStateHandle,
-                TransformHandle = _transformHandle,
                 PhysicsVelocityHandle = _physicsVelocityHandle,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
@@ -94,7 +89,6 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveVelocityHandle;
             public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
-            [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;

@@ -1,18 +1,14 @@
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.Jobs;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Physics.Systems;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
@@ -125,7 +121,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var entities = chunk.GetNativeArray(EntityHandle);
                 var actives = chunk.GetNativeArray(ref ActiveHandle);
@@ -198,7 +195,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var entities = chunk.GetNativeArray(EntityHandle);
                 var actives = chunk.GetNativeArray(ref ActiveHandle);

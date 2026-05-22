@@ -1,7 +1,4 @@
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
-using BovineLabs.Core.Utility;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
 using Unity.Burst;
@@ -41,7 +38,7 @@ namespace BovineLabs.Timeline.Physics
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious>()
+                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsForceAnimated>()
                 .WithNone<TimelineActive>()
                 .Build();
         }
@@ -99,7 +96,8 @@ namespace BovineLabs.Timeline.Physics
         {
             public ComponentTypeHandle<PhysicsForceAnimated> AnimatedTypeHandle;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -119,7 +117,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<PhysicsForceState> StateLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -139,7 +138,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentLookup<ActiveForce> ActiveLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);

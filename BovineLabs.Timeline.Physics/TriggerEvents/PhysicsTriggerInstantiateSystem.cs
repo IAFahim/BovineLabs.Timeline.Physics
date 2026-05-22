@@ -21,10 +21,14 @@ using EntityCache = BovineLabs.Core.Extensions.EntityCache;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.Default)]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
+        private EntityQuery _query;
+        private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
+        private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
+
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
@@ -33,13 +37,19 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Child> _childLookup;
 
-        private EntityQuery _query;
-
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ObjectDefinitionRegistry>();
             state.RequireForUpdate<BLLogger>();
+            JobChunkWorkerBeginEndExtensions.EarlyJobInit<InstantiateGatherJob>();
+
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<ClipActive, PhysicsTriggerInstantiateData>()
+                .Build();
+
+            _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
+            _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
@@ -48,15 +58,13 @@ namespace BovineLabs.Timeline.Physics
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _childLookup = state.GetBufferLookup<Child>(true);
-
-            _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerInstantiateData, ClipActive>()
-                .Build();
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _trackBindingHandle.Update(ref state);
+            _dataHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
@@ -68,18 +76,13 @@ namespace BovineLabs.Timeline.Physics
             var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
-            var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
-
             state.Dependency = new InstantiateGatherJob
             {
                 ECB = ecb.AsParallelWriter(),
                 Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
-                TrackBindingTypeHandle = bindingType,
-                PhysicsTriggerInstantiateDataTypeHandle = configType,
-                ClipActivePreviousTypeHandle = activePrevType,
+                TrackBindingHandle = _trackBindingHandle,
+                DataHandle = _dataHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
@@ -90,16 +93,24 @@ namespace BovineLabs.Timeline.Physics
             }.ScheduleParallel(_query, state.Dependency);
         }
 
-        [BurstCompile]
-        private struct InstantiateGatherJob : IJobChunk
+        private struct SpawnData
+        {
+            public Entity Prefab;
+            public Entity Self;
+            public Entity Other;
+            public PhysicsTriggerInstantiateData Config;
+            public float3 ContactPoint;
+            public float3 ContactNormal;
+        }
+
+        private struct InstantiateGatherJob : IJobChunkWorkerBeginEnd
         {
             public EntityCommandBuffer.ParallelWriter ECB;
             public BLLogger Logger;
             [ReadOnly] public ObjectDefinitionRegistry Registry;
 
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> PhysicsTriggerInstantiateDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
@@ -109,22 +120,16 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Child> ChildLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var configs = chunk.GetNativeArray(ref PhysicsTriggerInstantiateDataTypeHandle);
+                var configs = chunk.GetNativeArray(ref DataHandle);
+                var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
 
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
-
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
+                for (var i = 0; i < chunk.Count; i++)
                 {
-                    var binding = bindings[i];
-                    var self = binding.Value;
-                    if (self == Entity.Null) continue;
-
+                    var self = trackBindings[i].Value;
                     var cfg = configs[i];
-                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
 
                     if (!Registry.TryGetValue(cfg.ObjectId, out var prefab) || prefab == Entity.Null)
                     {
@@ -140,7 +145,7 @@ namespace BovineLabs.Timeline.Physics
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
-                            if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                             var selfPos = LocalToWorldLookup[self].Position;
                             var otherPos = LocalToWorldLookup[evt.EntityB].Position;
@@ -153,7 +158,7 @@ namespace BovineLabs.Timeline.Physics
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                        if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                         var selfPos = LocalToWorldLookup[self].Position;
                         var otherPos = LocalToWorldLookup[evt.EntityB].Position;

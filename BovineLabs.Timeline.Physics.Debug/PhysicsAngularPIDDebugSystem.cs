@@ -104,7 +104,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Drawer.Arrow(transform.Position, forward, Color.blue);
                 Drawer.Arrow(transform.Position, up, Color.green);
 
-                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(transform.Value), finalRot,
+                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(transform.Value),
+                    finalRot,
                     animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))

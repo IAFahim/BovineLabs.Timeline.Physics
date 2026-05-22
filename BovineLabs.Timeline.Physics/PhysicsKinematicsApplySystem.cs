@@ -27,6 +27,15 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
 
+        private EntityTypeHandle _entityHandle;
+        private ComponentTypeHandle<ActiveForce> _activeForceHandle;
+        private ComponentTypeHandle<PhysicsForceState> _forceStateHandle;
+        private BufferTypeHandle<PendingForce> _pendingForceHandle;
+
+        private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
+        private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
+        private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
+
         private EntityQuery _forceQuery;
         private EntityQuery _velocityQuery;
 
@@ -39,14 +48,23 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
 
+            _entityHandle = state.GetEntityTypeHandle();
+            _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
+            _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
+            _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
+
+            _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
+            _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
+            _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
+
             _forceQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsForceState>()
-                .WithAll<TrackBinding, PhysicsForceAnimated, ClipActive>()
+                .WithAllRW<PhysicsForceState, PendingForce>()
+                .WithAll<ActiveForce, LocalTransform>()
                 .Build();
 
             _velocityQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsVelocityState>()
-                .WithAll<TrackBinding, PhysicsVelocityAnimated, ClipActive>()
+                .WithAllRW<PhysicsVelocityState, PendingVelocity>()
+                .WithAll<ActiveVelocity, LocalTransform>()
                 .Build();
         }
 
@@ -61,43 +79,41 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
 
-            var ecbSys = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb1 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-            var ecb2 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            _entityHandle.Update(ref state);
+            _activeForceHandle.Update(ref state);
+            _forceStateHandle.Update(ref state);
+            _pendingForceHandle.Update(ref state);
 
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            var forceAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsForceAnimated>(true);
-            var forceStateType = SystemAPI.GetComponentTypeHandle<PhysicsForceState>();
+            _activeVelocityHandle.Update(ref state);
+            _velocityStateHandle.Update(ref state);
+            _pendingVelocityHandle.Update(ref state);
 
             state.Dependency = new AppendForceJob
             {
                 DeltaTime = dt,
-                TrackBindingTypeHandle = bindingType,
-                AnimatedTypeHandle = forceAnimatedType,
-                StateTypeHandle = forceStateType,
+                EntityHandle = _entityHandle,
+                ActiveHandle = _activeForceHandle,
+                StateTypeHandle = _forceStateHandle,
+                PendingForceHandle = _pendingForceHandle,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup,
-                ECB = ecb1
+                StatLookup = _statLookup
             }.ScheduleParallel(_forceQuery, state.Dependency);
-
-            var velocityAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityAnimated>(true);
-            var velocityStateType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityState>();
 
             state.Dependency = new AppendVelocityJob
             {
                 DeltaTime = dt,
-                TrackBindingTypeHandle = bindingType,
-                AnimatedTypeHandle = velocityAnimatedType,
-                StateTypeHandle = velocityStateType,
+                EntityHandle = _entityHandle,
+                ActiveHandle = _activeVelocityHandle,
+                StateTypeHandle = _velocityStateHandle,
+                PendingVelocityHandle = _pendingVelocityHandle,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup,
-                ECB = ecb2
+                StatLookup = _statLookup
             }.ScheduleParallel(_velocityQuery, state.Dependency);
         }
 
@@ -105,34 +121,31 @@ namespace BovineLabs.Timeline.Physics
         private struct AppendForceJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsForceAnimated> AnimatedTypeHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveForce> ActiveHandle;
             public ComponentTypeHandle<PhysicsForceState> StateTypeHandle;
+            public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    var body = binding.Value;
-                    if (body == Entity.Null) continue;
-
-                    var animated = animateds[i];
+                    var body = entities[i];
+                    var config = actives[i].Config;
                     var state = states[i];
 
-                    var config = animated.Value;
                     if (config.Mode == PhysicsForceMode.Impulse && state.Fired) continue;
                     if (config.Mode == PhysicsForceMode.Continuous && DeltaTime <= 0.0001f) continue;
 
@@ -150,7 +163,7 @@ namespace BovineLabs.Timeline.Physics
                             in TransformLookup, out var angForce);
 
                         var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingForce
+                        pendingForces[i].Add(new PendingForce
                         {
                             Linear = linForce * timeScale * multiplier,
                             Angular = angForce * timeScale * multiplier
@@ -170,34 +183,31 @@ namespace BovineLabs.Timeline.Physics
         private struct AppendVelocityJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsVelocityAnimated> AnimatedTypeHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveHandle;
             public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
+            public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var pendingVelocities = chunk.GetBufferAccessor(ref PendingVelocityHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    var body = binding.Value;
-                    if (body == Entity.Null) continue;
-
-                    var animated = animateds[i];
+                    var body = entities[i];
+                    var config = actives[i].Config;
                     var state = states[i];
 
-                    var config = animated.Value;
                     var isInstant = config.Mode == PhysicsVelocityMode.AddInstant;
                     var isAdd = config.Mode == PhysicsVelocityMode.AddContinuous || isInstant;
                     if (!isAdd) continue;
@@ -219,7 +229,7 @@ namespace BovineLabs.Timeline.Physics
                             in TransformLookup, out var angVel);
 
                         var timeScale = isInstant ? 1f : DeltaTime;
-                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingVelocity
+                        pendingVelocities[i].Add(new PendingVelocity
                         {
                             Linear = linVel * timeScale * multiplier,
                             Angular = angVel * timeScale * multiplier

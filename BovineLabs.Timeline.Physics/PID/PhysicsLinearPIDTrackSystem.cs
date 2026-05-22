@@ -16,7 +16,8 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsLinearPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsLinearPIDData, PhysicsLinearPIDAnimated> _blendImpl;
-        private UnsafeComponentLookup<ActiveLinearPid> _activePidLookup;
+        private ComponentLookup<ActiveLinearPid> _activePidLookup;
+        private ComponentLookup<PhysicsLinearPIDState> _stateLookup;
 
         private EntityQuery _resetQuery;
         private EntityQuery _prepareQuery;
@@ -26,11 +27,11 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activePidLookup = state.GetUnsafeComponentLookup<ActiveLinearPid>();
+            _activePidLookup = state.GetComponentLookup<ActiveLinearPid>(true);
+            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>(true);
 
             _resetQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsLinearPIDState>()
-                .WithAll<ClipActive>()
+                .WithAll<TrackBinding, PhysicsLinearPIDAnimated, ClipActive>()
                 .WithNone<ClipActivePrevious>()
                 .Build();
 
@@ -55,6 +56,20 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             _activePidLookup.Update(ref state);
+            _stateLookup.Update(ref state);
+
+            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbReset = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
+            state.Dependency = new ResetStateJob
+            {
+                TrackBindingTypeHandle = bindingType,
+                StateLookup = _stateLookup,
+                ECB = ecbReset
+            }.ScheduleParallel(_resetQuery, state.Dependency);
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsLinearPIDAnimated>();
             state.Dependency = new PrepareJob
@@ -62,29 +77,20 @@ namespace BovineLabs.Timeline.Physics
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             state.Dependency = new DisableStaleJob
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activePidLookup
+                ActiveLookup = _activePidLookup,
+                ECB = ecbDisable
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
-            var stateType = SystemAPI.GetComponentTypeHandle<PhysicsLinearPIDState>();
-            state.Dependency = new ResetStateJob
-            {
-                StateTypeHandle = stateType
-            }.ScheduleParallel(_resetQuery, state.Dependency);
-
             var blendData = _blendImpl.Update(ref state);
-
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
                 ActivePidLookup = _activePidLookup,
-                ECB = ecb.AsParallelWriter()
+                ECB = ecbWrite
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -109,17 +115,19 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         private struct ResetStateJob : IJobChunk
         {
-            public ComponentTypeHandle<PhysicsLinearPIDState> StateTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentLookup<PhysicsLinearPIDState> StateLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var state = states[i];
-                    state.State = default;
-                    states[i] = state;
+                    var target = bindings[i].Value;
+                    if (target != Entity.Null && StateLookup.HasComponent(target))
+                        ECB.SetComponent(unfilteredChunkIndex, target, default(PhysicsLinearPIDState));
                 }
             }
         }
@@ -128,7 +136,8 @@ namespace BovineLabs.Timeline.Physics
         private struct DisableStaleJob : IJobChunk
         {
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveLinearPid> ActiveLookup;
+            [ReadOnly] public ComponentLookup<ActiveLinearPid> ActiveLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
@@ -136,9 +145,10 @@ namespace BovineLabs.Timeline.Physics
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    if (binding.Value == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                    var target = bindings[i].Value;
+                    if (target == Entity.Null) continue;
+                    if (ActiveLookup.HasComponent(target)) 
+                        ECB.SetComponentEnabled<ActiveLinearPid>(unfilteredChunkIndex, target, false);
                 }
             }
         }
@@ -147,7 +157,7 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsLinearPIDData>>.ReadOnly BlendData;
-            [ReadOnly] public UnsafeComponentLookup<ActiveLinearPid> ActivePidLookup;
+            [ReadOnly] public ComponentLookup<ActiveLinearPid> ActivePidLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)

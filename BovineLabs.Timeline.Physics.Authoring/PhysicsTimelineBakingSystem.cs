@@ -27,9 +27,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
                 .WithEntityAccess())
             {
-                if (!em.HasComponent<PhysicsLinearPIDState>(clipEntity))
-                    ecb.AddComponent<PhysicsLinearPIDState>(clipEntity);
-
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
@@ -37,6 +34,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveLinearPid>(target);
                     ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
+                    ecb.AddComponent<PhysicsLinearPIDState>(target);
                 }
 
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
@@ -48,9 +46,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
                 .WithEntityAccess())
             {
-                if (!em.HasComponent<PhysicsAngularPIDState>(clipEntity))
-                    ecb.AddComponent<PhysicsAngularPIDState>(clipEntity);
-
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
@@ -58,6 +53,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveAngularPid>(target);
                     ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
+                    ecb.AddComponent<PhysicsAngularPIDState>(target);
                 }
 
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
@@ -69,9 +65,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
                 .WithEntityAccess())
             {
-                if (!em.HasComponent<PhysicsForceState>(clipEntity))
-                    ecb.AddComponent<PhysicsForceState>(clipEntity);
-
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
@@ -79,6 +72,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveForce>(target);
                     ecb.SetComponentEnabled<ActiveForce>(target, false);
+                    ecb.AddComponent<PhysicsForceState>(target);
                 }
 
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
@@ -90,9 +84,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
                 .WithEntityAccess())
             {
-                if (!em.HasComponent<PhysicsVelocityState>(clipEntity))
-                    ecb.AddComponent<PhysicsVelocityState>(clipEntity);
-
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
@@ -100,6 +91,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     ecb.AddComponent<ActiveVelocity>(target);
                     ecb.SetComponentEnabled<ActiveVelocity>(target, false);
+                    ecb.AddComponent<PhysicsVelocityState>(target);
                 }
 
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);

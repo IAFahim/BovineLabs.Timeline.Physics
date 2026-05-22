@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsDragTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsDragData, PhysicsDragAnimated> _blendImpl;
-        private UnsafeComponentLookup<ActiveDrag> _activeLookup;
+        private ComponentLookup<ActiveDrag> _activeLookup;
 
         private EntityQuery _prepareQuery;
         private EntityQuery _disableStaleQuery;
@@ -24,7 +24,7 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetUnsafeComponentLookup<ActiveDrag>();
+            _activeLookup = state.GetComponentLookup<ActiveDrag>(true);
 
             _prepareQuery = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsDragAnimated>()
@@ -48,6 +48,10 @@ namespace BovineLabs.Timeline.Physics
         {
             _activeLookup.Update(ref state);
 
+            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsDragAnimated>();
             state.Dependency = new PrepareJob
             {
@@ -58,19 +62,17 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new DisableStaleJob
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activeLookup,
+                ECB = ecbDisable
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
-
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
                 ActiveLookup = _activeLookup,
-                ECB = ecb.AsParallelWriter()
+                ECB = ecbWrite
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -96,7 +98,8 @@ namespace BovineLabs.Timeline.Physics
         private struct DisableStaleJob : IJobChunk
         {
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
+            [ReadOnly] public ComponentLookup<ActiveDrag> ActiveLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
@@ -104,9 +107,10 @@ namespace BovineLabs.Timeline.Physics
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    if (binding.Value == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                    var target = bindings[i].Value;
+                    if (target == Entity.Null) continue;
+                    if (ActiveLookup.HasComponent(target)) 
+                        ECB.SetComponentEnabled<ActiveDrag>(unfilteredChunkIndex, target, false);
                 }
             }
         }
@@ -115,7 +119,7 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsDragData>>.ReadOnly BlendData;
-            [ReadOnly] public UnsafeComponentLookup<ActiveDrag> ActiveLookup;
+            [ReadOnly] public ComponentLookup<ActiveDrag> ActiveLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)

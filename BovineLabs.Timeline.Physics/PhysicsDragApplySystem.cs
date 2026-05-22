@@ -97,7 +97,8 @@ namespace BovineLabs.Timeline.Physics
                 var resolved = FacetHandle.Resolve(chunk);
                 var drags = chunk.GetNativeArray(ref ActiveDragHandle);
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
                     var entity = entities[i];
                     var facet = resolved[i];

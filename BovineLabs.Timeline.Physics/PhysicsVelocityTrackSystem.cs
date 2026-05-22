@@ -16,7 +16,8 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsVelocityTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsVelocityData, PhysicsVelocityAnimated> _blendImpl;
-        private UnsafeComponentLookup<ActiveVelocity> _activeLookup;
+        private ComponentLookup<ActiveVelocity> _activeLookup;
+        private ComponentLookup<PhysicsVelocityState> _stateLookup;
 
         private EntityQuery _resetQuery;
         private EntityQuery _prepareQuery;
@@ -26,11 +27,11 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetUnsafeComponentLookup<ActiveVelocity>();
+            _activeLookup = state.GetComponentLookup<ActiveVelocity>(true);
+            _stateLookup = state.GetComponentLookup<PhysicsVelocityState>(true);
 
             _resetQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsVelocityState>()
-                .WithAll<ClipActive>()
+                .WithAll<TrackBinding, PhysicsVelocityAnimated, ClipActive>()
                 .WithNone<ClipActivePrevious>()
                 .Build();
 
@@ -55,11 +56,19 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             _activeLookup.Update(ref state);
+            _stateLookup.Update(ref state);
 
-            var stateType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityState>();
+            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbReset = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
+            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             state.Dependency = new ResetStateJob
             {
-                StateTypeHandle = stateType
+                TrackBindingTypeHandle = bindingType,
+                StateLookup = _stateLookup,
+                ECB = ecbReset
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityAnimated>();
@@ -68,23 +77,20 @@ namespace BovineLabs.Timeline.Physics
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             state.Dependency = new DisableStaleJob
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activeLookup,
+                ECB = ecbDisable
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
-
-            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
 
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
                 ActiveLookup = _activeLookup,
-                ECB = ecb.AsParallelWriter()
+                ECB = ecbWrite
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -107,10 +113,11 @@ namespace BovineLabs.Timeline.Physics
         }
 
         [BurstCompile]
-        private struct DisableStaleJob : IJobChunk
+        private struct ResetStateJob : IJobChunk
         {
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [NativeDisableParallelForRestriction] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            [ReadOnly] public ComponentLookup<PhysicsVelocityState> StateLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
@@ -118,27 +125,30 @@ namespace BovineLabs.Timeline.Physics
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    if (binding.Value == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(binding.Value)) ActiveLookup.SetComponentEnabled(binding.Value, false);
+                    var target = bindings[i].Value;
+                    if (target != Entity.Null && StateLookup.HasComponent(target))
+                        ECB.SetComponent(unfilteredChunkIndex, target, new PhysicsVelocityState { Fired = false });
                 }
             }
         }
 
         [BurstCompile]
-        private struct ResetStateJob : IJobChunk
+        private struct DisableStaleJob : IJobChunk
         {
-            public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+            [ReadOnly] public ComponentLookup<ActiveVelocity> ActiveLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var state = states[i];
-                    state.Fired = false;
-                    states[i] = state;
+                    var target = bindings[i].Value;
+                    if (target == Entity.Null) continue;
+                    if (ActiveLookup.HasComponent(target)) 
+                        ECB.SetComponentEnabled<ActiveVelocity>(unfilteredChunkIndex, target, false);
                 }
             }
         }
@@ -147,7 +157,7 @@ namespace BovineLabs.Timeline.Physics
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityData>>.ReadOnly BlendData;
-            [ReadOnly] public UnsafeComponentLookup<ActiveVelocity> ActiveLookup;
+            [ReadOnly] public ComponentLookup<ActiveVelocity> ActiveLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)

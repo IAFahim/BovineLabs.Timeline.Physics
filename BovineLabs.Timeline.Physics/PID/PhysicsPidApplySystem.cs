@@ -27,6 +27,13 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
 
+        private EntityTypeHandle _entityHandle;
+        private ComponentTypeHandle<ActiveLinearPid> _activeLinearHandle;
+        private ComponentTypeHandle<PhysicsLinearPIDState> _linearStateHandle;
+        private ComponentTypeHandle<ActiveAngularPid> _activeAngularHandle;
+        private ComponentTypeHandle<PhysicsAngularPIDState> _angularStateHandle;
+        private BufferTypeHandle<PendingForce> _pendingForceHandle;
+
         private EntityQuery _linearQuery;
         private EntityQuery _angularQuery;
 
@@ -39,14 +46,21 @@ namespace BovineLabs.Timeline.Physics
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
 
+            _entityHandle = state.GetEntityTypeHandle();
+            _activeLinearHandle = state.GetComponentTypeHandle<ActiveLinearPid>(true);
+            _linearStateHandle = state.GetComponentTypeHandle<PhysicsLinearPIDState>();
+            _activeAngularHandle = state.GetComponentTypeHandle<ActiveAngularPid>(true);
+            _angularStateHandle = state.GetComponentTypeHandle<PhysicsAngularPIDState>();
+            _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
+
             _linearQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsLinearPIDState>()
-                .WithAll<TrackBinding, PhysicsLinearPIDAnimated, ClipActive>()
+                .WithAllRW<PhysicsLinearPIDState, PendingForce>()
+                .WithAll<ActiveLinearPid, LocalTransform>()
                 .Build();
 
             _angularQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsAngularPIDState>()
-                .WithAll<TrackBinding, PhysicsAngularPIDAnimated, ClipActive>()
+                .WithAllRW<PhysicsAngularPIDState, PendingForce>()
+                .WithAll<ActiveAngularPid, LocalTransform>()
                 .Build();
         }
 
@@ -60,44 +74,39 @@ namespace BovineLabs.Timeline.Physics
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
-
-            var ecbSys = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb1 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-            var ecb2 = ecbSys.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            var linearAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsLinearPIDAnimated>(true);
-            var linearStateType = SystemAPI.GetComponentTypeHandle<PhysicsLinearPIDState>();
+            _entityHandle.Update(ref state);
+            _activeLinearHandle.Update(ref state);
+            _linearStateHandle.Update(ref state);
+            _activeAngularHandle.Update(ref state);
+            _angularStateHandle.Update(ref state);
+            _pendingForceHandle.Update(ref state);
 
             state.Dependency = new AppendLinearJob
             {
                 DeltaTime = dt,
-                TrackBindingTypeHandle = bindingType,
-                AnimatedTypeHandle = linearAnimatedType,
-                StateTypeHandle = linearStateType,
+                EntityHandle = _entityHandle,
+                ActiveHandle = _activeLinearHandle,
+                StateTypeHandle = _linearStateHandle,
+                PendingForceHandle = _pendingForceHandle,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup,
-                ECB = ecb1
+                StatLookup = _statLookup
             }.ScheduleParallel(_linearQuery, state.Dependency);
-
-            var angularAnimatedType = SystemAPI.GetComponentTypeHandle<PhysicsAngularPIDAnimated>(true);
-            var angularStateType = SystemAPI.GetComponentTypeHandle<PhysicsAngularPIDState>();
 
             state.Dependency = new AppendAngularJob
             {
                 DeltaTime = dt,
-                TrackBindingTypeHandle = bindingType,
-                AnimatedTypeHandle = angularAnimatedType,
-                StateTypeHandle = angularStateType,
+                EntityHandle = _entityHandle,
+                ActiveHandle = _activeAngularHandle,
+                StateTypeHandle = _angularStateHandle,
+                PendingForceHandle = _pendingForceHandle,
                 TargetsLookup = _targetsLookup,
                 TransformLookup = _transformLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
-                StatLookup = _statLookup,
-                ECB = ecb2
+                StatLookup = _statLookup
             }.ScheduleParallel(_angularQuery, state.Dependency);
         }
 
@@ -105,35 +114,30 @@ namespace BovineLabs.Timeline.Physics
         private struct AppendLinearJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsLinearPIDAnimated> AnimatedTypeHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveLinearPid> ActiveHandle;
             public ComponentTypeHandle<PhysicsLinearPIDState> StateTypeHandle;
+            public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    var body = binding.Value;
-                    if (body == Entity.Null) continue;
-                    if (!TransformLookup.HasComponent(body)) continue;
-
-                    var animated = animateds[i];
+                    var body = entities[i];
+                    var config = actives[i].Config;
                     var state = states[i];
-
-                    var config = animated.Value;
                     var transform = TransformLookup[body];
 
                     PhysicsMath.ResolveLinearPidTarget(transform, config, body,
@@ -167,7 +171,7 @@ namespace BovineLabs.Timeline.Physics
                     force *= config.Strength * multiplier;
 
                     if (math.lengthsq(force) > 1e-5f)
-                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingForce
+                        pendingForces[i].Add(new PendingForce
                         {
                             Linear = force * DeltaTime,
                             Angular = float3.zero
@@ -183,35 +187,30 @@ namespace BovineLabs.Timeline.Physics
         private struct AppendAngularJob : IJobChunk
         {
             public float DeltaTime;
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<PhysicsAngularPIDAnimated> AnimatedTypeHandle;
+            [ReadOnly] public EntityTypeHandle EntityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveAngularPid> ActiveHandle;
             public ComponentTypeHandle<PhysicsAngularPIDState> StateTypeHandle;
+            public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
             {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
+                var entities = chunk.GetNativeArray(EntityHandle);
+                var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
+                var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
-                    var binding = bindings[i];
-                    var body = binding.Value;
-                    if (body == Entity.Null) continue;
-                    if (!TransformLookup.HasComponent(body)) continue;
-
-                    var animated = animateds[i];
+                    var body = entities[i];
+                    var config = actives[i].Config;
                     var state = states[i];
-
-                    var config = animated.Value;
                     var transform = TransformLookup[body];
 
                     PhysicsMath.ResolveAngularPidTarget(transform, config, body,
@@ -229,7 +228,7 @@ namespace BovineLabs.Timeline.Physics
                     torque *= config.Strength * multiplier;
 
                     if (math.lengthsq(torque) > 1e-5f)
-                        ECB.AppendToBuffer(unfilteredChunkIndex, body, new PendingForce
+                        pendingForces[i].Add(new PendingForce
                         {
                             Linear = float3.zero,
                             Angular = torque * DeltaTime

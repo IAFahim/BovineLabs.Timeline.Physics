@@ -111,7 +111,8 @@ namespace BovineLabs.Timeline.Physics
                 var states = chunk.GetNativeArray(ref VelocityStateHandle);
                 var physicsVelocities = chunk.GetNativeArray(ref PhysicsVelocityHandle);
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
                     var config = velocities[i].Config;
                     var s = states[i];

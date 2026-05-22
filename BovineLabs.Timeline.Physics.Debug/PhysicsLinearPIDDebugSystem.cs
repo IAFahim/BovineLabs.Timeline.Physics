@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [UpdateInGroup(typeof(DebugSystemGroup))]
     public partial struct PhysicsLinearPIDDebugSystem : ISystem
     {
-        private UnsafeComponentLookup<LocalTransform> _localTransformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<Targets> _targetsLookup;
 
@@ -48,7 +48,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
-            _localTransformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
         }
@@ -69,14 +69,14 @@ namespace BovineLabs.Timeline.Physics.Debug
                 drawer = drawSystem.CreateDrawer();
             }
 
-            _localTransformLookup.Update(ref state);
+            _localToWorldLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _targetsLookup.Update(ref state);
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
-                TransformLookup = _localTransformLookup,
+                TransformLookup = _localToWorldLookup,
                 VelocityLookup = _velocityLookup,
                 TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
@@ -87,7 +87,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 

@@ -36,7 +36,7 @@ namespace BovineLabs.Timeline.Physics
 
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsVelocity>()
-                .WithAll<ActiveDrag, LocalTransform>()
+                .WithAll<ActiveDrag, LocalToWorld>()
                 .Build();
 
             _entityHandle = state.GetEntityTypeHandle();

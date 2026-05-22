@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Physics
     {
         private EntityQuery _query;
         private ComponentTypeHandle<PhysicsVelocity> _velocityHandle;
-        private ComponentTypeHandle<LocalTransform> _transformHandle;
+        private ComponentTypeHandle<LocalToWorld> _transformHandle;
         private ComponentTypeHandle<PhysicsMass> _massHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
         private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
@@ -28,11 +28,11 @@ namespace BovineLabs.Timeline.Physics
 
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsVelocity, PendingForce>()
-                .WithAll<LocalTransform>()
+                .WithAll<LocalToWorld>()
                 .Build();
 
             _velocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
-            _transformHandle = state.GetComponentTypeHandle<LocalTransform>(true);
+            _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
             _massHandle = state.GetComponentTypeHandle<PhysicsMass>(true);
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
@@ -61,7 +61,7 @@ namespace BovineLabs.Timeline.Physics
         private struct AccumulateJob : IJobChunkWorkerBeginEnd
         {
             public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
-            [ReadOnly] public ComponentTypeHandle<LocalTransform> TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsMass> MassHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
@@ -89,7 +89,9 @@ namespace BovineLabs.Timeline.Physics
 
                     var inverseMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
                     var inverseInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
-                    var inverseRotation = math.inverse(transform.Rotation);
+
+                    var rotation = new quaternion(transform.Value);
+                    var inverseRotation = math.inverse(rotation);
 
                     var forces = forceAccessor[i];
                     if (forces.Length > 0)
@@ -106,7 +108,7 @@ namespace BovineLabs.Timeline.Physics
                         velocity.Linear += totalLinear * inverseMass;
 
                         var localAngular = math.rotate(inverseRotation, totalAngular);
-                        velocity.Angular += math.rotate(transform.Rotation, localAngular * inverseInertia);
+                        velocity.Angular += math.rotate(rotation, localAngular * inverseInertia);
 
                         forces.Clear();
                     }

@@ -373,7 +373,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var vel = new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero };
             var mass = CreateMass(1f);
-            var transform = LocalTransform.Identity;
+            var transform = new LocalToWorld { Value = float4x4.identity };
 
             PhysicsMath.ApplyAngularTorque(vel, mass, transform, new float3(0, 10, 0), 1f, out var result);
 
@@ -386,7 +386,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var vel = new PhysicsVelocity { Linear = float3.zero, Angular = new float3(1, 2, 3) };
             var mass = CreateMass(1f);
-            var transform = LocalTransform.Identity;
+            var transform = new LocalToWorld { Value = float4x4.identity };
 
             PhysicsMath.ApplyAngularTorque(vel, mass, transform, float3.zero, 1f, out var result);
 
@@ -398,7 +398,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var vel = new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero };
             var mass = default(PhysicsMass);
-            var transform = LocalTransform.Identity;
+            var transform = new LocalToWorld { Value = float4x4.identity };
 
             PhysicsMath.ApplyAngularTorque(vel, mass, transform, new float3(0, 5, 0), 1f, out var result);
 
@@ -410,7 +410,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var vel = new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero };
             var mass = CreateMass(1f);
-            var transform = LocalTransform.FromPositionRotation(float3.zero, quaternion.RotateY(math.PI / 2f));
+            var transform = new LocalToWorld { Value = new float4x4(quaternion.RotateY(math.PI / 2f), float3.zero) };
 
             PhysicsMath.ApplyAngularTorque(vel, mass, transform, new float3(0, 10, 0), 1f, out var result);
 

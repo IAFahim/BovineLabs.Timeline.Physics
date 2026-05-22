@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Physics
             float3 vector,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalTransform> transformLookup,
+            in UnsafeComponentLookup<LocalToWorld> transformLookup,
             out float3 resolvedVector)
         {
             if (space == Target.None)
@@ -29,9 +29,9 @@ namespace BovineLabs.Timeline.Physics
             if (space != Target.Self && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(space, entity);
 
-            if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var lt))
+            if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var ltw))
             {
-                resolvedVector = math.rotate(lt.Rotation, vector);
+                resolvedVector = math.rotate(new quaternion(ltw.Value), vector);
                 return;
             }
 
@@ -218,11 +218,11 @@ namespace BovineLabs.Timeline.Physics
 
 
         public static void ResolveLinearPidTarget(
-            in LocalTransform transform,
+            in LocalToWorld transform,
             in PhysicsLinearPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalTransform> transformLookup,
+            in UnsafeComponentLookup<LocalToWorld> transformLookup,
             out float3 targetPosition)
         {
             var targetEntity = Entity.Null;
@@ -236,11 +236,11 @@ namespace BovineLabs.Timeline.Physics
             {
                 PidLinearTargetMode.TargetLocal or
                     PidLinearTargetMode.InitialLocal =>
-                    targetTransform.Position + math.rotate(targetTransform.Rotation, config.TargetOffset),
+                    targetTransform.Position + math.rotate(new quaternion(targetTransform.Value), config.TargetOffset),
 
                 PidLinearTargetMode.LineOfSight =>
                     ResolveLineOfSight(transform.Position, targetTransform.Position,
-                        transform.Rotation, config.TargetOffset),
+                        new quaternion(transform.Value), config.TargetOffset),
 
                 PidLinearTargetMode.World => config.TargetOffset,
 
@@ -252,11 +252,11 @@ namespace BovineLabs.Timeline.Physics
         }
 
         public static void ResolveAngularPidTarget(
-            in LocalTransform transform,
+            in LocalToWorld transform,
             in PhysicsAngularPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalTransform> transformLookup,
+            in UnsafeComponentLookup<LocalToWorld> transformLookup,
             out quaternion targetRotation)
         {
             var targetEntity = Entity.Null;
@@ -269,24 +269,24 @@ namespace BovineLabs.Timeline.Physics
             targetRotation = config.TargetMode switch
             {
                 PidAngularTargetMode.MatchTarget =>
-                    math.mul(targetTransform.Rotation, config.TargetRotation),
+                    math.mul(new quaternion(targetTransform.Value), config.TargetRotation),
 
                 PidAngularTargetMode.LookAtTarget =>
                     ResolveLookAtTarget(transform.Position, targetTransform.Position,
-                        transform.Rotation, config.TargetRotation),
+                        new quaternion(transform.Value), config.TargetRotation),
 
                 PidAngularTargetMode.World => config.TargetRotation,
 
                 PidAngularTargetMode.FleeFromTarget =>
                     ResolveLookAtTarget(transform.Position,
-                        transform.Position + (transform.Position - targetTransform.Position), transform.Rotation,
+                        transform.Position + (transform.Position - targetTransform.Position), new quaternion(transform.Value),
                         config.TargetRotation),
 
                 PidAngularTargetMode.MatchTargetOpposite =>
-                    math.mul(math.mul(targetTransform.Rotation, quaternion.AxisAngle(math.up(), math.PI)),
+                    math.mul(math.mul(new quaternion(targetTransform.Value), quaternion.AxisAngle(math.up(), math.PI)),
                         config.TargetRotation),
 
-                _ => transform.Rotation
+                _ => new quaternion(transform.Value)
             };
         }
 
@@ -317,13 +317,14 @@ namespace BovineLabs.Timeline.Physics
         }
 
         public static void ApplyAngularTorque(in PhysicsVelocity velocityIn, in PhysicsMass mass,
-            in LocalTransform transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
+            in LocalToWorld transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
         {
             velocityOut = velocityIn;
             var invInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
-            var localTorque = math.rotate(math.inverse(transform.Rotation), torque);
+            var rotation = new quaternion(transform.Value);
+            var localTorque = math.rotate(math.inverse(rotation), torque);
             var localAngularVelocityChange = localTorque * invInertia * deltaTime;
-            velocityOut.Angular += math.rotate(transform.Rotation, localAngularVelocityChange);
+            velocityOut.Angular += math.rotate(rotation, localAngularVelocityChange);
         }
     }
 }

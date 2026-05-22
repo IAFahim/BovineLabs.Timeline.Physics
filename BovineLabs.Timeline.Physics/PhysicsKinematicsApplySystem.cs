@@ -22,7 +22,7 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
-        private UnsafeComponentLookup<LocalTransform> _transformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _transformLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
@@ -43,7 +43,7 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            _transformLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
@@ -59,12 +59,12 @@ namespace BovineLabs.Timeline.Physics
 
             _forceQuery = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsForceState, PendingForce>()
-                .WithAll<ActiveForce, LocalTransform>()
+                .WithAll<ActiveForce, LocalToWorld>()
                 .Build();
 
             _velocityQuery = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsVelocityState, PendingVelocity>()
-                .WithAll<ActiveVelocity, LocalTransform>()
+                .WithAll<ActiveVelocity, LocalToWorld>()
                 .Build();
         }
 
@@ -127,7 +127,7 @@ namespace BovineLabs.Timeline.Physics
             public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
@@ -189,7 +189,7 @@ namespace BovineLabs.Timeline.Physics
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;

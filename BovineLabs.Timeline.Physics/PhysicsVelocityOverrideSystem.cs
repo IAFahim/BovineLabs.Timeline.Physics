@@ -24,11 +24,11 @@ namespace BovineLabs.Timeline.Physics
         private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
         private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
-        private ComponentTypeHandle<LocalTransform> _transformHandle;
+        private ComponentTypeHandle<LocalToWorld> _transformHandle;
         private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
-        private UnsafeComponentLookup<LocalTransform> _transformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _transformLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
@@ -40,17 +40,17 @@ namespace BovineLabs.Timeline.Physics
 
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsVelocity, PhysicsVelocityState>()
-                .WithAll<ActiveVelocity, LocalTransform>()
+                .WithAll<ActiveVelocity, LocalToWorld>()
                 .Build();
 
             _entityHandle = state.GetEntityTypeHandle();
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
-            _transformHandle = state.GetComponentTypeHandle<LocalTransform>(true);
+            _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
             _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _transformLookup = state.GetUnsafeComponentLookup<LocalTransform>(true);
+            _transformLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
@@ -94,11 +94,11 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveVelocityHandle;
             public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
-            [ReadOnly] public ComponentTypeHandle<LocalTransform> TransformHandle;
+            [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalTransform> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;

@@ -52,12 +52,14 @@ namespace BovineLabs.Timeline.Physics
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerConditionData>(true);
+            var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
 
             state.Dependency = new InvokeJob
             {
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerConditionDataTypeHandle = configType,
+                PhysicsTriggerFilterDataTypeHandle = filterType,
                 ClipActivePreviousTypeHandle = activePrevType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
@@ -74,6 +76,7 @@ namespace BovineLabs.Timeline.Physics
         {
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerConditionData> PhysicsTriggerConditionDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
@@ -89,6 +92,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerConditionDataTypeHandle);
+                var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
 
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
 
@@ -100,20 +104,21 @@ namespace BovineLabs.Timeline.Physics
                     if (self == Entity.Null) continue;
 
                     var config = configs[i];
+                    var filter = filters[i];
                     var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
-                            ProcessEvent(self, evt.EntityB, evt.State, in config, isFirstFrame);
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame);
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                         foreach (var evt in collisions)
-                            ProcessEvent(self, evt.EntityB, evt.State, in config, isFirstFrame);
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame);
                 }
             }
 
             private void ProcessEvent(Entity self, Entity other, StatefulEventState state,
-                in PhysicsTriggerConditionData config, bool isFirstFrame)
+                in PhysicsTriggerConditionData config, in PhysicsTriggerFilterData filter, bool isFirstFrame)
             {
                 if (!StatefulEventMatching.Matches(state, config.EventState, isFirstFrame, false)) return;
 
@@ -123,9 +128,12 @@ namespace BovineLabs.Timeline.Physics
                     if ((collider.Value.Value.GetCollisionFilter().BelongsTo & config.CollidesWithMask) == 0) return;
                 }
 
-                if (config.Condition == ConditionKey.Null) return;
-
+                // Filter by ignore target and link keys
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
+                    return;
+
+                if (config.Condition == ConditionKey.Null) return;
 
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey, self, other,
                         targets, LinkSources, Links, out var target))

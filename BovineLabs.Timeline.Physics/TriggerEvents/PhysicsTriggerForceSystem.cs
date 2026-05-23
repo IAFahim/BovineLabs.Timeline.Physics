@@ -56,6 +56,7 @@ namespace BovineLabs.Timeline.Physics
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerForceData>(true);
+            var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
 
             state.Dependency = new GatherJob
@@ -64,6 +65,7 @@ namespace BovineLabs.Timeline.Physics
                 Gathered = gathered.AsParallelWriter(),
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
+                PhysicsTriggerFilterDataTypeHandle = filterType,
                 ClipActivePreviousTypeHandle = activePrevType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
@@ -97,6 +99,7 @@ namespace BovineLabs.Timeline.Physics
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
@@ -112,6 +115,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
+                var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
 
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
 
@@ -123,6 +127,7 @@ namespace BovineLabs.Timeline.Physics
                     if (self == Entity.Null) continue;
 
                     var config = configs[i];
+                    var filter = filters[i];
                     var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
 
                     var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
@@ -135,7 +140,7 @@ namespace BovineLabs.Timeline.Physics
                             var selfPos = LtwLookup[self].Position;
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var midpoint = (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, midpoint, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
                         }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
@@ -147,14 +152,18 @@ namespace BovineLabs.Timeline.Physics
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, pt, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
                         }
                 }
             }
 
-            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, float3 contactPoint,
+            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
                 in Targets targets)
             {
+                // Filter by ignore target and link keys
+                if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
+                    return;
+
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;

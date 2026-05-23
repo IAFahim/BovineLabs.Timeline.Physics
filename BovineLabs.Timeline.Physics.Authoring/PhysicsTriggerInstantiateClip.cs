@@ -1,8 +1,10 @@
+using System;
 using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -28,6 +30,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Target Override")]
         [Tooltip("Resolves link on collided entity. Assigns to spawned entity Targets.Target.")]
         public EntityLinkSchema targetLinkOverride;
+
+        [Header("Filtering")]
+        [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
+        public Target ignoreTarget = Target.Owner;
+
+        [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
+        public EntityLinkSchema[] requireLinks = Array.Empty<EntityLinkSchema>();
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
@@ -57,6 +66,36 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 AssignParent = assignParent,
                 AssignParentLinkKey = parentKey,
                 TargetLinkKey = targetKey
+            });
+
+            // Bake the filter data
+            BlobAssetReference<PhysicsTriggerLinkBlob> filterBlob = default;
+            if (requireLinks != null && requireLinks.Length > 0)
+            {
+                var builder = new BlobBuilder(Allocator.Temp);
+                ref var root = ref builder.ConstructRoot<PhysicsTriggerLinkBlob>();
+                var array = builder.Allocate(ref root.ValidLinkKeys, requireLinks.Length);
+
+                int validCount = 0;
+                for (int i = 0; i < requireLinks.Length; i++)
+                {
+                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
+                        array[validCount++] = reqKey;
+                }
+
+                if (validCount > 0)
+                {
+                    filterBlob = builder.CreateBlobAssetReference<PhysicsTriggerLinkBlob>(Allocator.Persistent);
+                    context.Baker.AddBlobAsset(ref filterBlob, out _);
+                }
+
+                builder.Dispose();
+            }
+
+            context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData
+            {
+                IgnoreTarget = ignoreTarget,
+                LinkFilterBlob = filterBlob
             });
 
             base.Bake(clipEntity, context);

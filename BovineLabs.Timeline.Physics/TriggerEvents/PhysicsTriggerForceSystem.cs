@@ -38,7 +38,7 @@ namespace BovineLabs.Timeline.Physics
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerForceData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsTriggerForceData, PhysicsTriggerFilterData, ClipActive>()
                 .Build();
         }
 

@@ -29,6 +29,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
         private ComponentTypeHandle<PhysicsTriggerFilterData> _filterHandle;
+        private ComponentTypeHandle<ClipActivePrevious> _activePrevHandle;
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
@@ -46,12 +47,13 @@ namespace BovineLabs.Timeline.Physics
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<InstantiateGatherJob>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<ClipActive, PhysicsTriggerInstantiateData>()
+                .WithAll<TrackBinding, ClipActive, PhysicsTriggerInstantiateData, PhysicsTriggerFilterData>()
                 .Build();
 
             _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
             _filterHandle = state.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
+            _activePrevHandle = state.GetComponentTypeHandle<ClipActivePrevious>(true);
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
@@ -68,6 +70,7 @@ namespace BovineLabs.Timeline.Physics
             _trackBindingHandle.Update(ref state);
             _dataHandle.Update(ref state);
             _filterHandle.Update(ref state);
+            _activePrevHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
@@ -87,6 +90,7 @@ namespace BovineLabs.Timeline.Physics
                 TrackBindingHandle = _trackBindingHandle,
                 DataHandle = _dataHandle,
                 FilterHandle = _filterHandle,
+                ClipActivePreviousTypeHandle = _activePrevHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
@@ -116,6 +120,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
+            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
@@ -132,11 +137,15 @@ namespace BovineLabs.Timeline.Physics
                 var filters = chunk.GetNativeArray(ref FilterHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
 
+                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
+
                 for (var i = 0; i < chunk.Count; i++)
                 {
                     var self = trackBindings[i].Value;
                     var cfg = configs[i];
                     var filter = filters[i];
+
+                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
 
                     if (!Registry.TryGetValue(cfg.ObjectId, out var prefab) || prefab == Entity.Null)
                     {
@@ -152,7 +161,8 @@ namespace BovineLabs.Timeline.Physics
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
-                            if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                            if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
+                                !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                             if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets, LinkSources, Links)) continue;
 
@@ -167,7 +177,8 @@ namespace BovineLabs.Timeline.Physics
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (evt.State != cfg.EventState || !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                        if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
+                            !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                         if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets, LinkSources, Links)) continue;
 

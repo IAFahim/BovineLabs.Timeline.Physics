@@ -37,7 +37,7 @@ namespace BovineLabs.Timeline.Physics
             _writers.Create(ref state);
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerConditionData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsTriggerConditionData, PhysicsTriggerFilterData, ClipActive>()
                 .Build();
         }
 

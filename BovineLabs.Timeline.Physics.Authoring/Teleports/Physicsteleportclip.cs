@@ -14,6 +14,11 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public sealed class PhysicsTeleportClip : DOTSClip, ITimelineClipAsset
     {
+        [Header("Teleport Target")]
+        [Tooltip("The entity to actually teleport.")]
+        public Target entityToTeleport = Target.Owner;
+        public EntityLinkSchema entityToTeleportLink;
+        
         [Header("Destination")]
         [Tooltip("Distance from the target entity to teleport to.")]
         public float radius = 3f;
@@ -92,6 +97,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            ushort teleportTargetLinkKey = 0;
+            if (entityToTeleportLink != null && EntityLinkAuthoringUtility.TryGetKey(entityToTeleportLink, out var k00))
+                teleportTargetLinkKey = k00;
+
             ushort teleportLinkKey = 0;
             if (teleportRelativeToLink != null && EntityLinkAuthoringUtility.TryGetKey(teleportRelativeToLink, out var k0))
                 teleportLinkKey = k0;
@@ -104,10 +113,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (failureRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(failureRouteLink, out var k2))
                 failureLinkKey = k2;
 
-            context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
+context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
             {
                 AuthoredData = new PhysicsTeleportData
                 {
+                    EntityToTeleport = entityToTeleport,
+                    EntityToTeleportLinkKey = teleportTargetLinkKey,
+
                     Radius = radius,
                     AzimuthCenter = math.radians(azimuthCenter),
                     AzimuthHalfRange = math.radians(azimuthHalfRange),

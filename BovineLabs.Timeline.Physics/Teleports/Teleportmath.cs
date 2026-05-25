@@ -183,26 +183,26 @@ namespace BovineLabs.Timeline.Physics
 
         public static Entity ResolveTargetEntity(
             Entity selfEntity,
-            in PhysicsTeleportData config,
+            Target targetMode,
+            ushort linkKey,
             in ComponentLookup<Targets> targetsLookup,
             in UnsafeComponentLookup<EntityLinkSource> linkSources,
             in UnsafeBufferLookup<EntityLinkEntry> linkEntries)
         {
-            if (config.TeleportRelativeTo == Target.None)
+            if (targetMode == Target.None)
                 return selfEntity;
 
             if (!targetsLookup.TryGetComponent(selfEntity, out var targets))
                 return selfEntity;
 
-            var baseTarget = targets.Get(config.TeleportRelativeTo, selfEntity);
+            var baseTarget = targets.Get(targetMode, selfEntity);
             if (baseTarget == Entity.Null)
                 return selfEntity;
 
-            if (config.TeleportRelativeToLinkKey == 0)
+            if (linkKey == 0)
                 return baseTarget;
 
-            if (EntityLinkResolver.TryResolve(baseTarget, config.TeleportRelativeToLinkKey, linkSources, linkEntries,
-                    out var linked))
+            if (EntityLinkResolver.TryResolve(baseTarget, linkKey, linkSources, linkEntries, out var linked))
                 return linked;
 
             return baseTarget;

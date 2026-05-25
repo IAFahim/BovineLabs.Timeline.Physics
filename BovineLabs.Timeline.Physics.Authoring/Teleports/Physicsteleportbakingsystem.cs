@@ -16,7 +16,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             var queuedTeleport = new NativeHashSet<Entity>(64, Allocator.Temp);
-            var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsTeleportAnimated>()
@@ -31,19 +30,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.SetComponentEnabled<ActiveTeleport>(target, false);
                     ecb.AddComponent<PhysicsTeleportState>(target);
                 }
-
-                if (queuedBuffers.Add(target))
-                {
-                    if (!em.HasBuffer<PendingForce>(target)) ecb.AddBuffer<PendingForce>(target);
-                    if (!em.HasBuffer<PendingVelocity>(target)) ecb.AddBuffer<PendingVelocity>(target);
-                }
             }
 
             ecb.Playback(em);
             ecb.Dispose();
 
             queuedTeleport.Dispose();
-            queuedBuffers.Dispose();
         }
     }
 }

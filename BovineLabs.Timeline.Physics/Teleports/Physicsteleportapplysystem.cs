@@ -22,13 +22,13 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsTeleportApplySystem : ISystem
     {
         private EntityQuery _query;
-
         private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<ActiveTeleport> _activeTeleportHandle;
         private ComponentTypeHandle<PhysicsTeleportState> _teleportStateHandle;
-        private ComponentTypeHandle<LocalTransform> _localTransformHandle;
-        private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
 
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<PhysicsVelocity> _physicsVelocityLookup;
+        
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<Parent> _parentLookup;
@@ -43,15 +43,16 @@ namespace BovineLabs.Timeline.Physics
             state.RequireForUpdate<PhysicsWorldSingleton>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsTeleportState, LocalTransform>()
-                .WithAll<ActiveTeleport, LocalToWorld>()
+                .WithAllRW<PhysicsTeleportState>()
+                .WithAll<ActiveTeleport>()
                 .Build();
 
             _entityHandle = state.GetEntityTypeHandle();
             _activeTeleportHandle = state.GetComponentTypeHandle<ActiveTeleport>(true);
             _teleportStateHandle = state.GetComponentTypeHandle<PhysicsTeleportState>();
-            _localTransformHandle = state.GetComponentTypeHandle<LocalTransform>();
-            _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
+
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>();
+            _physicsVelocityLookup = state.GetComponentLookup<PhysicsVelocity>();
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
@@ -68,8 +69,10 @@ namespace BovineLabs.Timeline.Physics
             _entityHandle.Update(ref state);
             _activeTeleportHandle.Update(ref state);
             _teleportStateHandle.Update(ref state);
-            _localTransformHandle.Update(ref state);
-            _physicsVelocityHandle.Update(ref state);
+
+            _localTransformLookup.Update(ref state);
+            _physicsVelocityLookup.Update(ref state);
+
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _parentLookup.Update(ref state);
@@ -86,8 +89,10 @@ namespace BovineLabs.Timeline.Physics
                 EntityHandle = _entityHandle,
                 ActiveTeleportHandle = _activeTeleportHandle,
                 TeleportStateHandle = _teleportStateHandle,
-                LocalTransformHandle = _localTransformHandle,
-                PhysicsVelocityHandle = _physicsVelocityHandle,
+                
+                LocalTransformLookup = _localTransformLookup,
+                PhysicsVelocityLookup = _physicsVelocityLookup,
+                
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 ParentLookup = _parentLookup,
@@ -106,9 +111,10 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveTeleport> ActiveTeleportHandle;
             public ComponentTypeHandle<PhysicsTeleportState> TeleportStateHandle;
-            public ComponentTypeHandle<LocalTransform> LocalTransformHandle;
-            public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
 
+            [NativeDisableParallelForRestriction] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
+            
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -123,10 +129,6 @@ namespace BovineLabs.Timeline.Physics
                 var entities = chunk.GetNativeArray(EntityHandle);
                 var actives = chunk.GetNativeArray(ref ActiveTeleportHandle);
                 var teleportStates = chunk.GetNativeArray(ref TeleportStateHandle);
-                var localTransforms = chunk.GetNativeArray(ref LocalTransformHandle);
-
-                var hasVelocity = chunk.Has(ref PhysicsVelocityHandle);
-                var velocities = hasVelocity ? chunk.GetNativeArray(ref PhysicsVelocityHandle) : default;
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -140,17 +142,23 @@ namespace BovineLabs.Timeline.Physics
                     teleportState.Fired = true;
                     teleportStates[i] = teleportState;
 
-                    if (!LocalToWorldLookup.TryGetComponent(selfEntity, out var selfLtw)) continue;
+                    var targetToTeleport = TeleportMath.ResolveTargetEntity(
+                        selfEntity, config.EntityToTeleport, config.EntityToTeleportLinkKey, 
+                        TargetsLookup, LinkSources, Links);
 
-                    var targetEntity = TeleportMath.ResolveTargetEntity(
-                        selfEntity, config, TargetsLookup, LinkSources, Links);
+                    if (targetToTeleport == Entity.Null || !LocalToWorldLookup.TryGetComponent(targetToTeleport, out var teleportLtw))
+                        continue;
 
-                    if (!LocalToWorldLookup.TryGetComponent(targetEntity, out var targetLtw))
-                        targetLtw = selfLtw;
+                    var referenceEntity = TeleportMath.ResolveTargetEntity(
+                        selfEntity, config.TeleportRelativeTo, config.TeleportRelativeToLinkKey, 
+                        TargetsLookup, LinkSources, Links);
 
-                    var selfPos = selfLtw.Position;
-                    var targetPos = targetLtw.Position;
-                    var targetRot = new quaternion(targetLtw.Value);
+                    if (!LocalToWorldLookup.TryGetComponent(referenceEntity, out var referenceLtw))
+                        referenceLtw = teleportLtw;
+
+                    var teleportPos = teleportLtw.Position;
+                    var referencePos = referenceLtw.Position;
+                    var referenceRot = new quaternion(referenceLtw.Value);
 
                     var targets = TargetsLookup.HasComponent(selfEntity) ? TargetsLookup[selfEntity] : default;
                     var radiusMultiplier = StatStrengthUtility.Resolve(
@@ -160,19 +168,19 @@ namespace BovineLabs.Timeline.Physics
                     if (config.RequireLineOfSight)
                     {
                         var hasLos = TeleportMath.CheckLineOfSight(
-                            in CollisionWorld, selfPos, targetPos,
+                            in CollisionWorld, teleportPos, referencePos,
                             config.LineOfSightOffset, config.ObstacleMask,
-                            selfEntity, targetEntity);
+                            targetToTeleport, referenceEntity);
 
                         if (!hasLos)
                         {
-                            FireFailure(selfEntity, targetEntity, config, targets);
+                            FireFailure(selfEntity, targetToTeleport, config, targets);
                             continue;
                         }
                     }
 
                     TeleportMath.ResolveReferenceRotation(
-                        config.ReferenceFrame, selfPos, targetPos, targetRot,
+                        config.ReferenceFrame, teleportPos, referencePos, referenceRot,
                         out var referenceRotation);
 
                     var maxCandidates = math.clamp(config.MaxCandidates, 1, 64);
@@ -185,21 +193,21 @@ namespace BovineLabs.Timeline.Physics
                             c, maxCandidates,
                             config.AzimuthCenter, config.AzimuthHalfRange,
                             config.ElevationCenter, config.ElevationHalfRange,
-                            referenceRotation, radius, targetPos,
+                            referenceRotation, radius, referencePos,
                             out var candidatePos);
 
                         var clearanceOk = TeleportMath.CheckClearance(
                             in CollisionWorld, candidatePos,
-                            config.ClearanceRadius, config.ObstacleMask, selfEntity);
+                            config.ClearanceRadius, config.ObstacleMask, targetToTeleport);
 
                         if (!clearanceOk) continue;
 
                         if (config.RequireCandidateVisibility)
                         {
                             var candidateLos = TeleportMath.CheckLineOfSight(
-                                in CollisionWorld, candidatePos, targetPos,
+                                in CollisionWorld, candidatePos, referencePos,
                                 config.LineOfSightOffset, config.ObstacleMask,
-                                selfEntity, targetEntity);
+                                targetToTeleport, referenceEntity);
 
                             if (!candidateLos) continue;
                         }
@@ -211,20 +219,20 @@ namespace BovineLabs.Timeline.Physics
 
                     if (!foundValid)
                     {
-                        FireFailure(selfEntity, targetEntity, config, targets);
+                        FireFailure(selfEntity, targetToTeleport, config, targets);
                         continue;
                     }
 
                     TeleportMath.ComputeFacingRotation(
-                        config.FacingMode, validPosition, targetPos,
-                        new quaternion(selfLtw.Value), targetRot,
+                        config.FacingMode, validPosition, referencePos,
+                        new quaternion(teleportLtw.Value), referenceRot,
                         out var facingRot);
 
                     var worldTransform = LocalTransform.FromPositionRotation(validPosition, facingRot);
 
-                    if (ParentLookup.HasComponent(selfEntity))
+                    if (ParentLookup.HasComponent(targetToTeleport))
                     {
-                        var parent = ParentLookup[selfEntity];
+                        var parent = ParentLookup[targetToTeleport];
                         if (LocalToWorldLookup.TryGetComponent(parent.Value, out var parentLtw))
                         {
                             var worldMatrix = float4x4.TRS(worldTransform.Position, worldTransform.Rotation, 1f);
@@ -233,14 +241,15 @@ namespace BovineLabs.Timeline.Physics
                         }
                     }
 
-                    localTransforms[i] = worldTransform;
+                    if (LocalTransformLookup.HasComponent(targetToTeleport))
+                        LocalTransformLookup[targetToTeleport] = worldTransform;
 
-                    if (config.ResetVelocity && hasVelocity)
+                    if (config.ResetVelocity && PhysicsVelocityLookup.HasComponent(targetToTeleport))
                     {
-                        var vel = velocities[i];
+                        var vel = PhysicsVelocityLookup[targetToTeleport];
                         vel.Linear = float3.zero;
                         vel.Angular = float3.zero;
-                        velocities[i] = vel;
+                        PhysicsVelocityLookup[targetToTeleport] = vel;
                     }
                 }
             }

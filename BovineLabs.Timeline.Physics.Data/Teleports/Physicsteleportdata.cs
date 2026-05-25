@@ -25,6 +25,9 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsTeleportData
     {
+        public Target EntityToTeleport;
+        public ushort EntityToTeleportLinkKey;
+
         public float Radius;
 
         public float AzimuthCenter;
@@ -77,6 +80,9 @@ namespace BovineLabs.Timeline.Physics
         {
             return new PhysicsTeleportData
             {
+                EntityToTeleport = s < 0.5f ? a.EntityToTeleport : b.EntityToTeleport,
+                EntityToTeleportLinkKey = s < 0.5f ? a.EntityToTeleportLinkKey : b.EntityToTeleportLinkKey,
+
                 Radius = math.lerp(a.Radius, b.Radius, s),
                 AzimuthCenter = math.lerp(a.AzimuthCenter, b.AzimuthCenter, s),
                 AzimuthHalfRange = math.lerp(a.AzimuthHalfRange, b.AzimuthHalfRange, s),
@@ -105,6 +111,9 @@ namespace BovineLabs.Timeline.Physics
         {
             return new PhysicsTeleportData
             {
+                EntityToTeleport = a.EntityToTeleport,
+                EntityToTeleportLinkKey = a.EntityToTeleportLinkKey,
+
                 Radius = a.Radius + b.Radius,
                 AzimuthCenter = a.AzimuthCenter + b.AzimuthCenter,
                 AzimuthHalfRange = a.AzimuthHalfRange + b.AzimuthHalfRange,

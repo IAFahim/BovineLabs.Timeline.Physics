@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics
         public quaternion TargetRotation;
         public float Strength;
         public StatStrengthConfig StrengthStat;
+        public float StopThreshold; // Optional: suppress output when angular error magnitude (degrees) < this value (0 = disabled)
     }
 
     public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>
@@ -43,7 +44,8 @@ namespace BovineLabs.Timeline.Physics
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
                 TargetRotation = math.slerp(a.TargetRotation, b.TargetRotation, s),
                 Strength = math.lerp(a.Strength, b.Strength, s),
-                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
+                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat,
+                StopThreshold = math.lerp(a.StopThreshold, b.StopThreshold, s)
             };
         }
 
@@ -56,7 +58,8 @@ namespace BovineLabs.Timeline.Physics
                 TargetMode = a.TargetMode,
                 TargetRotation = math.mul(a.TargetRotation, b.TargetRotation),
                 Strength = a.Strength + b.Strength,
-                StrengthStat = a.StrengthStat
+                StrengthStat = a.StrengthStat,
+                StopThreshold = a.StopThreshold // Keep original; blending would be ambiguous
             };
         }
     }

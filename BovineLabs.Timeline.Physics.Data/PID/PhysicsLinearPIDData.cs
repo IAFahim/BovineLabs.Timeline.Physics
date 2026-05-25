@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics
         public float3 TargetOffset;
         public float Strength; // NEW: output force multiplier, default 1
         public StatStrengthConfig StrengthStat;
+        public float StopThreshold; // Optional: suppress output when error magnitude < this value (0 = disabled)
     }
 
     public struct PhysicsLinearPIDAnimated : IAnimatedComponent<PhysicsLinearPIDData>
@@ -43,7 +44,8 @@ namespace BovineLabs.Timeline.Physics
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
                 TargetOffset = math.lerp(a.TargetOffset, b.TargetOffset, s),
                 Strength = math.lerp(a.Strength, b.Strength, s),
-                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
+                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat,
+                StopThreshold = math.lerp(a.StopThreshold, b.StopThreshold, s)
             };
         }
 
@@ -56,7 +58,8 @@ namespace BovineLabs.Timeline.Physics
                 TargetMode = a.TargetMode,
                 TargetOffset = a.TargetOffset + b.TargetOffset,
                 Strength = a.Strength + b.Strength,
-                StrengthStat = a.StrengthStat
+                StrengthStat = a.StrengthStat,
+                StopThreshold = a.StopThreshold // Keep original; blending would be ambiguous
             };
         }
     }

@@ -1,0 +1,260 @@
+using BovineLabs.Core.Iterators;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
+namespace BovineLabs.Timeline.Physics
+{
+    public static class TeleportMath
+    {
+        private const float GoldenAngle = 2.39996322972865332f;
+        private const float ElevationClamp = math.PI * 0.5f - 0.01f;
+
+        public static void ResolveReferenceRotation(
+            TeleportReferenceFrame frame,
+            float3 selfPos,
+            float3 targetPos,
+            quaternion targetRot,
+            out quaternion referenceRotation)
+        {
+            var diff = frame switch
+            {
+                TeleportReferenceFrame.TargetToSelf => selfPos - targetPos,
+                TeleportReferenceFrame.SelfToTarget => targetPos - selfPos,
+                _ => float3.zero
+            };
+
+            if (frame == TeleportReferenceFrame.TargetForward)
+            {
+                referenceRotation = targetRot;
+                return;
+            }
+
+            if (frame == TeleportReferenceFrame.WorldForward)
+            {
+                referenceRotation = quaternion.identity;
+                return;
+            }
+
+            var lenSq = math.lengthsq(diff);
+            if (lenSq < 1e-6f)
+            {
+                referenceRotation = targetRot;
+                return;
+            }
+
+            var dir = diff * math.rsqrt(lenSq);
+            referenceRotation = quaternion.LookRotationSafe(dir, math.up());
+        }
+
+        public static void GenerateCandidate(
+            int index,
+            int totalCandidates,
+            float azimuthCenter,
+            float azimuthHalfRange,
+            float elevationCenter,
+            float elevationHalfRange,
+            quaternion referenceRotation,
+            float radius,
+            float3 origin,
+            out float3 candidatePosition)
+        {
+            float azOffset;
+            float elOffset;
+
+            if (index == 0 || totalCandidates <= 1)
+            {
+                azOffset = 0f;
+                elOffset = 0f;
+            }
+            else
+            {
+                var t = (float)index / (totalCandidates - 1);
+                var r = math.sqrt(t);
+                var theta = index * GoldenAngle;
+
+                azOffset = r * math.cos(theta) * azimuthHalfRange;
+                elOffset = r * math.sin(theta) * elevationHalfRange;
+            }
+
+            var az = azimuthCenter + azOffset;
+            var el = math.clamp(elevationCenter + elOffset, -ElevationClamp, ElevationClamp);
+
+            var cosEl = math.cos(el);
+            var localDir = new float3(cosEl * math.sin(az), math.sin(el), cosEl * math.cos(az));
+            var worldDir = math.rotate(referenceRotation, localDir);
+
+            candidatePosition = origin + worldDir * radius;
+        }
+
+        public static void ComputeFacingRotation(
+            TeleportFacingMode mode,
+            float3 teleportedPosition,
+            float3 targetPosition,
+            quaternion currentRotation,
+            quaternion targetRotation,
+            out quaternion facingRotation)
+        {
+            switch (mode)
+            {
+                case TeleportFacingMode.FaceTarget:
+                {
+                    var dir = targetPosition - teleportedPosition;
+                    if (math.lengthsq(dir) > 1e-5f)
+                        facingRotation = quaternion.LookRotationSafe(math.normalize(dir), math.up());
+                    else
+                        facingRotation = currentRotation;
+                    return;
+                }
+                case TeleportFacingMode.FaceAway:
+                {
+                    var dir = teleportedPosition - targetPosition;
+                    if (math.lengthsq(dir) > 1e-5f)
+                        facingRotation = quaternion.LookRotationSafe(math.normalize(dir), math.up());
+                    else
+                        facingRotation = currentRotation;
+                    return;
+                }
+                case TeleportFacingMode.MatchTarget:
+                    facingRotation = targetRotation;
+                    return;
+                default:
+                    facingRotation = currentRotation;
+                    return;
+            }
+        }
+
+        public static bool CheckClearance(
+            in CollisionWorld collisionWorld,
+            float3 position,
+            float clearanceRadius,
+            uint obstacleMask,
+            Entity selfEntity)
+        {
+            var input = new PointDistanceInput
+            {
+                Position = position,
+                MaxDistance = clearanceRadius,
+                Filter = new CollisionFilter
+                {
+                    BelongsTo = ~0u,
+                    CollidesWith = obstacleMask,
+                    GroupIndex = 0
+                }
+            };
+
+            var collector = new IgnoreEntityDistanceCollector(selfEntity, clearanceRadius);
+            collisionWorld.CalculateDistance(input, ref collector);
+            return !collector.ObstacleDetected;
+        }
+
+        public static bool CheckLineOfSight(
+            in CollisionWorld collisionWorld,
+            float3 fromPosition,
+            float3 toPosition,
+            float verticalOffset,
+            uint obstacleMask,
+            Entity ignoreEntityA,
+            Entity ignoreEntityB)
+        {
+            var start = fromPosition + new float3(0f, verticalOffset, 0f);
+            var end = toPosition + new float3(0f, verticalOffset, 0f);
+
+            var input = new RaycastInput
+            {
+                Start = start,
+                End = end,
+                Filter = new CollisionFilter
+                {
+                    BelongsTo = ~0u,
+                    CollidesWith = obstacleMask,
+                    GroupIndex = 0
+                }
+            };
+
+            var collector = new IgnoreTwoEntitiesRayCollector(ignoreEntityA, ignoreEntityB);
+            collisionWorld.CastRay(input, ref collector);
+            return !collector.ObstacleDetected;
+        }
+
+        public static Entity ResolveTargetEntity(
+            Entity selfEntity,
+            in PhysicsTeleportData config,
+            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<EntityLinkSource> linkSources,
+            in UnsafeBufferLookup<EntityLinkEntry> linkEntries)
+        {
+            if (config.TeleportRelativeTo == Target.None)
+                return selfEntity;
+
+            if (!targetsLookup.TryGetComponent(selfEntity, out var targets))
+                return selfEntity;
+
+            var baseTarget = targets.Get(config.TeleportRelativeTo, selfEntity);
+            if (baseTarget == Entity.Null)
+                return selfEntity;
+
+            if (config.TeleportRelativeToLinkKey == 0)
+                return baseTarget;
+
+            if (EntityLinkResolver.TryResolve(baseTarget, config.TeleportRelativeToLinkKey, linkSources, linkEntries,
+                    out var linked))
+                return linked;
+
+            return baseTarget;
+        }
+
+        private struct IgnoreEntityDistanceCollector : ICollector<DistanceHit>
+        {
+            private readonly Entity _ignore;
+            public bool ObstacleDetected;
+
+            public bool EarlyOutOnFirstHit => true;
+            public float MaxFraction { get; }
+            public int NumHits => ObstacleDetected ? 1 : 0;
+
+            public IgnoreEntityDistanceCollector(Entity ignore, float maxDistance)
+            {
+                _ignore = ignore;
+                ObstacleDetected = false;
+                MaxFraction = maxDistance;
+            }
+
+            public bool AddHit(DistanceHit hit)
+            {
+                if (hit.Entity == _ignore) return false;
+                ObstacleDetected = true;
+                return true;
+            }
+        }
+
+        private struct IgnoreTwoEntitiesRayCollector : ICollector<RaycastHit>
+        {
+            private readonly Entity _ignoreA;
+            private readonly Entity _ignoreB;
+            public bool ObstacleDetected;
+
+            public bool EarlyOutOnFirstHit => true;
+            public float MaxFraction => 1f;
+            public int NumHits => ObstacleDetected ? 1 : 0;
+
+            public IgnoreTwoEntitiesRayCollector(Entity a, Entity b)
+            {
+                _ignoreA = a;
+                _ignoreB = b;
+                ObstacleDetected = false;
+            }
+
+            public bool AddHit(RaycastHit hit)
+            {
+                if (hit.Entity == _ignoreA || hit.Entity == _ignoreB) return false;
+                ObstacleDetected = true;
+                return true;
+            }
+        }
+    }
+}

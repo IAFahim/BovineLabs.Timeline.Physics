@@ -19,6 +19,10 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsForceMode Mode;
         public float Magnitude;
         public float3 Direction;
+        
+        /// <summary>
+        /// Note: Radial force combined with MatchCollidedEntity produces a zero-length direction.
+        /// </summary>
         public PhysicsTriggerPositionMode OriginMode;
 
         public StatStrengthConfig Strength;

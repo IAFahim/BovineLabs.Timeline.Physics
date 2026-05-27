@@ -6,6 +6,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -22,15 +23,14 @@ namespace BovineLabs.Timeline.Physics.Debug
         Justification = "Using see cref")]
     public static class PhysicsAngularPIDDebugSystemConfig
     {
-        private const string DrawForced = "physicsangularpiddebugsystem.force-draw";
-        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+        [ConfigVar("physicspid.angular.draw-enabled", false,
+            "Enable the Angular PID debug drawer in the editor.")]
+        public static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
-        internal static readonly SharedStatic<bool> Enabled =
-            SharedStatic<bool>.GetOrCreate<PhysicsAngularPIDDebugSystemForced>();
-
-        private struct PhysicsAngularPIDDebugSystemForced
+        private struct Tags
         {
+            public struct Enabled { }
         }
     }
 
@@ -55,19 +55,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
-
-            Drawer drawer;
-            if (!PhysicsAngularPIDDebugSystemConfig.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<PhysicsAngularPIDDebugSystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<PhysicsAngularPIDDebugSystem>(
+                    ref state, PhysicsAngularPIDDebugSystemConfig.Enabled.Data, out var drawer))
+                return;
 
             _localToWorldLookup.Update(ref state);
             _velocityLookup.Update(ref state);
@@ -91,6 +81,11 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
+            private static readonly Color ColorForward = Color.blue;
+            private static readonly Color ColorUp      = Color.green;
+            private static readonly Color ColorAngVel = TimelineDebugColors.AngularForce;
+            private static readonly Color ColorPred   = TimelineDebugColors.PidPredicted;
+
             private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated, in LocalTime localTime)
             {
                 var entity = binding.Value;
@@ -101,15 +96,14 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var forward = math.mul(finalRot, math.forward());
                 var up = math.mul(finalRot, math.up());
-                Drawer.Arrow(transform.Position, forward, Color.blue);
-                Drawer.Arrow(transform.Position, up, Color.green);
+                Drawer.Arrow(transform.Position, forward, ColorForward);
+                Drawer.Arrow(transform.Position, up, ColorUp);
 
                 PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(transform.Value),
-                    finalRot,
-                    animated.AuthoredData.Tuning, (float)localTime.Value);
+                    finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(transform.Position, velocity.Angular, Color.magenta);
+                    Drawer.Arrow(transform.Position, velocity.Angular, ColorAngVel);
             }
         }
     }

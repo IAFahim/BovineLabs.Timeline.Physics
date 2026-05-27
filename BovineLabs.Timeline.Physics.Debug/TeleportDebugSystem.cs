@@ -6,6 +6,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -21,38 +22,41 @@ namespace BovineLabs.Timeline.Physics.Debug
         Justification = "Using see cref")]
     public static class TeleportDebugSystem
     {
-        [ConfigVar("teleportgizmo.force-draw", false, "Enable the teleport gizmo drawer.")]
-        internal static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<EnabledType>();
+        [ConfigVar("teleportgizmo.draw-enabled", false, "Enable the teleport gizmo drawer.")]
+        public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("teleportgizmo.patch-color", 0.2f, 0.92f, 0.6f, 0.85f, "Accent for the spherical patch boundary.")]
-        internal static readonly SharedStatic<Color> PatchColor = SharedStatic<Color>.GetOrCreate<PatchColorType>();
+        public static readonly SharedStatic<Color> PatchColor = SharedStatic<Color>.GetOrCreate<Tags.PatchColor>();
 
         [ConfigVar("teleportgizmo.radius-color", 0.9f, 0.7f, 0.2f, 0.4f, "Accent for the radius circle.")]
-        internal static readonly SharedStatic<Color> RadiusColor = SharedStatic<Color>.GetOrCreate<RadiusColorType>();
+        public static readonly SharedStatic<Color> RadiusColor = SharedStatic<Color>.GetOrCreate<Tags.RadiusColor>();
 
         [ConfigVar("teleportgizmo.clearance-color", 0.95f, 0.4f, 0.3f, 0.6f, "Accent for the clearance sphere.")]
-        internal static readonly SharedStatic<Color> ClearanceColor = SharedStatic<Color>.GetOrCreate<ClearanceColorType>();
+        public static readonly SharedStatic<Color> ClearanceColor = SharedStatic<Color>.GetOrCreate<Tags.ClearanceColor>();
 
         [ConfigVar("teleportgizmo.reference-color", 0.4f, 0.8f, 1f, 0.7f, "Accent for reference frame arrows.")]
-        internal static readonly SharedStatic<Color> ReferenceColor = SharedStatic<Color>.GetOrCreate<ReferenceColorType>();
+        public static readonly SharedStatic<Color> ReferenceColor = SharedStatic<Color>.GetOrCreate<Tags.ReferenceColor>();
 
         [ConfigVar("teleportgizmo.los-color", 0.3f, 1f, 0.5f, 0.5f, "Accent for line of sight line.")]
-        internal static readonly SharedStatic<Color> LosColor = SharedStatic<Color>.GetOrCreate<LosColorType>();
+        public static readonly SharedStatic<Color> LosColor = SharedStatic<Color>.GetOrCreate<Tags.LosColor>();
 
         [ConfigVar("teleportgizmo.text-color", 1f, 1f, 1f, 0.9f, "Color for value labels.")]
-        internal static readonly SharedStatic<Color> TextColor = SharedStatic<Color>.GetOrCreate<TextColorType>();
+        public static readonly SharedStatic<Color> TextColor = SharedStatic<Color>.GetOrCreate<Tags.TextColor>();
 
         [ConfigVar("teleportgizmo.segments", 24, "Arc segment count.")]
-        internal static readonly SharedStatic<int> Segments = SharedStatic<int>.GetOrCreate<SegmentsType>();
+        public static readonly SharedStatic<int> Segments = SharedStatic<int>.GetOrCreate<Tags.Segments>();
 
-        private struct EnabledType { }
-        private struct PatchColorType { }
-        private struct RadiusColorType { }
-        private struct ClearanceColorType { }
-        private struct ReferenceColorType { }
-        private struct LosColorType { }
-        private struct TextColorType { }
-        private struct SegmentsType { }
+        private struct Tags
+        {
+            public struct Enabled { }
+            public struct PatchColor { }
+            public struct RadiusColor { }
+            public struct ClearanceColor { }
+            public struct ReferenceColor { }
+            public struct LosColor { }
+            public struct TextColor { }
+            public struct Segments { }
+        }
     }
 
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
@@ -74,21 +78,12 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
 
-            Drawer drawer;
-            if (!TeleportDebugSystem.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<PhysicsTeleportGizmoSystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<PhysicsTeleportGizmoSystem>(
+                    ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
+                return;
 
             state.Dependency = new DrawTeleportJob
             {
@@ -147,7 +142,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Drawer.Circle(origin, new float3(0f, d.Radius, 0f), RadiusColor);
 
                 // Draw radius label
-                Drawer.Text32(origin + new float3(0f, 0.5f, 0f), $"r={d.Radius:F1}m", RadiusColor, 10f);
+                Drawer.Text32(origin + new float3(0f, 0.5f, 0f), $"r={d.Radius:G1}m", RadiusColor, 10f);
 
                 // Draw reference frame arrows
                 Drawer.Arrow(referencePos, math.mul(referenceRot, math.forward()) * 1.5f, ReferenceColor);
@@ -206,9 +201,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var labelOffset = new float3(0f, d.Radius + 0.5f, 0f);
                 Drawer.Text32(origin + new float3(d.Radius + 0.2f, 1f, 0f),
-                    $"Az: {azDeg:F0}° ±{azRangeDeg:F0}°", TextColor, 8f);
+                    $"Az: {azDeg:G0}° ±{azRangeDeg:G0}°", TextColor, 8f);
                 Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.6f, 0f),
-                    $"El: {elDeg:F0}° ±{elRangeDeg:F0}°", TextColor, 8f);
+                    $"El: {elDeg:G0}° ±{elRangeDeg:G0}°", TextColor, 8f);
 
                 // Draw facing mode
                 var facingLabel = d.FacingMode switch

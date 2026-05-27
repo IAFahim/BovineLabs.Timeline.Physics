@@ -10,6 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
+        [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
         public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
 

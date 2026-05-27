@@ -6,6 +6,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -22,15 +23,14 @@ namespace BovineLabs.Timeline.Physics.Debug
         Justification = "Using see cref")]
     public static class PhysicsKinematicsDebugSystemConfig
     {
-        private const string DrawForced = "physicskinematicsdebugsystem.force-draw";
-        private const string DrawGlobalDescEnabled = "Enable the drawer in the editor.";
+        [ConfigVar("physicskinematics.draw-enabled", false,
+            "Enable the Kinematics debug drawer in the editor.")]
+        public static readonly SharedStatic<bool> Enabled =
+            SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        [ConfigVar(DrawForced, false, DrawGlobalDescEnabled)]
-        internal static readonly SharedStatic<bool> Enabled =
-            SharedStatic<bool>.GetOrCreate<PhysicsKinematicsDebugSystemForced>();
-
-        private struct PhysicsKinematicsDebugSystemForced
+        private struct Tags
         {
+            public struct Enabled { }
         }
     }
 
@@ -56,19 +56,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         public void OnUpdate(ref SystemState state)
         {
-            if (!SystemAPI.HasSingleton<DrawSystem.Singleton>()) return;
-            ref var drawSystem = ref SystemAPI.GetSingletonRW<DrawSystem.Singleton>().ValueRW;
-
-            Drawer drawer;
-            if (!PhysicsKinematicsDebugSystemConfig.Enabled.Data)
-            {
-                drawer = drawSystem.CreateDrawer<PhysicsKinematicsDebugSystem>();
-                if (!drawer.IsEnabled) return;
-            }
-            else
-            {
-                drawer = drawSystem.CreateDrawer();
-            }
+            if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicsDebugSystem>(
+                    ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
+                return;
 
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
                 ? SystemAPI.GetSingleton<PhysicsStep>().Gravity
@@ -110,6 +100,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
+            private static readonly Color ColorForce = TimelineDebugColors.LinearForce;
+
             private void Execute(in TrackBinding binding, in PhysicsForceAnimated animated, in PhysicsForceState state)
             {
                 var entity = binding.Value;
@@ -121,7 +113,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
 
-                Drawer.Arrow(transform.Position, forceVec * massInv, Color.magenta);
+                Drawer.Arrow(transform.Position, forceVec * massInv, ColorForce);
 
                 var pos = transform.Position;
                 var vel = baseVel;
@@ -139,7 +131,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     vel += accel * dt;
                     var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(1f, 0f, 1f, 0.5f));
+                    Drawer.Line(pos, nextPos, new Color(ColorForce.r, ColorForce.g, ColorForce.b, 0.5f));
                     pos = nextPos;
                 }
 
@@ -157,6 +149,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
+            private static readonly Color ColorVel = TimelineDebugColors.LinearVelocity;
+
             private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated,
                 in PhysicsVelocityState state)
             {
@@ -167,7 +161,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                     in TargetsLookup, in TransformLookup, out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
-                Drawer.Arrow(transform.Position, targetVel, Color.cyan);
+                Drawer.Arrow(transform.Position, targetVel, ColorVel);
 
                 var pos = transform.Position;
                 var vel = baseVel;
@@ -187,15 +181,15 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     if (!isInstant)
                     {
-                        if (isSet) vel = targetVel; // Overrides gravity
-                        else vel += targetVel * dt; // Continuous add
+                        if (isSet) vel = targetVel;
+                        else vel += targetVel * dt;
                     }
 
                     if (isInstant || !isSet)
-                        vel += Gravity * dt; // Gravity applies if not SetContinuous
+                        vel += Gravity * dt;
 
                     var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(0f, 1f, 1f, 0.5f));
+                    Drawer.Line(pos, nextPos, new Color(ColorVel.r, ColorVel.g, ColorVel.b, 0.5f));
                     pos = nextPos;
                 }
 

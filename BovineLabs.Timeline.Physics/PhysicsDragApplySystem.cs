@@ -17,6 +17,7 @@ namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateBefore(typeof(PhysicsVelocityOverrideSystem))]
     public partial struct PhysicsDragApplySystem : ISystem
     {
         private EntityQuery _query;

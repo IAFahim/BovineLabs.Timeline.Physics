@@ -3,6 +3,8 @@
   "rootNamespace": "",
   "references": [
     "BovineLabs.Core",
+    "BovineLabs.Core.Extensions",
+    "BovineLabs.Timeline.Core.Debug",
     "BovineLabs.Timeline.Data",
     "BovineLabs.Timeline.Physics",
     "BovineLabs.Timeline.Physics.Data",

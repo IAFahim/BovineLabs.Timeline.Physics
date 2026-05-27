@@ -195,22 +195,29 @@ namespace BovineLabs.Timeline.Physics
                                         linForce = -linForce;
                                 }
                             }
+                            else
+                            {
+                                skip = true;
+                            }
                         }
 
-                        PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
-                            in TransformLookup, out var angForce);
-
-                        var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-                        pendingForces[i].Add(new PendingForce
+                        if (!skip)
                         {
-                            Linear = linForce * timeScale * multiplier,
-                            Angular = angForce * timeScale * multiplier
-                        });
+                            PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
+                                in TransformLookup, out var angForce);
 
-                        if (config.Mode == PhysicsForceMode.Impulse)
-                        {
-                            state.Fired = true;
-                            states[i] = state;
+                            var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+                            pendingForces[i].Add(new PendingForce
+                            {
+                                Linear = linForce * timeScale * multiplier,
+                                Angular = angForce * timeScale * multiplier
+                            });
+
+                            if (config.Mode == PhysicsForceMode.Impulse)
+                            {
+                                state.Fired = true;
+                                states[i] = state;
+                            }
                         }
                     }
                 }

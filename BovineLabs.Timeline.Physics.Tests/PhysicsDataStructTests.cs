@@ -61,15 +61,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(3, (int)PhysicsTriggerRotationMode.Identity);
         }
 
-        [Test]
-        public void PhysicsTriggerTargetMode_Values()
-        {
-            Assert.AreEqual(0, (int)PhysicsTriggerTargetMode.Self);
-            Assert.AreEqual(1, (int)PhysicsTriggerTargetMode.CollidedEntity);
-            Assert.AreEqual(2, (int)PhysicsTriggerTargetMode.ReactionOwner);
-            Assert.AreEqual(3, (int)PhysicsTriggerTargetMode.ReactionSource);
-            Assert.AreEqual(4, (int)PhysicsTriggerTargetMode.ReactionTarget);
-        }
+
     }
 
     [TestFixture]
@@ -355,17 +347,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(20f, result.Strength, 0.001f);
             Assert.AreEqual(a.TargetMode, result.TargetMode);
             Assert.AreEqual(a.TrackingTarget, result.TrackingTarget);
-        }
-    }
-
-    [TestFixture]
-    public class StatefulEventStateConfigStructTests
-    {
-        [Test]
-        public void Default_ZeroValue()
-        {
-            var c = new StatefulEventStateConfig();
-            Assert.AreEqual(default(StatefulEventState), c.Value);
         }
     }
 

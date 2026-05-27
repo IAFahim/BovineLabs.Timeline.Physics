@@ -16,7 +16,7 @@ using Unity.Physics;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;

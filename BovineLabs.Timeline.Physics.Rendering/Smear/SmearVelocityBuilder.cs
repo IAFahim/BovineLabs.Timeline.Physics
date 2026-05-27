@@ -7,12 +7,6 @@ namespace BovineLabs.Timeline.Physics.Smear
     {
         public float4 InitialValue;
 
-        public SmearVelocityBuilder WithInitialValue(float4 value)
-        {
-            InitialValue = value;
-            return this;
-        }
-
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
         {

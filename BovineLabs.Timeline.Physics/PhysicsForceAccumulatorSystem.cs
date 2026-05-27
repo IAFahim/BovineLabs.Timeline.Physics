@@ -9,10 +9,7 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
-    [UpdateAfter(typeof(PhysicsPidApplySystem))]
-    public partial struct PhysicsForceAccumulatorSystem : ISystem
+    public struct PhysicsForceAccumulator
     {
         private EntityQuery _query;
         private ComponentTypeHandle<PhysicsVelocity> _velocityHandle;
@@ -21,15 +18,14 @@ namespace BovineLabs.Timeline.Physics
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
         private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
 
-        [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<AccumulateJob>();
 
-            _query = SystemAPI.QueryBuilder()
+            using var builder = new EntityQueryBuilder(Allocator.Temp)
                 .WithAllRW<PhysicsVelocity, PendingForce>()
-                .WithAll<LocalToWorld>()
-                .Build();
+                .WithAll<LocalToWorld>();
+            _query = state.GetEntityQuery(builder);
 
             _velocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
             _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
@@ -38,7 +34,6 @@ namespace BovineLabs.Timeline.Physics
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _velocityHandle.Update(ref state);
@@ -132,5 +127,32 @@ namespace BovineLabs.Timeline.Physics
                 }
             }
         }
+    }
+
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
+    [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
+    [UpdateAfter(typeof(PhysicsPidApplySystem))]
+    public partial struct PhysicsProducerForceAccumulatorSystem : ISystem
+    {
+        private PhysicsForceAccumulator _accumulator;
+        
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) => _accumulator.OnCreate(ref state);
+        
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state) => _accumulator.OnUpdate(ref state);
+    }
+
+    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateAfter(typeof(PhysicsTriggerForceSystem))]
+    public partial struct PhysicsModifierForceAccumulatorSystem : ISystem
+    {
+        private PhysicsForceAccumulator _accumulator;
+        
+        [BurstCompile]
+        public void OnCreate(ref SystemState state) => _accumulator.OnCreate(ref state);
+        
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state) => _accumulator.OnUpdate(ref state);
     }
 }

@@ -1,3 +1,5 @@
+using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
@@ -15,7 +17,13 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
+    [UpdateAfter(typeof(PhysicsTriggerForceSystem))]
+    [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
+    public partial class PhysicsProducerECBSystem : EntityCommandBufferSystem { }
+
+    [Configurable]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
@@ -42,7 +50,6 @@ namespace BovineLabs.Timeline.Physics
                 .Build();
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _targetsLookup.Update(ref state);
@@ -52,17 +59,18 @@ namespace BovineLabs.Timeline.Physics
             _statLookup.Update(ref state);
             _pendingForceLookup.Update(ref state);
 
-            var gathered = new NativeQueue<GatheredForce>(state.WorldUpdateAllocator);
-
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerForceData>(true);
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
 
+            var ecbSystem = state.World.GetExistingSystemManaged<PhysicsProducerECBSystem>();
+            var ecb = ecbSystem.CreateCommandBuffer();
+
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
-                Gathered = gathered.AsParallelWriter(),
+                ECB = ecb.AsParallelWriter(),
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
@@ -72,30 +80,17 @@ namespace BovineLabs.Timeline.Physics
                 Links = _linkLookup,
                 LtwLookup = _ltwLookup,
                 StatLookup = _statLookup,
+                PendingForceLookup = _pendingForceLookup,
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
-
-            state.Dependency = new AppendJob
-            {
-                Gathered = gathered,
-                DeltaTime = SystemAPI.Time.DeltaTime,
-                PendingForceLookup = _pendingForceLookup
-            }.Schedule(state.Dependency);
-        }
-
-        private struct GatheredForce
-        {
-            public Entity Target;
-            public float3 Force;
-            public PhysicsForceMode Mode;
         }
 
         [BurstCompile]
         private struct GatherJob : IJobChunk
         {
             public float DeltaTime;
-            public NativeQueue<GatheredForce>.ParallelWriter Gathered;
+            public EntityCommandBuffer.ParallelWriter ECB;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
@@ -107,6 +102,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
+            [ReadOnly] public BufferLookup<PendingForce> PendingForceLookup;
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
@@ -140,7 +136,7 @@ namespace BovineLabs.Timeline.Physics
                             var selfPos = LtwLookup[self].Position;
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var midpoint = (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
+                            ProcessEvent(unfilteredChunkIndex, self, evt.EntityB, in config, in filter, midpoint, in targets);
                         }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
@@ -152,21 +148,32 @@ namespace BovineLabs.Timeline.Physics
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
+                            ProcessEvent(unfilteredChunkIndex, self, evt.EntityB, in config, in filter, pt, in targets);
                         }
                 }
             }
 
-            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
+            [BurstDiscard]
+            private static void LogWarning()
+            {
+                UnityEngine.Debug.LogWarning("PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
+            }
+
+            private void ProcessEvent(int chunkIndex, Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
                 in Targets targets)
             {
-                // Filter by ignore target and link keys
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
                     return;
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
+
+                if (!PendingForceLookup.HasBuffer(targetToApply))
+                {
+                    LogWarning();
+                    return;
+                }
 
                 var multiplier =
                     StatStrengthUtility.Resolve(in cfg.Strength, self, targets, LinkSources, Links, StatLookup);
@@ -209,34 +216,11 @@ namespace BovineLabs.Timeline.Physics
                 }
 
                 if (math.lengthsq(force) > 1e-5f)
-                    Gathered.Enqueue(new GatheredForce
-                    {
-                        Target = targetToApply,
-                        Force = force,
-                        Mode = cfg.Mode
-                    });
-            }
-        }
-
-        [BurstCompile]
-        private struct AppendJob : IJob
-        {
-            public NativeQueue<GatheredForce> Gathered;
-            public float DeltaTime;
-            public BufferLookup<PendingForce> PendingForceLookup;
-
-            public void Execute()
-            {
-                while (Gathered.TryDequeue(out var entry))
                 {
-                    if (!PendingForceLookup.TryGetBuffer(entry.Target, out var buffer))
-                        continue;
-
-                    var timeScale = entry.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-
-                    buffer.Add(new PendingForce
+                    var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+                    ECB.AppendToBuffer(chunkIndex, targetToApply, new PendingForce
                     {
-                        Linear = entry.Force * timeScale,
+                        Linear = force * timeScale,
                         Angular = float3.zero
                     });
                 }

@@ -16,8 +16,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var entity = GetEntity(TransformUsageFlags.None);
                 var commands = new BakerCommands(this, entity);
-                var builder = new SmearVelocityBuilder()
-                    .WithInitialValue(float4.zero);
+                var builder = new SmearVelocityBuilder();
                 builder.ApplyTo(ref commands);
             }
         }

@@ -10,6 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsVelocityClip : DOTSClip, ITimelineClipAsset
     {
+        [Tooltip("Instant modes apply velocity exactly once per clip activation and ignore Looping.")]
         public PhysicsVelocityMode mode = PhysicsVelocityMode.SetInstant;
         public Vector3 linearVelocity = Vector3.forward;
         public Vector3 angularVelocity;

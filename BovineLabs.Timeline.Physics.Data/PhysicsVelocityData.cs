@@ -8,9 +8,24 @@ namespace BovineLabs.Timeline.Physics
 {
     public enum PhysicsVelocityMode : byte
     {
+        /// <summary>
+        /// Continuously overrides the velocity. Note this is applied post-integration (effective next frame).
+        /// </summary>
         SetContinuous,
+
+        /// <summary>
+        /// Instantly overrides the velocity. Note this is applied post-integration (effective next frame).
+        /// </summary>
         SetInstant,
+
+        /// <summary>
+        /// Continuously applies a velocity change pre-integration.
+        /// </summary>
         AddContinuous,
+
+        /// <summary>
+        /// Instantly applies a velocity change pre-integration.
+        /// </summary>
         AddInstant
     }
 

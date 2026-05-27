@@ -17,14 +17,6 @@ namespace BovineLabs.Timeline.Physics
         Identity
     }
 
-    public enum PhysicsTriggerTargetMode : byte
-    {
-        Self,
-        CollidedEntity,
-        ReactionOwner,
-        ReactionSource,
-        ReactionTarget
-    }
 
     public static class StatefulEventMatching
     {

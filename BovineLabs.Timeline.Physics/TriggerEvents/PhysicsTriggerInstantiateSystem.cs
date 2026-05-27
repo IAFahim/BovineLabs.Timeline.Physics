@@ -21,8 +21,7 @@ using EntityCache = BovineLabs.Core.Extensions.EntityCache;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(FixedStepSimulationSystemGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.Default)]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
         private EntityQuery _query;

@@ -37,7 +37,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
         {
             EditorGUILayout.PropertyField(prop,
                 new GUIContent("Threshold",
-                    "Suppress PID output when the error is below this distance. 0 = disabled."));
+                    "Suppress PID output when the error is below this distancetostatdebugsystem. 0 = disabled."));
         }
 
         public static void DrawGains(Object target, SerializedProperty tuning, SerializedProperty uniform)

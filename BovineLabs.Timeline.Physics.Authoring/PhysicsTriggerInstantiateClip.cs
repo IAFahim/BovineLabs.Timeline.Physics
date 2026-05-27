@@ -72,23 +72,26 @@ namespace BovineLabs.Timeline.Physics.Authoring
             BlobAssetReference<PhysicsTriggerLinkBlob> filterBlob = default;
             if (requireLinks != null && requireLinks.Length > 0)
             {
-                var builder = new BlobBuilder(Allocator.Temp);
-                ref var root = ref builder.ConstructRoot<PhysicsTriggerLinkBlob>();
-                var array = builder.Allocate(ref root.ValidLinkKeys, requireLinks.Length);
-
                 int validCount = 0;
                 for (int i = 0; i < requireLinks.Length; i++)
                 {
-                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
-                        array[validCount++] = reqKey;
+                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out _))
+                        validCount++;
                 }
 
-                if (validCount > 0)
+                var builder = new BlobBuilder(Allocator.Temp);
+                ref var root = ref builder.ConstructRoot<PhysicsTriggerLinkBlob>();
+                var array = builder.Allocate(ref root.ValidLinkKeys, validCount);
+
+                int index = 0;
+                for (int i = 0; i < requireLinks.Length; i++)
                 {
-                    filterBlob = builder.CreateBlobAssetReference<PhysicsTriggerLinkBlob>(Allocator.Persistent);
-                    context.Baker.AddBlobAsset(ref filterBlob, out _);
+                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
+                        array[index++] = reqKey;
                 }
 
+                filterBlob = builder.CreateBlobAssetReference<PhysicsTriggerLinkBlob>(Allocator.Persistent);
+                context.Baker.AddBlobAsset(ref filterBlob, out _);
                 builder.Dispose();
             }
 

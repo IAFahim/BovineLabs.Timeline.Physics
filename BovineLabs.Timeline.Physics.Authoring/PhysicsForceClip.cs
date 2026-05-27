@@ -11,12 +11,20 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
+        public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
+
+        [Header("Fixed Vector")]
         public Vector3 linearForce = new(0, 0, 0);
-        public Vector3 angularForce;
         public Target space = Target.Self;
 
-        [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
+        [Header("Toward Target")]
+        public float magnitude = 10f;
+        public Target directionTarget = Target.Target;
+        public EntityLinkSchema directionTargetLink;
 
+        [Header("Angular & Multipliers")]
+        public Vector3 angularForce;
+        public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
@@ -29,14 +37,22 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
+            ushort dirLinkKey = 0;
+            if (directionTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(directionTargetLink, out var k2))
+                dirLinkKey = k2;
+
             context.Baker.AddComponent(clipEntity, new PhysicsForceAnimated
             {
                 AuthoredData = new PhysicsForceData
                 {
                     Mode = mode,
+                    DirectionMode = directionMode,
                     Linear = linearForce,
-                    Angular = angularForce,
                     Space = space,
+                    Magnitude = magnitude,
+                    DirectionTarget = directionTarget,
+                    DirectionTargetLinkKey = dirLinkKey,
+                    Angular = angularForce,
                     Strength = new StatStrengthConfig
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,

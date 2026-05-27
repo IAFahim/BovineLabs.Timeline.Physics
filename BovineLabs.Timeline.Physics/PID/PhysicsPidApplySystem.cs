@@ -156,17 +156,18 @@ namespace BovineLabs.Timeline.Physics
                     var capturedPos = state.State.CapturedTargetPosition;
                     var error = targetPos - transform.Position;
 
-                    // Optional: skip force when error is below threshold
-                    if (config.StopThreshold > 0f && math.length(error) < config.StopThreshold)
-                    {
-                        states[i] = state;
-                        continue;
-                    }
-
                     PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
                         out var force, out var nextState);
 
                     nextState.CapturedTargetPosition = capturedPos;
+
+                    // Optional: skip force when error is below threshold
+                    if (config.StopThreshold > 0f && math.length(error) < config.StopThreshold)
+                    {
+                        state.State = nextState;
+                        states[i] = state;
+                        continue;
+                    }
 
                     var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,
@@ -223,15 +224,16 @@ namespace BovineLabs.Timeline.Physics
 
                     PhysicsMath.ComputeAngularError(new quaternion(transform.Value), targetRot, out var error);
 
+                    PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
+                        out var torque, out var nextState);
+
                     // Optional: skip torque when angular error is below threshold
                     if (config.StopThreshold > 0f && math.degrees(math.length(error)) < config.StopThreshold)
                     {
+                        state.State = nextState;
                         states[i] = state;
                         continue;
                     }
-
-                    PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
-                        out var torque, out var nextState);
 
                     var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,

@@ -3,6 +3,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -154,8 +155,48 @@ namespace BovineLabs.Timeline.Physics
 
                     if (!skip)
                     {
-                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                            in TransformLookup, out var linForce);
+                        float3 linForce;
+
+                        if (config.DirectionMode == PhysicsForceDirectionMode.FixedVector)
+                        {
+                            PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                                in TransformLookup, out linForce);
+                        }
+                        else
+                        {
+                            linForce = float3.zero;
+                            var targetEntity = body;
+                            if (config.DirectionTarget != Target.None)
+                            {
+                                var baseTarget = targets.Get(config.DirectionTarget, body);
+                                if (baseTarget != Entity.Null)
+                                {
+                                    targetEntity = baseTarget;
+                                    if (config.DirectionTargetLinkKey != 0 &&
+                                        EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
+                                            LinkSources, Links, out var linked))
+                                    {
+                                        targetEntity = linked;
+                                    }
+                                }
+                            }
+
+                            if (targetEntity != Entity.Null &&
+                                TransformLookup.TryGetComponent(targetEntity, out var targetLtw) &&
+                                TransformLookup.TryGetComponent(body, out var selfLtw))
+                            {
+                                var diff = targetLtw.Position - selfLtw.Position;
+                                var distSq = math.lengthsq(diff);
+                                if (distSq > 1e-5f)
+                                {
+                                    var dir = diff / math.sqrt(distSq);
+                                    linForce = dir * config.Magnitude;
+                                    if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
+                                        linForce = -linForce;
+                                }
+                            }
+                        }
+
                         PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
                             in TransformLookup, out var angForce);
 
@@ -165,12 +206,12 @@ namespace BovineLabs.Timeline.Physics
                             Linear = linForce * timeScale * multiplier,
                             Angular = angForce * timeScale * multiplier
                         });
-                    }
 
-                    if (config.Mode == PhysicsForceMode.Impulse)
-                    {
-                        state.Fired = true;
-                        states[i] = state;
+                        if (config.Mode == PhysicsForceMode.Impulse)
+                        {
+                            state.Fired = true;
+                            states[i] = state;
+                        }
                     }
                 }
             }
@@ -232,12 +273,12 @@ namespace BovineLabs.Timeline.Physics
                             Linear = linVel * timeScale * multiplier,
                             Angular = angVel * timeScale * multiplier
                         });
-                    }
 
-                    if (isInstant)
-                    {
-                        state.Fired = true;
-                        states[i] = state;
+                        if (isInstant)
+                        {
+                            state.Fired = true;
+                            states[i] = state;
+                        }
                     }
                 }
             }

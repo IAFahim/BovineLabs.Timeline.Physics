@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Physics
             }
 
             // 2. Check "Link ID Filter Blob"
-            if (filter.LinkFilterBlob.IsCreated && filter.LinkFilterBlob.Value.ValidLinkKeys.Length > 0)
+            if (filter.LinkFilterBlob.IsCreated)
             {
                 bool hasValidLink = false;
                 

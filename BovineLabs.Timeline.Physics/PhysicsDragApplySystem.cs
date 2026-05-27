@@ -18,6 +18,7 @@ namespace BovineLabs.Timeline.Physics
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [UpdateBefore(typeof(PhysicsVelocityOverrideSystem))]
+    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsDragApplySystem : ISystem
     {
         private EntityQuery _query;

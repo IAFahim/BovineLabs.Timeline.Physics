@@ -132,6 +132,7 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
+    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsProducerForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;
@@ -145,6 +146,7 @@ namespace BovineLabs.Timeline.Physics
 
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [UpdateAfter(typeof(PhysicsTriggerForceSystem))]
+    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsModifierForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;

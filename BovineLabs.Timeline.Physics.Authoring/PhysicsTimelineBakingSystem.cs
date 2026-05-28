@@ -105,6 +105,86 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
+            // 6. Ricochet
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsRicochetAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+
+                if (!em.HasComponent<ActiveRicochet>(target))
+                {
+                    ecb.AddComponent<ActiveRicochet>(target);
+                    ecb.SetComponentEnabled<ActiveRicochet>(target, false);
+                    ecb.AddComponent<PhysicsRicochetState>(target);
+                }
+            }
+
+            // 7. Filter Override
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsFilterOverrideAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+
+                if (!em.HasComponent<ActiveFilterOverride>(target))
+                {
+                    ecb.AddComponent<ActiveFilterOverride>(target);
+                    ecb.SetComponentEnabled<ActiveFilterOverride>(target, false);
+                    ecb.AddComponent<PhysicsFilterOverrideState>(target);
+                }
+            }
+
+            // 8. Gravity Override
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsGravityOverrideAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+
+                if (!em.HasComponent<ActiveGravityOverride>(target))
+                {
+                    ecb.AddComponent<ActiveGravityOverride>(target);
+                    ecb.SetComponentEnabled<ActiveGravityOverride>(target, false);
+                    ecb.AddComponent<PhysicsGravityOverrideState>(target);
+                }
+            }
+
+            // 9. Velocity Clamp
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsVelocityClampAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+
+                if (!em.HasComponent<ActiveVelocityClamp>(target))
+                {
+                    ecb.AddComponent<ActiveVelocityClamp>(target);
+                    ecb.SetComponentEnabled<ActiveVelocityClamp>(target, false);
+                    ecb.AddComponent<PhysicsVelocityClampState>(target);
+                }
+            }
+
+            // 10. Kinematic Override
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsKinematicOverrideAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+
+                if (!em.HasComponent<ActiveKinematicOverride>(target))
+                {
+                    ecb.AddComponent<ActiveKinematicOverride>(target);
+                    ecb.SetComponentEnabled<ActiveKinematicOverride>(target, false);
+                    ecb.AddComponent<PhysicsKinematicOverrideState>(target);
+                }
+            }
+
             ecb.Playback(em);
             ecb.Dispose();
 

@@ -12,6 +12,14 @@ namespace BovineLabs.Timeline.Physics
         Vortex // Spins things tangentially around the origin's Up axis
     }
 
+    public enum PhysicsTriggerFalloffCurve : byte
+    {
+        None,           // Constant force regardless of distance
+        Linear,         // Force decreases linearly from Start to End radius
+        InverseSquare,  // Realistic physical attenuation (1/r^2)
+        Step            // Max force inside StartRadius, zero outside
+    }
+
     public struct PhysicsTriggerForceData : IComponentData
     {
         public StatefulEventState EventState;
@@ -24,6 +32,10 @@ namespace BovineLabs.Timeline.Physics
         /// Note: Radial force combined with MatchCollidedEntity produces a zero-length direction.
         /// </summary>
         public PhysicsTriggerPositionMode OriginMode;
+
+        public PhysicsTriggerFalloffCurve FalloffCurve;
+        public float FalloffStartRadius;
+        public float FalloffEndRadius;
 
         public StatStrengthConfig Strength;
 

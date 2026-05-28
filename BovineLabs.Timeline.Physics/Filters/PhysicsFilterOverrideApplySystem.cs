@@ -1,0 +1,114 @@
+using BovineLabs.Core.ConfigVars;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Physics;
+
+namespace BovineLabs.Timeline.Physics
+{
+    [Configurable]
+    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    public partial struct PhysicsFilterOverrideApplySystem : ISystem
+    {
+        private ComponentTypeHandle<ActiveFilterOverride> _activeHandle;
+        private ComponentTypeHandle<PhysicsFilterOverrideState> _stateHandle;
+        private ComponentTypeHandle<PhysicsCollider> _colliderHandle;
+
+        private EntityQuery _query;
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _activeHandle = state.GetComponentTypeHandle<ActiveFilterOverride>(true);
+            _stateHandle = state.GetComponentTypeHandle<PhysicsFilterOverrideState>();
+            _colliderHandle = state.GetComponentTypeHandle<PhysicsCollider>();
+
+            _query = SystemAPI.QueryBuilder()
+                .WithAllRW<PhysicsFilterOverrideState, PhysicsCollider>()
+                .WithAll<ActiveFilterOverride>()
+                .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
+                .Build();
+        }
+
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            _activeHandle.Update(ref state);
+            _stateHandle.Update(ref state);
+            _colliderHandle.Update(ref state);
+
+            state.Dependency = new ApplyJob
+            {
+                ActiveHandle = _activeHandle,
+                StateHandle = _stateHandle,
+                ColliderHandle = _colliderHandle
+            }.ScheduleParallel(_query, state.Dependency);
+        }
+
+        [BurstCompile]
+        private struct ApplyJob : IJobChunk
+        {
+            [ReadOnly] public ComponentTypeHandle<ActiveFilterOverride> ActiveHandle;
+            public ComponentTypeHandle<PhysicsFilterOverrideState> StateHandle;
+            public ComponentTypeHandle<PhysicsCollider> ColliderHandle;
+
+            public unsafe void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
+            {
+                var states = chunk.GetNativeArray(ref StateHandle);
+                var colliders = chunk.GetNativeArray(ref ColliderHandle);
+                
+                // ActiveFilterOverride is enableable, we must read its enabled state manually since our query ignores it.
+                var hasActiveComponent = chunk.Has(ref ActiveHandle);
+                var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
+
+                var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
+                {
+                    var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);
+                    var state = states[i];
+                    var collider = colliders[i];
+                    if (!collider.IsValid) continue;
+
+                    var ptr = (Collider*)collider.Value.GetUnsafePtr();
+
+                    if (isActive && !state.Fired)
+                    {
+                        var config = actives[i].Config;
+                        
+                        // Cache original filter
+                        var originalFilter = ptr->GetCollisionFilter();
+                        state.OriginalBelongsTo = originalFilter.BelongsTo;
+                        state.OriginalCollidesWith = originalFilter.CollidesWith;
+                        
+                        // Apply override
+                        var newFilter = originalFilter;
+                        newFilter.BelongsTo = config.BelongsToOverride;
+                        newFilter.CollidesWith = config.CollidesWithOverride;
+                        ptr->SetCollisionFilter(newFilter);
+
+                        state.Fired = true;
+                        states[i] = state;
+                    }
+                    else if (!isActive && state.Fired)
+                    {
+                        var config = actives[i].Config;
+
+                        if (config.RestoreOnExit)
+                        {
+                            var originalFilter = ptr->GetCollisionFilter();
+                            originalFilter.BelongsTo = state.OriginalBelongsTo;
+                            originalFilter.CollidesWith = state.OriginalCollidesWith;
+                            ptr->SetCollisionFilter(originalFilter);
+                        }
+
+                        state.Fired = false;
+                        states[i] = state;
+                    }
+                }
+            }
+        }
+    }
+}

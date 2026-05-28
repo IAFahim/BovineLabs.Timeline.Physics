@@ -25,6 +25,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Radial / Vortex Options")]
         public PhysicsTriggerPositionMode originMode = PhysicsTriggerPositionMode.MatchSelf;
 
+        public PhysicsTriggerFalloffCurve falloffCurve = PhysicsTriggerFalloffCurve.None;
+        [Min(0f)] public float falloffStartRadius = 0f;
+        [Min(0f)] public float falloffEndRadius = 5f;
+
         [Header("Stat Multiplier (Optional)")]
         [Tooltip("If set, multiplies the base magnitude by the target's stat value.")]
         public StatSchemaObject strengthStat;
@@ -72,6 +76,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 Magnitude = magnitude,
                 Direction = direction,
                 OriginMode = originMode,
+                FalloffCurve = falloffCurve,
+                FalloffStartRadius = falloffStartRadius,
+                FalloffEndRadius = falloffEndRadius,
                 Strength = new StatStrengthConfig
                 {
                     Stat = strengthStat != null ? strengthStat.Key : default,

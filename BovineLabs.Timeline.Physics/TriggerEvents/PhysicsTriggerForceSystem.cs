@@ -1,4 +1,3 @@
-using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -14,13 +13,14 @@ using Unity.Entities;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
-    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
@@ -170,7 +170,7 @@ namespace BovineLabs.Timeline.Physics
             [BurstDiscard]
             private static void LogWarning()
             {
-                UnityEngine.Debug.LogWarning("PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
+                Debug.LogWarning("PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
             }
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
@@ -198,6 +198,31 @@ namespace BovineLabs.Timeline.Physics
                 var targetLtw = LtwLookup.HasComponent(targetToApply) ? LtwLookup[targetToApply] : LtwLookup[other];
                 var magnitude = cfg.Magnitude * multiplier;
 
+                PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint, out var origin);
+                var offset = targetLtw.Position - origin;
+                var distSq = math.lengthsq(offset);
+
+                if (cfg.FalloffCurve != PhysicsTriggerFalloffCurve.None && distSq > 1e-5f)
+                {
+                    var dist = math.sqrt(distSq);
+                    if (dist > cfg.FalloffEndRadius) return;
+                    
+                    if (dist > cfg.FalloffStartRadius)
+                    {
+                        if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.Step) return;
+                        
+                        var range = math.max(cfg.FalloffEndRadius - cfg.FalloffStartRadius, 0.001f);
+                        var factor = math.clamp(1f - ((dist - cfg.FalloffStartRadius) / range), 0f, 1f);
+                        
+                        if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.Linear)
+                            magnitude *= factor;
+                        else if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.InverseSquare)
+                            magnitude *= factor * factor;
+                    }
+                }
+
+                if (math.abs(magnitude) < 1e-5f) return;
+
                 var force = float3.zero;
 
                 switch (cfg.ForceType)
@@ -207,23 +232,16 @@ namespace BovineLabs.Timeline.Physics
                         break;
                     case PhysicsTriggerForceType.Radial:
                     {
-                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint,
-                            out var origin);
-                        var dir = origin - targetLtw.Position;
-                        var lenSq = math.lengthsq(dir);
-                        if (lenSq > 1e-5f)
-                            force = dir / math.sqrt(lenSq) * magnitude;
+                        if (distSq > 1e-5f)
+                            force = -offset / math.sqrt(distSq) * magnitude;
                         break;
                     }
                     case PhysicsTriggerForceType.Vortex:
                     {
-                        PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint,
-                            out var origin);
-                        var offset = targetLtw.Position - origin;
                         var up = math.rotate(selfLtw.Rotation, math.up());
                         var projOffset = offset - math.dot(offset, up) * up;
-                        var lenSq = math.lengthsq(projOffset);
-                        if (lenSq > 1e-5f)
+                        var projSq = math.lengthsq(projOffset);
+                        if (projSq > 1e-5f)
                             force = math.normalize(math.cross(up, projOffset)) * magnitude;
                         break;
                     }

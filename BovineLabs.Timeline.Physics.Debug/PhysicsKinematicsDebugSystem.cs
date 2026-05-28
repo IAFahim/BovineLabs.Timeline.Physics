@@ -54,6 +54,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _targetsLookup = state.GetComponentLookup<Targets>(true);
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicsDebugSystem>(

@@ -79,6 +79,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _localToWorldLookup.Update(ref state);

@@ -51,6 +51,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 .Build();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsStatefulEventDebugSystem>(

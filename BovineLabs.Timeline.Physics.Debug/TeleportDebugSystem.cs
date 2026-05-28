@@ -76,6 +76,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _targetsLookup = state.GetComponentLookup<Targets>(true);
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _localToWorldLookup.Update(ref state);

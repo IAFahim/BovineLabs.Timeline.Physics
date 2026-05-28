@@ -57,7 +57,7 @@ namespace BovineLabs.Timeline.Physics
             _stateLookup.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbReset = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+
             var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 

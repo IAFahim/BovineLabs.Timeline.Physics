@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsGravityOverrideData AuthoredData;
         public PhysicsGravityOverrideData Value { get; set; }
         
-        public PhysicsGravityOverrideData GetAuthoredData() => AuthoredData;
+
     }
 
     public struct ActiveGravityOverride : IComponentData, IEnableableComponent

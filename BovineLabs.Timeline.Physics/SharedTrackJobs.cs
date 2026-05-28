@@ -44,7 +44,7 @@ namespace BovineLabs.Timeline.Physics
                 var target = bindings[i].Value;
                 if (target == Entity.Null) continue;
                 if (ActiveLookup.HasComponent(target))
-                    ECB.SetComponentEnabled<TActive>(0, target, false);
+                    ECB.SetComponentEnabled<TActive>(unfilteredChunkIndex, target, false);
             }
         }
     }

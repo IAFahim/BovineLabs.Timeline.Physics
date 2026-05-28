@@ -47,7 +47,7 @@ namespace BovineLabs.Timeline.Physics
             _gravityFactorHandle.Update(ref state);
             _velocityHandle.Update(ref state);
 
-            var ecbSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecbSystem = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             state.Dependency = new ApplyJob

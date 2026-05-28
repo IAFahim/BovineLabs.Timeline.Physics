@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsKinematicOverrideData AuthoredData;
         public PhysicsKinematicOverrideData Value { get; set; }
         
-        public PhysicsKinematicOverrideData GetAuthoredData() => AuthoredData;
+
     }
 
     public struct ActiveKinematicOverride : IComponentData, IEnableableComponent

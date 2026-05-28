@@ -58,7 +58,7 @@ namespace BovineLabs.Timeline.Physics
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new DisableStaleJob
+            state.Dependency = new DisableStaleTrackJob<ActiveDrag>
             {
                 TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activeLookup,
@@ -94,27 +94,6 @@ namespace BovineLabs.Timeline.Physics
             }
         }
 
-        [BurstCompile]
-        private struct DisableStaleJob : IJobChunk
-        {
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentLookup<ActiveDrag> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var target = bindings[i].Value;
-                    if (target == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(target))
-                        ECB.SetComponentEnabled<ActiveDrag>(unfilteredChunkIndex, target, false);
-                }
-            }
-        }
 
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer

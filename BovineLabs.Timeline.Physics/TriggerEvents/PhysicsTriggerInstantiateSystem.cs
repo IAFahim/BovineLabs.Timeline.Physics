@@ -23,6 +23,7 @@ namespace BovineLabs.Timeline.Physics
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
         private EntityQuery _query;
@@ -139,7 +140,8 @@ namespace BovineLabs.Timeline.Physics
 
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
                     var self = trackBindings[i].Value;
                     var cfg = configs[i];

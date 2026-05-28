@@ -175,7 +175,7 @@ namespace BovineLabs.Timeline.Physics
                                 var col = ColliderLookup[hitEntity];
                                 if (col.IsValid)
                                 {
-                                    surfaceBelongsTo = ((Collider*)col.Value.GetUnsafePtr())->GetCollisionFilter().BelongsTo;
+                                    surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
                                 }
                             }
 

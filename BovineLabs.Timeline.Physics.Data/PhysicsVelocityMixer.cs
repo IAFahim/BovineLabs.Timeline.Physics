@@ -20,6 +20,7 @@ namespace BovineLabs.Timeline.Physics
         {
             if (a.Space != b.Space)
             {
+                UnityEngine.Debug.LogWarning("PhysicsVelocityMixer: Cannot add velocity clips with different spaces. The additive clip will be ignored.");
                 return a;
             }
 

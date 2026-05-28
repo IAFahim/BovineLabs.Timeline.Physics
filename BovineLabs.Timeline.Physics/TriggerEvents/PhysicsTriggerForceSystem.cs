@@ -21,6 +21,7 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;

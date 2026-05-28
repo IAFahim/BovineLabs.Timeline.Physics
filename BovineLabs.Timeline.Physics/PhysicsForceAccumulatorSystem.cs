@@ -87,8 +87,8 @@ namespace BovineLabs.Timeline.Physics
                     var transform = transforms[i];
                     var mass = hasMass ? masses[i] : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
 
-                    var inverseMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
-                    var inverseInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
+                    var inverseMass = mass.InverseMass;
+                    var inverseInertia = mass.InverseInertia;
 
                     var rotation = new quaternion(transform.Value);
                     var inverseRotation = math.inverse(rotation);

@@ -18,6 +18,7 @@ namespace BovineLabs.Timeline.Physics
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;

@@ -15,7 +15,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsFilterOverrideData AuthoredData;
         public PhysicsFilterOverrideData Value { get; set; }
         
-        public PhysicsFilterOverrideData GetAuthoredData() => AuthoredData;
+
     }
 
     public struct ActiveFilterOverride : IComponentData, IEnableableComponent

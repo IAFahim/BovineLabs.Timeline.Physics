@@ -162,7 +162,6 @@ namespace BovineLabs.Timeline.Physics
 
                     nextState.CapturedTargetPosition = capturedPos;
 
-                    // Optional: skip force when error is below threshold
                     if (config.StopThreshold > 0f && math.length(error) < config.StopThreshold)
                     {
                         state.State = nextState;
@@ -228,7 +227,6 @@ namespace BovineLabs.Timeline.Physics
                     PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
                         out var torque, out var nextState);
 
-                    // Optional: skip torque when angular error is below threshold
                     if (config.StopThreshold > 0f && math.degrees(math.length(error)) < config.StopThreshold)
                     {
                         state.State = nextState;

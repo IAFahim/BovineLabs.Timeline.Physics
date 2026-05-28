@@ -61,8 +61,7 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new DisableStaleTrackJob<ActiveDrag>
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activeLookup,
-                ECB = ecbDisable
+                ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);

@@ -59,8 +59,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 var states = chunk.GetNativeArray(ref StateHandle);
                 var colliders = chunk.GetNativeArray(ref ColliderHandle);
-                
-                // ActiveFilterOverride is enableable, we must read its enabled state manually since our query ignores it.
+
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
@@ -77,13 +76,11 @@ namespace BovineLabs.Timeline.Physics
                     if (isActive && !state.Fired)
                     {
                         var config = actives[i].Config;
-                        
-                        // Cache original filter
+
                         var originalFilter = ptr->GetCollisionFilter();
                         state.OriginalBelongsTo = originalFilter.BelongsTo;
                         state.OriginalCollidesWith = originalFilter.CollidesWith;
-                        
-                        // Apply override
+
                         var newFilter = originalFilter;
                         newFilter.BelongsTo = config.BelongsToOverride;
                         newFilter.CollidesWith = config.CollidesWithOverride;

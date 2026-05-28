@@ -105,7 +105,6 @@ namespace BovineLabs.Timeline.Physics
                     }
                     else if (isActive && state.Fired)
                     {
-                        // Continuous update for blended gravity scale
                         var config = actives[i].Config;
                         
                         if (hasGravityFactor)
@@ -116,9 +115,7 @@ namespace BovineLabs.Timeline.Physics
                         }
                         else
                         {
-                            // If we just added it last frame, we won't have it this frame if Structural Change hasn't happened.
-                            // ECB guarantees it happens by next frame, so we just set component.
-                            ECB.SetComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
+                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
                         }
                     }
                     else if (!isActive && state.Fired)
@@ -139,7 +136,7 @@ namespace BovineLabs.Timeline.Physics
                             }
                             else
                             {
-                                ECB.SetComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                                ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
                             }
                         }
 

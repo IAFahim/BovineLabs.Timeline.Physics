@@ -130,7 +130,6 @@ namespace BovineLabs.Timeline.Physics
                     if ((collider.Value.Value.GetCollisionFilter().BelongsTo & config.CollidesWithMask) == 0) return;
                 }
 
-                // Filter by ignore target and link keys
                 var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
                     return;

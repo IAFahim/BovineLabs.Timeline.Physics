@@ -100,7 +100,7 @@ namespace BovineLabs.Timeline.Physics
                 Links = _linkLookup,
                 StatLookup = _statLookup,
                 ConditionWriters = _conditionWriters
-            }.Schedule(_query, state.Dependency);
+            }.ScheduleParallel(_query, state.Dependency);
         }
 
         [BurstCompile]
@@ -112,9 +112,10 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<ActiveTeleport> ActiveTeleportHandle;
             public ComponentTypeHandle<PhysicsTeleportState> TeleportStateHandle;
 
+            [NativeDisableParallelForRestriction]
             public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [NativeDisableParallelForRestriction]
             public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
-            
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;

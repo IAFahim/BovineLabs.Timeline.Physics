@@ -32,8 +32,7 @@ namespace BovineLabs.Timeline.Physics
         where TActive : unmanaged, IComponentData, IEnableableComponent
     {
         [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-        [ReadOnly] public ComponentLookup<TActive> ActiveLookup;
-        public EntityCommandBuffer.ParallelWriter ECB;
+        [NativeDisableParallelForRestriction] public ComponentLookup<TActive> ActiveLookup;
 
         public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
         {
@@ -44,7 +43,7 @@ namespace BovineLabs.Timeline.Physics
                 var target = bindings[i].Value;
                 if (target == Entity.Null) continue;
                 if (ActiveLookup.HasComponent(target))
-                    ECB.SetComponentEnabled<TActive>(unfilteredChunkIndex, target, false);
+                    ActiveLookup.SetComponentEnabled(target, false);
             }
         }
     }

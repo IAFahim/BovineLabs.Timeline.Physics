@@ -183,7 +183,6 @@ namespace BovineLabs.Timeline.Physics
 
                             if (grazingAngle >= config.MinGrazingAngle || (surfaceBelongsTo & config.TerminalHitMask) != 0)
                             {
-                                // Terminal hit
                                 var hitTargets = TargetsLookup.HasComponent(hitEntity) ? TargetsLookup[hitEntity] : default;
                                 if (config.HitConditionKey != 0 && PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links, out var target))
                                 {

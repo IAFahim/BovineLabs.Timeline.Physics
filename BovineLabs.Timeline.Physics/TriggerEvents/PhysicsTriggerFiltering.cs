@@ -16,27 +16,23 @@ namespace BovineLabs.Timeline.Physics
             in UnsafeComponentLookup<EntityLinkSource> sources,
             in UnsafeBufferLookup<EntityLinkEntry> links)
         {
-            // 1. Check "Ignore Target"
             if (filter.IgnoreTarget != Target.None)
             {
                 var ignoredEntity = targets.Get(filter.IgnoreTarget, self);
                 if (ignoredEntity != Entity.Null)
                 {
-                    // Compare Roots to ensure we don't hit ANY collider attached to the ignored entity
                     EntityLinkResolver.TryResolveRoot(ignoredEntity, sources, out var ignoredRoot);
                     EntityLinkResolver.TryResolveRoot(other, sources, out var otherRoot);
                     
                     if (ignoredRoot == otherRoot)
-                        return false; // Ignore! They belong to the same root hierarchy.
+                        return false;
                 }
             }
 
-            // 2. Check "Link ID Filter Blob"
             if (filter.LinkFilterBlob.IsCreated)
             {
                 bool hasValidLink = false;
-                
-                // We need to reverse-lookup 'other' to see if it matches any of the allowed keys
+
                 if (EntityLinkResolver.TryResolveRoot(other, sources, out var otherRoot) &&
                     links.TryGetBuffer(otherRoot, out var otherLinks))
                 {
@@ -61,7 +57,7 @@ namespace BovineLabs.Timeline.Physics
                 }
 
                 if (!hasValidLink)
-                    return false; // Failed the filter
+                    return false;
             }
 
             return true;

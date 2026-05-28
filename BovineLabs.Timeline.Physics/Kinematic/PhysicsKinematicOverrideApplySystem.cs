@@ -162,7 +162,7 @@ namespace BovineLabs.Timeline.Physics
                         }
                         else
                         {
-                            ECB.SetComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
+                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
                         }
 
                         if (state.AddedGravityComponent)
@@ -177,7 +177,7 @@ namespace BovineLabs.Timeline.Physics
                         }
                         else
                         {
-                            ECB.SetComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
                         }
 
                         state.Fired = false;

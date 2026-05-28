@@ -76,8 +76,7 @@ namespace BovineLabs.Timeline.Physics
             state.Dependency = new DisableStaleTrackJob<ActiveLinearPid>
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activePidLookup,
-                ECB = ecb
+                ActiveLookup = _activePidLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);

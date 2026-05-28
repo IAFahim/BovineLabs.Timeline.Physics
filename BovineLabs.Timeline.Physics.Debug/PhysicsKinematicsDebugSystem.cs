@@ -87,6 +87,24 @@ namespace BovineLabs.Timeline.Physics.Debug
                 VelocityLookup = _velocityLookup,
                 TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
+            state.Dependency = new DrawActiveForceJob
+            {
+                Drawer = drawer,
+                Gravity = gravity,
+                TransformLookup = _localToWorldLookup,
+                VelocityLookup = _velocityLookup,
+                MassLookup = _massLookup,
+                TargetsLookup = _targetsLookup
+            }.Schedule(state.Dependency);
+
+            state.Dependency = new DrawActiveVelocityJob
+            {
+                Drawer = drawer,
+                Gravity = gravity,
+                TransformLookup = _localToWorldLookup,
+                VelocityLookup = _velocityLookup,
+                TargetsLookup = _targetsLookup
+            }.Schedule(state.Dependency);
         }
 
         [BurstCompile]
@@ -196,6 +214,109 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Drawer.Point(pos, 0.2f, Color.red);
             }
         }
+
+        [BurstCompile]
+        private partial struct DrawActiveForceJob : IJobEntity
+    {
+        public Drawer Drawer;
+        public float3 Gravity;
+        [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+        [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
+        [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
+        [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+
+        private static readonly Color ColorForce = TimelineDebugColors.LinearForce;
+
+        private void Execute(Entity entity, in ActiveForce active, in PhysicsForceState state)
+        {
+            if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
+
+            PhysicsMath.ResolveSpaceVector(active.Config.Space, active.Config.Linear, entity,
+                in TargetsLookup, in TransformLookup, out var forceVec);
+
+            var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
+            var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
+
+            Drawer.Arrow(transform.Position, forceVec * massInv, ColorForce);
+
+            var pos = transform.Position;
+            var vel = baseVel;
+
+            if (active.Config.Mode == PhysicsForceMode.Impulse && !state.Fired)
+                vel += forceVec * massInv;
+
+            const float dt = 0.05f;
+            var steps = (int)(2f / dt);
+            for (var i = 0; i < steps; i++)
+            {
+                var accel = Gravity;
+                if (active.Config.Mode == PhysicsForceMode.Continuous)
+                    accel += forceVec * massInv;
+
+                vel += accel * dt;
+                var nextPos = pos + vel * dt;
+                Drawer.Line(pos, nextPos, new Color(ColorForce.r, ColorForce.g, ColorForce.b, 0.5f));
+                pos = nextPos;
+            }
+
+            Drawer.Point(pos, 0.2f, Color.red);
+        }
     }
+
+    [BurstCompile]
+    private partial struct DrawActiveVelocityJob : IJobEntity
+    {
+        public Drawer Drawer;
+        public float3 Gravity;
+        [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+        [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
+        [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+
+        private static readonly Color ColorVel = TimelineDebugColors.LinearVelocity;
+
+        private void Execute(Entity entity, in ActiveVelocity active, in PhysicsVelocityState state)
+        {
+            if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
+
+            PhysicsMath.ResolveSpaceVector(active.Config.Space, active.Config.Linear, entity,
+                in TargetsLookup, in TransformLookup, out var targetVel);
+
+            var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
+            Drawer.Arrow(transform.Position, targetVel, ColorVel);
+
+            var pos = transform.Position;
+            var vel = baseVel;
+
+            var isInstant = active.Config.Mode == PhysicsVelocityMode.SetInstant ||
+                            active.Config.Mode == PhysicsVelocityMode.AddInstant;
+            var isSet = active.Config.Mode == PhysicsVelocityMode.SetContinuous ||
+                        active.Config.Mode == PhysicsVelocityMode.SetInstant;
+
+            if (isInstant && !state.Fired)
+                vel = isSet ? targetVel : vel + targetVel;
+
+            const float dt = 0.05f;
+            var steps = (int)(2f / dt);
+
+            for (var i = 0; i < steps; i++)
+            {
+                if (!isInstant)
+                {
+                    if (isSet) vel = targetVel;
+                    else vel += targetVel * dt;
+                }
+
+                if (isInstant || !isSet)
+                    vel += Gravity * dt;
+
+                var nextPos = pos + vel * dt;
+                Drawer.Line(pos, nextPos, new Color(ColorVel.r, ColorVel.g, ColorVel.b, 0.5f));
+                pos = nextPos;
+            }
+
+            Drawer.Point(pos, 0.2f, Color.red);
+        }
+    }
+}
 }
 #endif

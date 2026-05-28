@@ -9,6 +9,11 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
+    /// <summary>
+    /// Shared logic for draining <see cref="PendingForce"/> and <see cref="PendingVelocity"/> buffers
+    /// into <see cref="PhysicsVelocity"/>. Used by both <see cref="PhysicsProducerForceAccumulatorSystem"/>
+    /// and <see cref="PhysicsModifierForceAccumulatorSystem"/> at their respective drain points.
+    /// </summary>
     public struct PhysicsForceAccumulator
     {
         private EntityQuery _query;
@@ -129,6 +134,12 @@ namespace BovineLabs.Timeline.Physics
         }
     }
 
+    /// <summary>
+    /// Drains <see cref="PendingForce"/> and <see cref="PendingVelocity"/> buffers at the end of
+    /// <see cref="PhysicsProducerGroup"/> (before the physics step). Any system that appends to
+    /// <see cref="PendingForce"/> within <see cref="PhysicsProducerGroup"/> must be ordered before
+    /// this system to ensure forces are applied in the correct frame.
+    /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
@@ -144,8 +155,13 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state) => _accumulator.OnUpdate(ref state);
     }
 
+    /// <summary>
+    /// Drains <see cref="PendingForce"/> and <see cref="PendingVelocity"/> buffers at the end of
+    /// <see cref="PhysicsModifierGroup"/> (after the physics step). Any system that appends to
+    /// <see cref="PendingForce"/> within <see cref="PhysicsModifierGroup"/> must be ordered before
+    /// this system to ensure forces are applied in the correct frame.
+    /// </summary>
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [UpdateAfter(typeof(PhysicsTriggerForceSystem))]
     [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsModifierForceAccumulatorSystem : ISystem
     {

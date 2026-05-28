@@ -4,7 +4,6 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Collections;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -76,31 +75,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             });
 
             // Bake the filter data
-            BlobAssetReference<PhysicsTriggerLinkBlob> filterBlob = default;
-            if (requireLinks != null && requireLinks.Length > 0)
-            {
-                int validCount = 0;
-                for (int i = 0; i < requireLinks.Length; i++)
-                {
-                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out _))
-                        validCount++;
-                }
-
-                var builder = new BlobBuilder(Allocator.Temp);
-                ref var root = ref builder.ConstructRoot<PhysicsTriggerLinkBlob>();
-                var array = builder.Allocate(ref root.ValidLinkKeys, validCount);
-
-                int index = 0;
-                for (int i = 0; i < requireLinks.Length; i++)
-                {
-                    if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
-                        array[index++] = reqKey;
-                }
-
-                filterBlob = builder.CreateBlobAssetReference<PhysicsTriggerLinkBlob>(Allocator.Persistent);
-                context.Baker.AddBlobAsset(ref filterBlob, out _);
-                builder.Dispose();
-            }
+            var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData
             {

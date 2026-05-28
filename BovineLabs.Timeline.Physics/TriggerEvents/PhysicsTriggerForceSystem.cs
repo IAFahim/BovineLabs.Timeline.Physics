@@ -17,13 +17,9 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics
 {
-    [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [UpdateAfter(typeof(PhysicsTriggerForceSystem))]
-    [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
-    public partial class PhysicsProducerECBSystem : EntityCommandBufferSystem { }
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
+    [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
     [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
@@ -51,6 +47,7 @@ namespace BovineLabs.Timeline.Physics
                 .Build();
         }
 
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             _targetsLookup.Update(ref state);
@@ -65,13 +62,12 @@ namespace BovineLabs.Timeline.Physics
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
 
-            var ecbSystem = state.World.GetExistingSystemManaged<PhysicsProducerECBSystem>();
-            var ecb = ecbSystem.CreateCommandBuffer();
+            var events = new NativeQueue<TriggerForceEvent>(state.WorldUpdateAllocator);
 
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
-                ECB = ecb.AsParallelWriter(),
+                Events = events.AsParallelWriter(),
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
@@ -85,13 +81,30 @@ namespace BovineLabs.Timeline.Physics
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
+
+            state.Dependency = new ApplyForcesJob
+            {
+                Events = events,
+                PendingForceLookup = _pendingForceLookup
+            }.Schedule(state.Dependency);
+        }
+
+        /// <summary>
+        /// Intermediate event produced by <see cref="GatherJob"/> and consumed by <see cref="ApplyForcesJob"/>.
+        /// Stored in a <see cref="NativeQueue{T}"/> so that buffer appends happen in a single-threaded apply job
+        /// without requiring a managed ECB system.
+        /// </summary>
+        private struct TriggerForceEvent
+        {
+            public Entity Target;
+            public PendingForce Force;
         }
 
         [BurstCompile]
         private struct GatherJob : IJobChunk
         {
             public float DeltaTime;
-            public EntityCommandBuffer.ParallelWriter ECB;
+            public NativeQueue<TriggerForceEvent>.ParallelWriter Events;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
@@ -137,7 +150,7 @@ namespace BovineLabs.Timeline.Physics
                             var selfPos = LtwLookup[self].Position;
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var midpoint = (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(unfilteredChunkIndex, self, evt.EntityB, in config, in filter, midpoint, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
                         }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
@@ -149,7 +162,7 @@ namespace BovineLabs.Timeline.Physics
                             var otherPos = LtwLookup[evt.EntityB].Position;
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(unfilteredChunkIndex, self, evt.EntityB, in config, in filter, pt, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
                         }
                 }
             }
@@ -160,7 +173,7 @@ namespace BovineLabs.Timeline.Physics
                 UnityEngine.Debug.LogWarning("PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
             }
 
-            private void ProcessEvent(int chunkIndex, Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
+            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
                 in Targets targets)
             {
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
@@ -219,11 +232,38 @@ namespace BovineLabs.Timeline.Physics
                 if (math.lengthsq(force) > 1e-5f)
                 {
                     var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-                    ECB.AppendToBuffer(chunkIndex, targetToApply, new PendingForce
+                    Events.Enqueue(new TriggerForceEvent
                     {
-                        Linear = force * timeScale,
-                        Angular = float3.zero
+                        Target = targetToApply,
+                        Force = new PendingForce
+                        {
+                            Linear = force * timeScale,
+                            Angular = float3.zero
+                        }
                     });
+                }
+            }
+        }
+
+        /// <summary>
+        /// Applies gathered force events to their target entity's <see cref="PendingForce"/> buffer.
+        /// Runs single-threaded to avoid parallel <see cref="BufferLookup{T}"/> write conflicts when
+        /// multiple events target the same entity.
+        /// </summary>
+        [BurstCompile]
+        private struct ApplyForcesJob : IJob
+        {
+            public NativeQueue<TriggerForceEvent> Events;
+            public BufferLookup<PendingForce> PendingForceLookup;
+
+            public void Execute()
+            {
+                while (Events.TryDequeue(out var evt))
+                {
+                    if (PendingForceLookup.HasBuffer(evt.Target))
+                    {
+                        PendingForceLookup[evt.Target].Add(evt.Force);
+                    }
                 }
             }
         }

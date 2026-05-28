@@ -22,8 +22,15 @@ namespace BovineLabs.Timeline.Physics
             if (!config.IsEnabled())
                 return 1f;
 
-            if (!EntityLinkResolver.TryResolve(self, targets, config.ReadFrom, config.LinkKey,
-                    linkSources, linkEntries, out var statEntity))
+            // When LinkKey is 0, resolve directly from the read target without entity link lookup
+            var statEntity = config.LinkKey == 0
+                ? targets.Get(config.ReadFrom, self)
+                : EntityLinkResolver.TryResolve(self, targets, config.ReadFrom, config.LinkKey,
+                    linkSources, linkEntries, out var linked)
+                    ? linked
+                    : Entity.Null;
+
+            if (statEntity == Entity.Null)
                 return 1f;
 
             if (!statLookup.TryGetBuffer(statEntity, out var stats))

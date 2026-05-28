@@ -14,11 +14,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            var queuedLinearPid = new NativeHashSet<Entity>(64, Allocator.Temp);
-            var queuedAngularPid = new NativeHashSet<Entity>(64, Allocator.Temp);
-            var queuedForce = new NativeHashSet<Entity>(64, Allocator.Temp);
-            var queuedVelocity = new NativeHashSet<Entity>(64, Allocator.Temp);
-            var queuedDrag = new NativeHashSet<Entity>(64, Allocator.Temp);
             var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
             // 1. Linear PID
@@ -29,7 +24,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
-                if (!em.HasComponent<ActiveLinearPid>(target) && queuedLinearPid.Add(target))
+                if (!em.HasComponent<ActiveLinearPid>(target))
                 {
                     ecb.AddComponent<ActiveLinearPid>(target);
                     ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
@@ -47,7 +42,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
-                if (!em.HasComponent<ActiveAngularPid>(target) && queuedAngularPid.Add(target))
+                if (!em.HasComponent<ActiveAngularPid>(target))
                 {
                     ecb.AddComponent<ActiveAngularPid>(target);
                     ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
@@ -65,7 +60,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
-                if (!em.HasComponent<ActiveForce>(target) && queuedForce.Add(target))
+                if (!em.HasComponent<ActiveForce>(target))
                 {
                     ecb.AddComponent<ActiveForce>(target);
                     ecb.SetComponentEnabled<ActiveForce>(target, false);
@@ -83,7 +78,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
-                if (!em.HasComponent<ActiveVelocity>(target) && queuedVelocity.Add(target))
+                if (!em.HasComponent<ActiveVelocity>(target))
                 {
                     ecb.AddComponent<ActiveVelocity>(target);
                     ecb.SetComponentEnabled<ActiveVelocity>(target, false);
@@ -101,7 +96,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
 
-                if (!em.HasComponent<ActiveDrag>(target) && queuedDrag.Add(target))
+                if (!em.HasComponent<ActiveDrag>(target))
                 {
                     ecb.AddComponent<ActiveDrag>(target);
                     ecb.SetComponentEnabled<ActiveDrag>(target, false);
@@ -113,11 +108,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             ecb.Playback(em);
             ecb.Dispose();
 
-            queuedLinearPid.Dispose();
-            queuedAngularPid.Dispose();
-            queuedForce.Dispose();
-            queuedVelocity.Dispose();
-            queuedDrag.Dispose();
             queuedBuffers.Dispose();
         }
 

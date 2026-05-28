@@ -56,9 +56,17 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2))
                 applyToKey = k2;
 
+            var bakedState = triggerState;
+            if (mode == PhysicsForceMode.Continuous && bakedState != StatefulEventState.Stay)
+            {
+                // A continuous force on Enter/Exit only applies for one frame (force * DeltaTime).
+                // To actually be continuous, it MUST evaluate every frame during Stay.
+                bakedState = StatefulEventState.Stay;
+            }
+
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerForceData
             {
-                EventState = triggerState,
+                EventState = bakedState,
                 ForceType = forceType,
                 Mode = mode,
                 Magnitude = magnitude,

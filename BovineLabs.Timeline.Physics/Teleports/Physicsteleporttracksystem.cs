@@ -62,11 +62,11 @@ namespace BovineLabs.Timeline.Physics
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateJob
+            state.Dependency = new ResetStateTrackJob<PhysicsTeleportState>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ECB = ecbReset
+                ResetValue = new PhysicsTeleportState { Fired = false }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsTeleportAnimated>();
@@ -75,7 +75,7 @@ namespace BovineLabs.Timeline.Physics
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleJob
+            state.Dependency = new DisableStaleTrackJob<ActiveTeleport>
             {
                 TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activeLookup,
@@ -111,48 +111,7 @@ namespace BovineLabs.Timeline.Physics
             }
         }
 
-        [BurstCompile]
-        private struct ResetStateJob : IJobChunk
-        {
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentLookup<PhysicsTeleportState> StateLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var target = bindings[i].Value;
-                    if (target != Entity.Null && StateLookup.HasComponent(target))
-                        ECB.SetComponent(unfilteredChunkIndex, target, new PhysicsTeleportState { Fired = false });
-                }
-            }
-        }
-
-        [BurstCompile]
-        private struct DisableStaleJob : IJobChunk
-        {
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentLookup<ActiveTeleport> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var target = bindings[i].Value;
-                    if (target == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(target))
-                        ECB.SetComponentEnabled<ActiveTeleport>(unfilteredChunkIndex, target, false);
-                }
-            }
-        }
 
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer

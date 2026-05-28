@@ -18,6 +18,11 @@ namespace BovineLabs.Timeline.Physics
 
         public PhysicsVelocityData Add(in PhysicsVelocityData a, in PhysicsVelocityData b)
         {
+            if (a.Space != b.Space)
+            {
+                return a;
+            }
+
             return new PhysicsVelocityData
             {
                 Mode = a.Mode,

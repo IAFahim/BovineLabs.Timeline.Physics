@@ -113,8 +113,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<ActiveTeleport> ActiveTeleportHandle;
             public ComponentTypeHandle<PhysicsTeleportState> TeleportStateHandle;
 
-            [NativeDisableParallelForRestriction] public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
+            public ComponentLookup<LocalTransform> LocalTransformLookup;
+            public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;

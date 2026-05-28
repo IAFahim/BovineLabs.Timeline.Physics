@@ -58,16 +58,14 @@ namespace BovineLabs.Timeline.Physics
             _stateLookup.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbReset = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-            var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateJob
+            state.Dependency = new ResetStateTrackJob<PhysicsAngularPIDState>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ECB = ecbReset
+                ResetValue = default
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsAngularPIDAnimated>();
@@ -76,11 +74,11 @@ namespace BovineLabs.Timeline.Physics
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleJob
+            state.Dependency = new DisableStaleTrackJob<ActiveAngularPid>
             {
                 TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activePidLookup,
-                ECB = ecbDisable
+                ECB = ecb
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
@@ -89,7 +87,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 BlendData = blendData,
                 ActivePidLookup = _activePidLookup,
-                ECB = ecbWrite
+                ECB = ecb
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
@@ -112,48 +110,7 @@ namespace BovineLabs.Timeline.Physics
             }
         }
 
-        [BurstCompile]
-        private struct ResetStateJob : IJobChunk
-        {
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentLookup<PhysicsAngularPIDState> StateLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var target = bindings[i].Value;
-                    if (target != Entity.Null && StateLookup.HasComponent(target))
-                        ECB.SetComponent(unfilteredChunkIndex, target, default(PhysicsAngularPIDState));
-                }
-            }
-        }
-
-        [BurstCompile]
-        private struct DisableStaleJob : IJobChunk
-        {
-            [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
-            [ReadOnly] public ComponentLookup<ActiveAngularPid> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var target = bindings[i].Value;
-                    if (target == Entity.Null) continue;
-                    if (ActiveLookup.HasComponent(target))
-                        ECB.SetComponentEnabled<ActiveAngularPid>(unfilteredChunkIndex, target, false);
-                }
-            }
-        }
 
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer

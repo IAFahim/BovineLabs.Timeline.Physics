@@ -57,8 +57,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public float clearanceRadius = 0.5f;
 
         [Tooltip("Maximum candidate positions to evaluate before giving up.")]
-        [Range(1, 64)]
-        public int maxCandidates = 16;
+        [Range(1, 16)]
+        public int maxCandidates = 4;
 
         [Tooltip("Physics layers that count as obstacles for clearance and LOS.")]
         public PhysicsCategoryTags obstacleMask;

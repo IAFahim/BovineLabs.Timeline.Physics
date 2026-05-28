@@ -152,74 +152,68 @@ namespace BovineLabs.Timeline.Physics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
-                    var skip = math.abs(multiplier) < 1e-5f;
+                    if (math.abs(multiplier) < 1e-5f) continue;
 
-                    if (!skip)
+                    float3 linForce;
+
+                    if (config.DirectionMode == PhysicsForceDirectionMode.FixedVector)
                     {
-                        float3 linForce;
-
-                        if (config.DirectionMode == PhysicsForceDirectionMode.FixedVector)
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                            in TransformLookup, out linForce);
+                    }
+                    else
+                    {
+                        linForce = float3.zero;
+                        var targetEntity = body;
+                        if (config.DirectionTarget != Target.None)
                         {
-                            PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                                in TransformLookup, out linForce);
+                            var baseTarget = targets.Get(config.DirectionTarget, body);
+                            if (baseTarget != Entity.Null)
+                            {
+                                targetEntity = baseTarget;
+                                if (config.DirectionTargetLinkKey != 0 &&
+                                    EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
+                                        LinkSources, Links, out var linked))
+                                {
+                                    targetEntity = linked;
+                                }
+                            }
+                        }
+
+                        if (targetEntity != Entity.Null &&
+                            TransformLookup.TryGetComponent(targetEntity, out var targetLtw) &&
+                            TransformLookup.TryGetComponent(body, out var selfLtw))
+                        {
+                            var diff = targetLtw.Position - selfLtw.Position;
+                            var distSq = math.lengthsq(diff);
+                            if (distSq > 1e-5f)
+                            {
+                                var dir = diff / math.sqrt(distSq);
+                                linForce = dir * config.Magnitude;
+                                if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
+                                    linForce = -linForce;
+                            }
                         }
                         else
                         {
-                            linForce = float3.zero;
-                            var targetEntity = body;
-                            if (config.DirectionTarget != Target.None)
-                            {
-                                var baseTarget = targets.Get(config.DirectionTarget, body);
-                                if (baseTarget != Entity.Null)
-                                {
-                                    targetEntity = baseTarget;
-                                    if (config.DirectionTargetLinkKey != 0 &&
-                                        EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
-                                            LinkSources, Links, out var linked))
-                                    {
-                                        targetEntity = linked;
-                                    }
-                                }
-                            }
-
-                            if (targetEntity != Entity.Null &&
-                                TransformLookup.TryGetComponent(targetEntity, out var targetLtw) &&
-                                TransformLookup.TryGetComponent(body, out var selfLtw))
-                            {
-                                var diff = targetLtw.Position - selfLtw.Position;
-                                var distSq = math.lengthsq(diff);
-                                if (distSq > 1e-5f)
-                                {
-                                    var dir = diff / math.sqrt(distSq);
-                                    linForce = dir * config.Magnitude;
-                                    if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
-                                        linForce = -linForce;
-                                }
-                            }
-                            else
-                            {
-                                skip = true;
-                            }
+                            continue;
                         }
+                    }
 
-                        if (!skip)
-                        {
-                            PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
-                                in TransformLookup, out var angForce);
+                    PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
+                        in TransformLookup, out var angForce);
 
-                            var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-                            pendingForces[i].Add(new PendingForce
-                            {
-                                Linear = linForce * timeScale * multiplier,
-                                Angular = angForce * timeScale * multiplier
-                            });
+                    var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+                    pendingForces[i].Add(new PendingForce
+                    {
+                        Linear = linForce * timeScale * multiplier,
+                        Angular = angForce * timeScale * multiplier
+                    });
 
-                            if (config.Mode == PhysicsForceMode.Impulse)
-                            {
-                                state.Fired = true;
-                                states[i] = state;
-                            }
-                        }
+                    if (config.Mode == PhysicsForceMode.Impulse)
+                    {
+                        state.Fired = true;
+                        states[i] = state;
                     }
                 }
             }

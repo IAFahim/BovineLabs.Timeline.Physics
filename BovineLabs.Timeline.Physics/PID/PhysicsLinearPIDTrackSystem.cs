@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activePidLookup = state.GetComponentLookup<ActiveLinearPid>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>(true);
+            _activePidLookup = state.GetComponentLookup<ActiveLinearPid>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsLinearPIDAnimated, ClipActive>()

@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveKinematicOverride>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsKinematicOverrideState>(true);
+            _activeLookup = state.GetComponentLookup<ActiveKinematicOverride>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsKinematicOverrideState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsKinematicOverrideAnimated, ClipActive>()

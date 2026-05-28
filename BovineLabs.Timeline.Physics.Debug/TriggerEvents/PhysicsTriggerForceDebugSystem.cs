@@ -109,18 +109,19 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (config.FalloffCurve != PhysicsTriggerFalloffCurve.None)
                 {
-                    Drawer.Circle(origin, new float3(0f, config.FalloffStartRadius, 0f), ForceColor);
+                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffStartRadius, 0f)), ForceColor);
                     var outerColor = ForceColor; outerColor.a *= 0.3f;
-                    Drawer.Circle(origin, new float3(0f, config.FalloffEndRadius, 0f), outerColor);
+                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffEndRadius, 0f)), outerColor);
                 }
 
                 if (config.ForceType == PhysicsTriggerForceType.Directional)
                 {
-                    var dir = math.normalize(config.Direction);
-                    if (math.lengthsq(dir) > 0.01f)
+                    var localDir = math.normalizesafe(config.Direction, new float3(0, 0, 1));
+                    var globalDir = math.rotate(ltw.Rotation, localDir);
+                    if (math.lengthsq(globalDir) > 0.01f)
                     {
-                        var rot = quaternion.LookRotationSafe(dir, math.up());
-                        Drawer.Arrow(origin, dir * 2f, ForceColor);
+                        var rot = quaternion.LookRotationSafe(globalDir, math.up());
+                        Drawer.Arrow(origin, globalDir * 2f, ForceColor);
                     }
                 }
                 else if (config.ForceType == PhysicsTriggerForceType.Radial)
@@ -131,7 +132,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                         var angle = (i / (float)rays) * math.PI * 2f;
                         var dir = new float3(math.cos(angle), 0, math.sin(angle));
                         if (config.Magnitude < 0) dir = -dir;
-                        Drawer.Arrow(origin + dir * 0.5f, dir * 1.5f, ForceColor);
+                        var globalDir = math.rotate(ltw.Rotation, dir);
+                        Drawer.Arrow(origin + globalDir * 0.5f, globalDir * 1.5f, ForceColor);
                     }
                 }
                 else if (config.ForceType == PhysicsTriggerForceType.Vortex)
@@ -145,7 +147,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                         if (config.Magnitude < 0) tangent = -tangent;
                         tangent = math.normalize(tangent);
                         
-                        Drawer.Arrow(origin + posOffset, tangent * 1.5f, ForceColor);
+                        var globalPosOffset = math.rotate(ltw.Rotation, posOffset);
+                        var globalTangent = math.rotate(ltw.Rotation, tangent);
+                        Drawer.Arrow(origin + globalPosOffset, globalTangent * 1.5f, ForceColor);
                     }
                 }
             }

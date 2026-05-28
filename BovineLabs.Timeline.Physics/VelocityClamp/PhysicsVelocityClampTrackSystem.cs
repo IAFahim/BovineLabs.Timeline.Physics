@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveVelocityClamp>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsVelocityClampState>(true);
+            _activeLookup = state.GetComponentLookup<ActiveVelocityClamp>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsVelocityClampState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsVelocityClampAnimated, ClipActive>()

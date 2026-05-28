@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>(true);
+            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsGravityOverrideAnimated, ClipActive>()

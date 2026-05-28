@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveRicochet>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsRicochetState>(true);
+            _activeLookup = state.GetComponentLookup<ActiveRicochet>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsRicochetState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsRicochetAnimated, ClipActive>()

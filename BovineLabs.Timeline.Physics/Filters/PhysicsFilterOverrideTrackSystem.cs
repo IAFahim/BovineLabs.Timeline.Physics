@@ -25,8 +25,8 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveFilterOverride>(true);
-            _stateLookup = state.GetComponentLookup<PhysicsFilterOverrideState>(true);
+            _activeLookup = state.GetComponentLookup<ActiveFilterOverride>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsFilterOverrideState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsFilterOverrideAnimated, ClipActive>()

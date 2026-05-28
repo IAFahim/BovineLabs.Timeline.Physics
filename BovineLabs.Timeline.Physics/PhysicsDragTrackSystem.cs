@@ -23,7 +23,7 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveDrag>(true);
+            _activeLookup = state.GetComponentLookup<ActiveDrag>(false);
 
             _prepareQuery = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsDragAnimated>()

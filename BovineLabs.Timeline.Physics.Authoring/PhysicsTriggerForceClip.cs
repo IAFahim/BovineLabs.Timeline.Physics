@@ -7,6 +7,7 @@ using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
+using Unity.Mathematics;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
@@ -74,7 +75,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 ForceType = forceType,
                 Mode = mode,
                 Magnitude = magnitude,
-                Direction = direction,
+                Direction = math.normalizesafe(direction, new float3(0, 0, 1)),
                 OriginMode = originMode,
                 FalloffCurve = falloffCurve,
                 FalloffStartRadius = falloffStartRadius,

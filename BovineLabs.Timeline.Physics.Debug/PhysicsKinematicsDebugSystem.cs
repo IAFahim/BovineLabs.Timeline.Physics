@@ -62,7 +62,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicsDebugSystem>(
-                    ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
+                  ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()

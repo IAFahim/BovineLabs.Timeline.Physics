@@ -99,7 +99,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _colliderLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsRicochetGizmoSystem>(
-                    ref state, RicochetDebugSystem.Enabled.Data, out var drawer))
+                  ref state, RicochetDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             var collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;

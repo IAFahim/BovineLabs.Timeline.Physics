@@ -57,7 +57,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsFilterOverrideGizmoSystem>(
-                    ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer))
+                  ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob

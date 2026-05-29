@@ -94,7 +94,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _targetsLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTeleportGizmoSystem>(
-                    ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
+                  ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawTeleportJob

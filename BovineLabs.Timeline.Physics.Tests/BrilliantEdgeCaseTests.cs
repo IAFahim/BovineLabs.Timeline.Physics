@@ -365,7 +365,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 typeof(PendingForce)
             );
 
-            var entities = new NativeArray<Entity>(10000, Allocator.Temp);
+            var entities = new NativeArray<Entity>(10000, Allocator.TempJob);
             Manager.CreateEntity(archetype, entities);
 
             for (int i = 0; i < entities.Length; i++)

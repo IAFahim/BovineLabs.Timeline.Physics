@@ -60,7 +60,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsGravityOverrideGizmoSystem>(
-                    ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer))
+                  ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             var worldGravity = new float3(0, -9.81f, 0);

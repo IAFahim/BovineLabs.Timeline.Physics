@@ -58,7 +58,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerForceGizmoSystem>(
-                    ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
+                  ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
                 return;
             state.Dependency = new DrawJob
             {

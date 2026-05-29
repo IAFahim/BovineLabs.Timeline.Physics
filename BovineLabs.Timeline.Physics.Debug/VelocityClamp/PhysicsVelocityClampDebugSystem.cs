@@ -68,7 +68,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsVelocityClampGizmoSystem>(
-                    ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer))
+                  ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob

@@ -169,7 +169,7 @@ namespace BovineLabs.Timeline.Physics
                         continue;
                     }
 
-                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,
                         LinkSources, Links, StatLookup);
 
@@ -234,7 +234,7 @@ namespace BovineLabs.Timeline.Physics
                         continue;
                     }
 
-                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,
                         LinkSources, Links, StatLookup);
 

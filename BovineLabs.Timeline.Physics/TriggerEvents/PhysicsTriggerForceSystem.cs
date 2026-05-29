@@ -63,12 +63,12 @@ namespace BovineLabs.Timeline.Physics
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
 
-            var events = new NativeQueue<TriggerForceEvent>(state.WorldUpdateAllocator);
+            var events = new NativeStream(_query.CalculateChunkCountWithoutFiltering(), state.WorldUpdateAllocator);
 
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
-                Events = events.AsParallelWriter(),
+                Events = events.AsWriter(),
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
@@ -92,7 +92,7 @@ namespace BovineLabs.Timeline.Physics
 
         /// <summary>
         /// Intermediate event produced by <see cref="GatherJob"/> and consumed by <see cref="ApplyForcesJob"/>.
-        /// Stored in a <see cref="NativeQueue{T}"/> so that buffer appends happen in a single-threaded apply job
+        /// Stored in a <see cref="NativeStream"/> so that buffer appends happen in a deterministic order
         /// without requiring a managed ECB system.
         /// </summary>
         private struct TriggerForceEvent
@@ -105,7 +105,7 @@ namespace BovineLabs.Timeline.Physics
         private struct GatherJob : IJobChunk
         {
             public float DeltaTime;
-            public NativeQueue<TriggerForceEvent>.ParallelWriter Events;
+            public NativeStream.Writer Events;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
@@ -124,6 +124,8 @@ namespace BovineLabs.Timeline.Physics
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
             {
+                Events.BeginForEachIndex(unfilteredChunkIndex);
+
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
                 var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
@@ -136,12 +138,13 @@ namespace BovineLabs.Timeline.Physics
                     var binding = bindings[i];
                     var self = binding.Value;
                     if (self == Entity.Null) continue;
+                    if (!LtwLookup.HasComponent(self)) continue;
 
                     var config = configs[i];
                     var filter = filters[i];
                     var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
 
-                    var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                    var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
@@ -166,6 +169,8 @@ namespace BovineLabs.Timeline.Physics
                             ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
                         }
                 }
+                
+                Events.EndForEachIndex();
             }
 
             [BurstDiscard]
@@ -252,7 +257,7 @@ namespace BovineLabs.Timeline.Physics
                 if (math.lengthsq(force) > 1e-5f)
                 {
                     var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
-                    Events.Enqueue(new TriggerForceEvent
+                    Events.Write(new TriggerForceEvent
                     {
                         Target = targetToApply,
                         Force = new PendingForce
@@ -273,17 +278,24 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         private struct ApplyForcesJob : IJob
         {
-            public NativeQueue<TriggerForceEvent> Events;
+            [ReadOnly] public NativeStream Events;
             public BufferLookup<PendingForce> PendingForceLookup;
 
             public void Execute()
             {
-                while (Events.TryDequeue(out var evt))
+                var reader = Events.AsReader();
+                for (int i = 0; i < reader.ForEachCount; i++)
                 {
-                    if (PendingForceLookup.HasBuffer(evt.Target))
+                    reader.BeginForEachIndex(i);
+                    while (reader.RemainingItemCount > 0)
                     {
-                        PendingForceLookup[evt.Target].Add(evt.Force);
+                        var evt = reader.Read<TriggerForceEvent>();
+                        if (PendingForceLookup.HasBuffer(evt.Target))
+                        {
+                            PendingForceLookup[evt.Target].Add(evt.Force);
+                        }
                     }
+                    reader.EndForEachIndex();
                 }
             }
         }

@@ -103,7 +103,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public ConditionEventWriter.Lookup Writers;
+            [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup Writers;
 
             [ReadOnly] public CollisionWorld CollisionWorld;
 
@@ -126,7 +126,7 @@ namespace BovineLabs.Timeline.Physics
                     if (isActive && !state.Fired)
                     {
                         var config = actives[i].Config;
-                        var targets = TargetsLookup.HasComponent(entity) ? TargetsLookup[entity] : default;
+                        var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
                         
                         float3 origin = float3.zero;
                         float3 direction = math.forward();
@@ -183,7 +183,7 @@ namespace BovineLabs.Timeline.Physics
 
                             if (grazingAngle >= config.MinGrazingAngle || (surfaceBelongsTo & config.TerminalHitMask) != 0)
                             {
-                                var hitTargets = TargetsLookup.HasComponent(hitEntity) ? TargetsLookup[hitEntity] : default;
+                                var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
                                 if (config.HitConditionKey != 0 && PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links, out var target))
                                 {
                                     if (Writers.TryGet(target, out var writer))

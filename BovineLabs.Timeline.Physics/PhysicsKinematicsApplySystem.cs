@@ -148,7 +148,7 @@ namespace BovineLabs.Timeline.Physics
                     if (config.Mode == PhysicsForceMode.Impulse && state.Fired) continue;
                     if (config.Mode == PhysicsForceMode.Continuous && DeltaTime <= 0.0001f) continue;
 
-                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
@@ -256,7 +256,7 @@ namespace BovineLabs.Timeline.Physics
                     if (isInstant && state.Fired) continue;
                     if (!isInstant && DeltaTime <= 0.0001f) continue;
 
-                    var targets = TargetsLookup.HasComponent(body) ? TargetsLookup[body] : default;
+                    var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 

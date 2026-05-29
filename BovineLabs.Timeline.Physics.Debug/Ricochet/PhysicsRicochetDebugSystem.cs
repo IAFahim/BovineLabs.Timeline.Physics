@@ -129,7 +129,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public unsafe void Execute(Entity entity, in TrackBinding binding, in PhysicsRicochetAnimated animated)
             {
                 var d = animated.AuthoredData;
-                var targets = TargetsLookup.HasComponent(entity) ? TargetsLookup[entity] : default;
+                var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
                 
                 float3 origin = float3.zero;
                 float3 direction = math.forward();

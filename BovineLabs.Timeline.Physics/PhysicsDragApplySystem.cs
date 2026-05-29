@@ -106,7 +106,7 @@ namespace BovineLabs.Timeline.Physics
                     var facet = resolved[i];
                     var config = drags[i].Config;
 
-                    var targets = TargetsLookup.HasComponent(entity) ? TargetsLookup[entity] : default;
+                    var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
                         Links, StatLookup);
 

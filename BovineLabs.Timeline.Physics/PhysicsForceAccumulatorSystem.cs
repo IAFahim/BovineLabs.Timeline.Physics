@@ -1,3 +1,4 @@
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.Jobs;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -81,7 +82,8 @@ namespace BovineLabs.Timeline.Physics
                     ? chunk.GetBufferAccessor(ref PendingVelocityHandle)
                     : default;
 
-                for (var i = 0; i < chunk.Count; i++)
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+                while (enumerator.NextEntityIndex(out var i))
                 {
                     var velocity = velocities[i];
                     var transform = transforms[i];

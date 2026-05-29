@@ -19,6 +19,10 @@ namespace BovineLabs.Timeline.Physics
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    /// <summary>
+    /// Applies teleports. Invariant: At most one teleport track may act on a single target entity per tick.
+    /// Multiple teleports on the same target in the same tick cause non-deterministic last-writer-wins behavior.
+    /// </summary>
     public partial struct PhysicsTeleportApplySystem : ISystem
     {
         private EntityQuery _query;
@@ -122,7 +126,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
-            public ConditionEventWriter.Lookup ConditionWriters;
+            [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup ConditionWriters;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -161,7 +165,7 @@ namespace BovineLabs.Timeline.Physics
                     var referencePos = referenceLtw.Position;
                     var referenceRot = new quaternion(referenceLtw.Value);
 
-                    var targets = TargetsLookup.HasComponent(selfEntity) ? TargetsLookup[selfEntity] : default;
+                    var targets = TargetsLookup.TryGetComponent(selfEntity, out var t) ? t : default;
                     var radiusMultiplier = StatStrengthUtility.Resolve(
                         in config.Strength, selfEntity, targets, LinkSources, Links, StatLookup);
                     var radius = config.Radius * math.max(radiusMultiplier, 0f);

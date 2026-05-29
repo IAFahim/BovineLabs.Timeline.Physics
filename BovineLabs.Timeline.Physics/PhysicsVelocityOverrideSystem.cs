@@ -58,7 +58,6 @@ namespace BovineLabs.Timeline.Physics
         public void OnUpdate(ref SystemState state)
         {
             var dt = SystemAPI.Time.DeltaTime;
-            if (dt <= 0.0001f) return;
 
             _entityHandle.Update(ref state);
             _activeVelocityHandle.Update(ref state);
@@ -119,7 +118,7 @@ namespace BovineLabs.Timeline.Physics
                     var isInstant = config.Mode == PhysicsVelocityMode.SetInstant;
                     if (isInstant && s.Fired) continue;
 
-                    var targets = TargetsLookup.HasComponent(entities[i]) ? TargetsLookup[entities[i]] : default;
+                    var targets = TargetsLookup.TryGetComponent(entities[i], out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets,
                         LinkSources, Links, StatLookup);
 

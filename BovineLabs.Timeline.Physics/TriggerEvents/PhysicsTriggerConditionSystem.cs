@@ -85,7 +85,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
-            public ConditionEventWriter.Lookup Writers;
+            [NativeDisableParallelForRestriction] public ConditionEventWriter.Lookup Writers;
 
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
@@ -130,7 +130,7 @@ namespace BovineLabs.Timeline.Physics
                     if ((collider.Value.Value.GetCollisionFilter().BelongsTo & config.CollidesWithMask) == 0) return;
                 }
 
-                var targets = TargetsLookup.HasComponent(self) ? TargetsLookup[self] : default;
+                var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
                     return;
 

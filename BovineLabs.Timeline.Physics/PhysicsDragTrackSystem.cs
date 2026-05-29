@@ -48,7 +48,6 @@ namespace BovineLabs.Timeline.Physics
             _activeLookup.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbDisable = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsDragAnimated>();

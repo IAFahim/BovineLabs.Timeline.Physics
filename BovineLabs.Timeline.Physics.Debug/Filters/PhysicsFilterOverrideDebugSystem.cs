@@ -19,7 +19,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class FilterOverrideDebugSystem
     {
-        [ConfigVar("filtergizmo.draw-enabled", true, "Enable the filter override gizmo.")]
+        [ConfigVar("filtergizmo.draw-enabled", false, "Enable the filter override gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("filtergizmo.ring-color", 0.8f, 0.2f, 0.2f, 0.9f, "Color for filter active ring (Red alert)")]
@@ -50,6 +50,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsFilterOverrideAnimated, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]

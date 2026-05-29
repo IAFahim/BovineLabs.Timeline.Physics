@@ -150,39 +150,19 @@ namespace BovineLabs.Timeline.Physics
 
                         while (bounceCount <= config.MaxBounces && remainingDistance > 0)
                         {
-                            var rayInput = new RaycastInput
-                            {
-                                Start = currentPos,
-                                End = currentPos + currentDir * remainingDistance,
-                                Filter = new CollisionFilter
-                                {
-                                    BelongsTo = ~0u,
-                                    CollidesWith = config.RicochetMask | config.TerminalHitMask,
-                                    GroupIndex = 0
-                                }
-                            };
+                            var stepResult = PhysicsMath.StepRicochet(
+                                currentPos, currentDir, remainingDistance,
+                                config.RicochetMask, config.TerminalHitMask, config.MinGrazingAngle,
+                                CollisionWorld, ColliderLookup);
 
-                            if (!CollisionWorld.CastRay(rayInput, out var hit))
+                            if (!stepResult.HitFound)
                                 break;
                             
-                            var dist = math.distance(currentPos, hit.Position);
-                            remainingDistance -= dist;
-                            var hitEntity = hit.Entity;
+                            remainingDistance -= stepResult.DistanceTraveled;
                             
-                            var surfaceBelongsTo = 0u;
-                            if (ColliderLookup.HasComponent(hitEntity))
+                            if (stepResult.IsTerminal)
                             {
-                                var col = ColliderLookup[hitEntity];
-                                if (col.IsValid)
-                                {
-                                    surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
-                                }
-                            }
-
-                            var grazingAngle = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
-
-                            if (grazingAngle >= config.MinGrazingAngle || (surfaceBelongsTo & config.TerminalHitMask) != 0)
-                            {
+                                var hitEntity = stepResult.HitEntity;
                                 var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
                                 if (config.HitConditionKey != 0 && PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links, out var target))
                                 {
@@ -192,10 +172,10 @@ namespace BovineLabs.Timeline.Physics
                                 break;
                             }
                             
-                            if ((surfaceBelongsTo & config.RicochetMask) != 0)
+                            if (stepResult.IsRicochet)
                             {
-                                currentDir = currentDir - 2f * math.dot(currentDir, hit.SurfaceNormal) * hit.SurfaceNormal;
-                                currentPos = hit.Position + currentDir * 0.01f;
+                                currentDir = currentDir - 2f * math.dot(currentDir, stepResult.SurfaceNormal) * stepResult.SurfaceNormal;
+                                currentPos = stepResult.HitPosition + currentDir * 0.01f;
                                 bounceCount++;
                             }
                             else

@@ -61,6 +61,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsVelocityClampAnimated, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]

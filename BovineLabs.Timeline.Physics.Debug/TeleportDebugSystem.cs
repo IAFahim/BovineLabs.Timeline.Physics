@@ -46,6 +46,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         [ConfigVar("teleportgizmo.segments", 24, "Arc segment count.")]
         public static readonly SharedStatic<int> Segments = SharedStatic<int>.GetOrCreate<Tags.Segments>();
 
+        [ConfigVar("teleportgizmo.verbose", false, "Show verbose text labels.")]
+        public static readonly SharedStatic<bool> Verbose = SharedStatic<bool>.GetOrCreate<Tags.Verbose>();
+
         private struct Tags
         {
             public struct Enabled { }
@@ -56,6 +59,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public struct LosColor { }
             public struct TextColor { }
             public struct Segments { }
+            public struct Verbose { }
         }
     }
 
@@ -68,12 +72,19 @@ namespace BovineLabs.Timeline.Physics.Debug
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
 
+        private EntityQuery _query;
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
+            
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
+                .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]
@@ -96,6 +107,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 ReferenceColor = TeleportDebugSystem.ReferenceColor.Data,
                 LosColor       = TeleportDebugSystem.LosColor.Data,
                 TextColor      = TeleportDebugSystem.TextColor.Data,
+                Verbose        = TeleportDebugSystem.Verbose.Data,
                 TransformLookup = _localToWorldLookup,
                 TargetsLookup  = _targetsLookup,
             }.ScheduleParallel(state.Dependency);
@@ -113,6 +125,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color ReferenceColor;
             public Color LosColor;
             public Color TextColor;
+            public bool Verbose;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
@@ -130,24 +143,31 @@ namespace BovineLabs.Timeline.Physics.Debug
                 
                 // Calculate reference transform (center of sphere = teleportRelativeTo)
                 float3 referencePos = origin;
-                quaternion referenceRot = quaternion.identity;
+                quaternion rawReferenceRot = quaternion.identity;
 
                 if (referenceEntity != Entity.Null && TransformLookup.TryGetComponent(referenceEntity, out var refLtw))
                 {
                     referencePos = refLtw.Position;
                     origin = referencePos;
-                    referenceRot = new quaternion(refLtw.Value);
+                    rawReferenceRot = new quaternion(refLtw.Value);
                 }
+
+                TeleportMath.ResolveReferenceRotation(
+                    d.ReferenceFrame,
+                    trackLtw.Position, // selfPos (the track target)
+                    referencePos,      // targetPos
+                    rawReferenceRot,   // targetRot
+                    out var referenceRot);
 
                 // Draw radius circle (horizontal at origin)
                 Drawer.Circle(origin, new float3(0f, d.Radius, 0f), RadiusColor);
 
                 // Draw radius label
-                Drawer.Text32(origin + new float3(0f, 0.5f, 0f), $"r={d.Radius:G1}m", RadiusColor, 10f);
+                if (Verbose) Drawer.Text32(origin + new float3(0f, 0.5f, 0f), $"r={d.Radius:G1}m", RadiusColor, 10f);
 
                 // Draw reference frame arrows
                 Drawer.Arrow(referencePos, math.mul(referenceRot, math.forward()) * 1.5f, ReferenceColor);
-                Drawer.Text32(referencePos + math.mul(referenceRot, math.forward()) * 1.8f, "Ref Fwd", ReferenceColor, 8f);
+                if (Verbose) Drawer.Text32(referencePos + math.mul(referenceRot, math.forward()) * 1.8f, "Ref Fwd", ReferenceColor, 8f);
 
                 // Draw spherical patch boundary
                 DrawPatchBoundary(origin, d.Radius, referenceRot,
@@ -179,52 +199,55 @@ namespace BovineLabs.Timeline.Physics.Debug
                         var losStart = teleportLtw.Position + new float3(0f, d.LineOfSightOffset, 0f);
                         var losEnd = origin + new float3(0f, d.LineOfSightOffset, 0f);
                         Drawer.Line(losStart, losEnd, LosColor);
-                        Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.3f, 0f), "LOS Check", LosColor, 8f);
+                        if (Verbose) Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.3f, 0f), "LOS Check", LosColor, 8f);
                     }
                 }
 
-                // Draw reference frame type
-                var refFrameLabel = d.ReferenceFrame switch
+                if (Verbose)
                 {
-                    TeleportReferenceFrame.TargetToSelf => "Target→Self",
-                    TeleportReferenceFrame.SelfToTarget => "Self→Target",
-                    TeleportReferenceFrame.TargetForward => "TargetForward",
-                    TeleportReferenceFrame.WorldForward => "WorldForward",
-                    _ => "?"
-                };
-                Drawer.Text32(referencePos + new float3(0f, 2f, 0f), refFrameLabel, ReferenceColor, 10f);
+                    // Draw reference frame type
+                    var refFrameLabel = d.ReferenceFrame switch
+                    {
+                        TeleportReferenceFrame.TargetToSelf => "Target→Self",
+                        TeleportReferenceFrame.SelfToTarget => "Self→Target",
+                        TeleportReferenceFrame.TargetForward => "TargetForward",
+                        TeleportReferenceFrame.WorldForward => "WorldForward",
+                        _ => "?"
+                    };
+                    Drawer.Text32(referencePos + new float3(0f, 2f, 0f), refFrameLabel, ReferenceColor, 10f);
 
-                // Draw angular settings as text labels
-                var azDeg = math.degrees(d.AzimuthCenter);
-                var azRangeDeg = math.degrees(d.AzimuthHalfRange);
-                var elDeg = math.degrees(d.ElevationCenter);
-                var elRangeDeg = math.degrees(d.ElevationHalfRange);
+                    // Draw angular settings as text labels
+                    var azDeg = math.degrees(d.AzimuthCenter);
+                    var azRangeDeg = math.degrees(d.AzimuthHalfRange);
+                    var elDeg = math.degrees(d.ElevationCenter);
+                    var elRangeDeg = math.degrees(d.ElevationHalfRange);
 
-                var labelOffset = new float3(0f, d.Radius + 0.5f, 0f);
-                Drawer.Text32(origin + new float3(d.Radius + 0.2f, 1f, 0f),
-                    $"Az: {azDeg:G0}° ±{azRangeDeg:G0}°", TextColor, 8f);
-                Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.6f, 0f),
-                    $"El: {elDeg:G0}° ±{elRangeDeg:G0}°", TextColor, 8f);
+                    var labelOffset = new float3(0f, d.Radius + 0.5f, 0f);
+                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 1f, 0f),
+                        $"Az: {azDeg:G0}° ±{azRangeDeg:G0}°", TextColor, 8f);
+                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.6f, 0f),
+                        $"El: {elDeg:G0}° ±{elRangeDeg:G0}°", TextColor, 8f);
 
-                // Draw facing mode
-                var facingLabel = d.FacingMode switch
-                {
-                    TeleportFacingMode.FaceTarget => "Face Target",
-                    TeleportFacingMode.FaceAway => "Face Away",
-                    TeleportFacingMode.PreserveCurrent => "Preserve",
-                    TeleportFacingMode.MatchTarget => "Match Target",
-                    _ => "?"
-                };
-                Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
+                    // Draw facing mode
+                    var facingLabel = d.FacingMode switch
+                    {
+                        TeleportFacingMode.FaceTarget => "Face Target",
+                        TeleportFacingMode.FaceAway => "Face Away",
+                        TeleportFacingMode.PreserveCurrent => "Preserve",
+                        TeleportFacingMode.MatchTarget => "Match Target",
+                        _ => "?"
+                    };
+                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
 
-                // Draw clearance settings
-                if (d.RequireLineOfSight)
-                {
-                    Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.5f, 0f), "Require LOS", LosColor, 8f);
-                }
-                if (d.RequireCandidateVisibility)
-                {
-                    Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.2f, 0f), "Candidate LOS", LosColor, 8f);
+                    // Draw clearance settings
+                    if (d.RequireLineOfSight)
+                    {
+                        Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.5f, 0f), "Require LOS", LosColor, 8f);
+                    }
+                    if (d.RequireCandidateVisibility)
+                    {
+                        Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.2f, 0f), "Candidate LOS", LosColor, 8f);
+                    }
                 }
             }
 

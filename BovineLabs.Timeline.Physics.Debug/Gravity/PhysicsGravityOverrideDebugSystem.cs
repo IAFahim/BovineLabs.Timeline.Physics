@@ -18,7 +18,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class GravityOverrideDebugSystem
     {
-        [ConfigVar("gravitygizmo.draw-enabled", true, "Enable the gravity override gizmo.")]
+        [ConfigVar("gravitygizmo.draw-enabled", false, "Enable the gravity override gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("gravitygizmo.arrow-color", 0.5f, 0.3f, 0.8f, 0.85f, "Color for gravity arrow (Muted Purple)")]
@@ -53,6 +53,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsGravityOverrideAnimated, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]

@@ -19,7 +19,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class KinematicOverrideDebugSystem
     {
-        [ConfigVar("kinematicgizmo.draw-enabled", true, "Enable the kinematic override gizmo.")]
+        [ConfigVar("kinematicgizmo.draw-enabled", false, "Enable the kinematic override gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("kinematicgizmo.box-color", 0.5f, 0.5f, 0.5f, 0.8f, "Color for kinematic wireframe box")]
@@ -54,6 +54,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsKinematicOverrideAnimated, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]

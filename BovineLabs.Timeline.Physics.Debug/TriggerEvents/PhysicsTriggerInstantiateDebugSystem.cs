@@ -6,6 +6,7 @@ using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 
 using BovineLabs.Core;
+using BovineLabs.Core.PhysicsStates;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -19,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class TriggerInstantiateDebugSystem
     {
-        [ConfigVar("triggerinstgizmo.draw-enabled", true, "Enable the trigger instantiate gizmo.")]
+        [ConfigVar("triggerinstgizmo.draw-enabled", false, "Enable the trigger instantiate gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("triggerinstgizmo.ghost-color", 0.1f, 0.8f, 0.2f, 0.6f, "Color for ghost transform (Greenish)")]
@@ -48,8 +49,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerInstantiateData>()
+                .WithAll<TrackBinding, PhysicsTriggerInstantiateData, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]
@@ -58,13 +60,14 @@ namespace BovineLabs.Timeline.Physics.Debug
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerInstantiateGizmoSystem>(
                     ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer))
                 return;
-
             state.Dependency = new DrawJob
             {
                 Drawer     = drawer,
                 GhostColor = TriggerInstantiateDebugSystem.GhostColor.Data,
                 TextColor  = TriggerInstantiateDebugSystem.TextColor.Data,
-                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true)
+                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
+                TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
+                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -76,8 +79,10 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color TextColor;
             
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, in TrackBinding binding, in PhysicsTriggerInstantiateData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerInstantiateData config)
             {
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var ltw))
@@ -99,6 +104,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                     Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ other", TextColor, 10f);
                 else if (config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint)
                     Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ contact", TextColor, 10f);
+                    
+                // --- Actually Fired Visualizer ---
+                var drawColor = new Color(0f, 1f, 0f, 0.8f);
+                TriggerGizmoUtility.DrawActuallyFired(
+                    triggerEntity, config.EventState, pos, ref Drawer,
+                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "INSTANTIATED");
             }
         }
     }

@@ -70,24 +70,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             _massLookup.Update(ref state);
             _targetsLookup.Update(ref state);
 
-            state.Dependency = new DrawForceJob
-            {
-                Drawer = drawer,
-                Gravity = gravity,
-                TransformLookup = _localToWorldLookup,
-                VelocityLookup = _velocityLookup,
-                MassLookup = _massLookup,
-                TargetsLookup = _targetsLookup
-            }.Schedule(state.Dependency);
-
-            state.Dependency = new DrawVelocityJob
-            {
-                Drawer = drawer,
-                Gravity = gravity,
-                TransformLookup = _localToWorldLookup,
-                VelocityLookup = _velocityLookup,
-                TargetsLookup = _targetsLookup
-            }.Schedule(state.Dependency);
             state.Dependency = new DrawActiveForceJob
             {
                 Drawer = drawer,
@@ -108,113 +90,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             }.Schedule(state.Dependency);
         }
 
-        [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct DrawForceJob : IJobEntity
-        {
-            public Drawer Drawer;
-            public float3 Gravity;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
-            [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
-            [ReadOnly] public ComponentLookup<PhysicsMass> MassLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-
-            private static readonly Color ColorForce = TimelineDebugColors.LinearForce;
-
-            private void Execute(in TrackBinding binding, in PhysicsForceAnimated animated, in PhysicsForceState state)
-            {
-                var entity = binding.Value;
-                if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
-
-                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
-                    in TargetsLookup, in TransformLookup, out var forceVec);
-
-                var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
-                var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
-
-                Drawer.Arrow(transform.Position, forceVec * massInv, ColorForce);
-
-                var pos = transform.Position;
-                var vel = baseVel;
-
-                if (animated.AuthoredData.Mode == PhysicsForceMode.Impulse && !state.Fired)
-                    vel += forceVec * massInv;
-
-                const float dt = 0.05f;
-                var steps = (int)(2f / dt);
-                for (var i = 0; i < steps; i++)
-                {
-                    var accel = Gravity;
-                    if (animated.AuthoredData.Mode == PhysicsForceMode.Continuous)
-                        accel += forceVec * massInv;
-
-                    vel += accel * dt;
-                    var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(ColorForce.r, ColorForce.g, ColorForce.b, 0.5f));
-                    pos = nextPos;
-                }
-
-                Drawer.Point(pos, 0.2f, Color.red);
-            }
-        }
-
-        [BurstCompile]
-        [WithAll(typeof(ClipActive))]
-        private partial struct DrawVelocityJob : IJobEntity
-        {
-            public Drawer Drawer;
-            public float3 Gravity;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
-            [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-
-            private static readonly Color ColorVel = TimelineDebugColors.LinearVelocity;
-
-            private void Execute(in TrackBinding binding, in PhysicsVelocityAnimated animated,
-                in PhysicsVelocityState state)
-            {
-                var entity = binding.Value;
-                if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
-
-                PhysicsMath.ResolveSpaceVector(animated.AuthoredData.Space, animated.AuthoredData.Linear, entity,
-                    in TargetsLookup, in TransformLookup, out var targetVel);
-
-                var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
-                Drawer.Arrow(transform.Position, targetVel, ColorVel);
-
-                var pos = transform.Position;
-                var vel = baseVel;
-
-                var isInstant = animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant ||
-                                animated.AuthoredData.Mode == PhysicsVelocityMode.AddInstant;
-                var isSet = animated.AuthoredData.Mode == PhysicsVelocityMode.SetContinuous ||
-                            animated.AuthoredData.Mode == PhysicsVelocityMode.SetInstant;
-
-                if (isInstant && !state.Fired)
-                    vel = isSet ? targetVel : vel + targetVel;
-
-                const float dt = 0.05f;
-                var steps = (int)(2f / dt);
-
-                for (var i = 0; i < steps; i++)
-                {
-                    if (!isInstant)
-                    {
-                        if (isSet) vel = targetVel;
-                        else vel += targetVel * dt;
-                    }
-
-                    if (isInstant || !isSet)
-                        vel += Gravity * dt;
-
-                    var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(ColorVel.r, ColorVel.g, ColorVel.b, 0.5f));
-                    pos = nextPos;
-                }
-
-                Drawer.Point(pos, 0.2f, Color.red);
-            }
-        }
 
         [BurstCompile]
         private partial struct DrawActiveForceJob : IJobEntity

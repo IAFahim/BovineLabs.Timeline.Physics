@@ -24,7 +24,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1611:Element parameters should be documented", Justification = "Using see cref")]
     public static class RicochetDebugSystem
     {
-        [ConfigVar("ricochetgizmo.draw-enabled", true, "Enable the ricochet gizmo drawer.")]
+        [ConfigVar("ricochetgizmo.draw-enabled", false, "Enable the ricochet gizmo drawer.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("ricochetgizmo.ray-color-1", 0.0f, 0.8f, 1.0f, 0.7f, "Color for alternating ray segments (Cyan)")]
@@ -67,6 +67,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
+        private EntityQuery _query;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -77,6 +78,11 @@ namespace BovineLabs.Timeline.Physics.Debug
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
+
+            _query = SystemAPI.QueryBuilder()
+                .WithAll<TrackBinding, PhysicsRicochetAnimated, ClipActive>()
+                .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]
@@ -160,19 +166,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     var rayColor = (bounceCount % 2 == 0) ? RayColor1 : RayColor2;
 
-                    var rayInput = new RaycastInput
-                    {
-                        Start = currentPos,
-                        End = currentPos + currentDir * remainingDistance,
-                        Filter = new CollisionFilter
-                        {
-                            BelongsTo = ~0u,
-                            CollidesWith = d.RicochetMask | d.TerminalHitMask,
-                            GroupIndex = 0
-                        }
-                    };
+                    var stepResult = PhysicsMath.StepRicochet(
+                        currentPos, currentDir, remainingDistance,
+                        d.RicochetMask, d.TerminalHitMask, d.MinGrazingAngle,
+                        CollisionWorld, ColliderLookup);
 
-                    if (!CollisionWorld.CastRay(rayInput, out var hit))
+                    if (!stepResult.HitFound)
                     {
                         // No hit, draw line to end of remaining distance
                         var endPos = currentPos + currentDir * remainingDistance;
@@ -181,32 +180,18 @@ namespace BovineLabs.Timeline.Physics.Debug
                         break;
                     }
                     
-                    var dist = math.distance(currentPos, hit.Position);
-                    remainingDistance -= dist;
-                    var hitEntity = hit.Entity;
+                    remainingDistance -= stepResult.DistanceTraveled;
                     
-                    var surfaceBelongsTo = 0u;
-                    if (ColliderLookup.HasComponent(hitEntity))
-                    {
-                        var col = ColliderLookup[hitEntity];
-                        if (col.IsValid)
-                        {
-                            surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
-                        }
-                    }
-
-                    var grazingAngle = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
-
-                    if (grazingAngle >= d.MinGrazingAngle || (surfaceBelongsTo & d.TerminalHitMask) != 0)
+                    if (stepResult.IsTerminal)
                     {
                         // Terminal hit
-                        Drawer.Line(currentPos, hit.Position, rayColor);
-                        Drawer.Sphere(hit.Position, 0.2f, Segments, TerminalColor);
+                        Drawer.Line(currentPos, stepResult.HitPosition, rayColor);
+                        Drawer.Sphere(stepResult.HitPosition, 0.2f, Segments, TerminalColor);
                         
                         // Draw hit normal
-                        Drawer.Arrow(hit.Position, hit.SurfaceNormal * 0.5f, new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.5f));
+                        Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.5f, new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.5f));
                         
-                        Drawer.Text32(hit.Position + new float3(0f, 0.4f, 0f), "Terminal Hit", TerminalColor, 12f);
+                        Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.4f, 0f), "Terminal Hit", TerminalColor, 12f);
                         
                         // Optional route visualization
                         if (d.HitConditionKey != 0)
@@ -214,7 +199,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                             var routeTarget = ResolveTarget(entity, d.HitRouteTo, targets);
                             if (routeTarget != Entity.Null && TransformLookup.TryGetComponent(routeTarget, out var routeLtw))
                             {
-                                Drawer.Line(hit.Position, routeLtw.Position, new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.3f));
+                                Drawer.Line(stepResult.HitPosition, routeLtw.Position, new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.3f));
                                 Drawer.Text32(routeLtw.Position + new float3(0f, 0.5f, 0f), "Route Target", TextColor, 8f);
                             }
                         }
@@ -222,20 +207,20 @@ namespace BovineLabs.Timeline.Physics.Debug
                         break;
                     }
                     
-                    if ((surfaceBelongsTo & d.RicochetMask) != 0)
+                    if (stepResult.IsRicochet)
                     {
                         // Ricochet hit
-                        Drawer.Line(currentPos, hit.Position, rayColor);
-                        Drawer.Sphere(hit.Position, 0.1f, Segments, rayColor);
+                        Drawer.Line(currentPos, stepResult.HitPosition, rayColor);
+                        Drawer.Sphere(stepResult.HitPosition, 0.1f, Segments, rayColor);
                         
                         // Draw bounce index
-                        Drawer.Text32(hit.Position + new float3(0f, 0.2f, 0f), $"Bounce {bounceCount+1}", rayColor, 10f);
+                        Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), $"Bounce {bounceCount+1}", rayColor, 10f);
 
                         // Draw reflection normal faint
-                        Drawer.Arrow(hit.Position, hit.SurfaceNormal * 0.4f, new Color(0.8f, 0.8f, 0.8f, 0.3f));
+                        Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.4f, new Color(0.8f, 0.8f, 0.8f, 0.3f));
 
-                        currentDir = currentDir - 2f * math.dot(currentDir, hit.SurfaceNormal) * hit.SurfaceNormal;
-                        currentPos = hit.Position + currentDir * 0.01f;
+                        currentDir = currentDir - 2f * math.dot(currentDir, stepResult.SurfaceNormal) * stepResult.SurfaceNormal;
+                        currentPos = stepResult.HitPosition + currentDir * 0.01f;
                         bounceCount++;
                     }
                     else

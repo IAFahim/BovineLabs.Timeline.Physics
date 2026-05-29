@@ -6,6 +6,7 @@ using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 
 using BovineLabs.Core;
+using BovineLabs.Core.PhysicsStates;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -19,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class TriggerForceDebugSystem
     {
-        [ConfigVar("triggerforcegizmo.draw-enabled", true, "Enable the trigger force gizmo.")]
+        [ConfigVar("triggerforcegizmo.draw-enabled", false, "Enable the trigger force gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("triggerforcegizmo.force-color", 0.8f, 0.8f, 0.1f, 0.8f, "Color for force lines (Yellow)")]
@@ -48,8 +49,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerForceData>()
+                .WithAll<TrackBinding, PhysicsTriggerForceData, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]
@@ -58,13 +60,14 @@ namespace BovineLabs.Timeline.Physics.Debug
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerForceGizmoSystem>(
                     ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
                 return;
-
             state.Dependency = new DrawJob
             {
                 Drawer     = drawer,
                 ForceColor = TriggerForceDebugSystem.ForceColor.Data,
                 TextColor  = TriggerForceDebugSystem.TextColor.Data,
-                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true)
+                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
+                TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
+                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -76,8 +79,10 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color TextColor;
             
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, in TrackBinding binding, in PhysicsTriggerForceData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerForceData config)
             {
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var ltw))
@@ -152,6 +157,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                         Drawer.Arrow(origin + globalPosOffset, globalTangent * 1.5f, ForceColor);
                     }
                 }
+                
+                // --- Actually Fired Visualizer ---
+                var drawColor = new Color(0f, 0.8f, 1f, 0.8f);
+                TriggerGizmoUtility.DrawActuallyFired(
+                    triggerEntity, config.EventState, pos, ref Drawer,
+                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "FORCE APPLIED");
             }
         }
     }

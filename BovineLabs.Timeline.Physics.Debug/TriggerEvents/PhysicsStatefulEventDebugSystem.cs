@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class StatefulEventDebugSystemConfig
     {
-        [ConfigVar("statefuleventgizmo.draw-enabled", true, "Enable drawing of stateful trigger/collision events in Scene View.")]
+        [ConfigVar("statefuleventgizmo.draw-enabled", false, "Enable drawing of stateful trigger/collision events in Scene View.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("statefuleventgizmo.text-color", 0.1f, 0.9f, 0.1f, 0.9f, "Color for stateful event text labels")]
@@ -49,6 +49,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             _collisionQuery = SystemAPI.QueryBuilder()
                 .WithAll<LocalToWorld, StatefulCollisionEvent>()
                 .Build();
+            
+            state.RequireForUpdate(SystemAPI.QueryBuilder().WithAny<StatefulTriggerEvent, StatefulCollisionEvent>().Build());
         }
 
         [BurstCompile]
@@ -77,6 +79,11 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color TextColor;
 
+            private static readonly FixedString32Bytes Title = "Triggers:\n";
+            private static readonly FixedString32Bytes Enter = "ENTER";
+            private static readonly FixedString32Bytes Stay = "STAY";
+            private static readonly FixedString32Bytes Exit = "EXIT";
+
             public void Execute(Entity entity, in LocalToWorld ltw, in DynamicBuffer<StatefulTriggerEvent> triggers)
             {
                 if (triggers.IsEmpty) return;
@@ -84,15 +91,15 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = ltw.Position + new float3(0f, 1f, 0f); // Offset slightly up
                 
                 FixedString128Bytes label = default;
-                label.Append('T'); label.Append('r'); label.Append('i'); label.Append('g'); label.Append('g'); label.Append('e'); label.Append('r'); label.Append('s'); label.Append(':'); label.Append('\n');
+                label.Append(Title);
                 
                 for (int i = 0; i < triggers.Length; i++)
                 {
                     var evt = triggers[i];
                     
-                    if (evt.State == StatefulEventState.Enter) { label.Append('E'); label.Append('N'); label.Append('T'); label.Append('E'); label.Append('R'); }
-                    else if (evt.State == StatefulEventState.Stay) { label.Append('S'); label.Append('T'); label.Append('A'); label.Append('Y'); }
-                    else if (evt.State == StatefulEventState.Exit) { label.Append('E'); label.Append('X'); label.Append('I'); label.Append('T'); }
+                    if (evt.State == StatefulEventState.Enter) { label.Append(Enter); }
+                    else if (evt.State == StatefulEventState.Stay) { label.Append(Stay); }
+                    else if (evt.State == StatefulEventState.Exit) { label.Append(Exit); }
                     
                     label.Append(' '); label.Append('(');
                     label.Append(evt.EntityB.Index);
@@ -112,6 +119,11 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color TextColor;
 
+            private static readonly FixedString32Bytes Title = "Collisions:\n";
+            private static readonly FixedString32Bytes Enter = "ENTER";
+            private static readonly FixedString32Bytes Stay = "STAY";
+            private static readonly FixedString32Bytes Exit = "EXIT";
+
             public void Execute(Entity entity, in LocalToWorld ltw, in DynamicBuffer<StatefulCollisionEvent> collisions)
             {
                 if (collisions.IsEmpty) return;
@@ -119,15 +131,15 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
                 
                 FixedString128Bytes label = default;
-                label.Append('C'); label.Append('o'); label.Append('l'); label.Append('l'); label.Append('i'); label.Append('s'); label.Append('i'); label.Append('o'); label.Append('n'); label.Append('s'); label.Append(':'); label.Append('\n');
+                label.Append(Title);
                 
                 for (int i = 0; i < collisions.Length; i++)
                 {
                     var evt = collisions[i];
                     
-                    if (evt.State == StatefulEventState.Enter) { label.Append('E'); label.Append('N'); label.Append('T'); label.Append('E'); label.Append('R'); }
-                    else if (evt.State == StatefulEventState.Stay) { label.Append('S'); label.Append('T'); label.Append('A'); label.Append('Y'); }
-                    else if (evt.State == StatefulEventState.Exit) { label.Append('E'); label.Append('X'); label.Append('I'); label.Append('T'); }
+                    if (evt.State == StatefulEventState.Enter) { label.Append(Enter); }
+                    else if (evt.State == StatefulEventState.Stay) { label.Append(Stay); }
+                    else if (evt.State == StatefulEventState.Exit) { label.Append(Exit); }
                     
                     label.Append(' '); label.Append('(');
                     label.Append(evt.EntityB.Index);

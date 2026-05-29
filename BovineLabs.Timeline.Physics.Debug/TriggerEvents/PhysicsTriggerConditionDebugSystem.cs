@@ -6,6 +6,7 @@ using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 
 using BovineLabs.Core;
+using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
 using Unity.Collections;
@@ -20,7 +21,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class TriggerConditionDebugSystem
     {
-        [ConfigVar("triggergizmo.draw-enabled", true, "Enable the trigger condition gizmo.")]
+        [ConfigVar("triggergizmo.draw-enabled", false, "Enable the trigger condition gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("triggergizmo.route-color", 0.8f, 0.8f, 0.1f, 0.8f, "Color for route wiring (Yellow)")]
@@ -49,8 +50,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerConditionData>()
+                .WithAll<TrackBinding, PhysicsTriggerConditionData, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]
@@ -66,7 +68,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                 RouteColor = TriggerConditionDebugSystem.RouteColor.Data,
                 TextColor  = TriggerConditionDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
-                TargetsLookup   = SystemAPI.GetComponentLookup<Targets>(true)
+                TargetsLookup   = SystemAPI.GetComponentLookup<Targets>(true),
+                TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
+                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -79,9 +83,15 @@ namespace BovineLabs.Timeline.Physics.Debug
             
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
+            [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, in TrackBinding binding, in PhysicsTriggerConditionData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerConditionData config)
             {
+                // We're omitting the accurate isFirstFrame check for the debug visualizer for simplicity since it's just visual.
+                // Or we can query ClipActivePrevious. Let's just pass `true` to isFirstFrame so it draws Enter/Stay.
+                bool isFirstFrame = false; // By default false, StatefulEventMatching will still work for Stay/Exit. Enter requires isFirstFrame.
+                
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var triggerLtw))
                     return;
@@ -106,6 +116,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     Drawer.Line(pos + new float3(-markerSize, 0, 0), pos + new float3(markerSize, 0, 0), RouteColor);
                 }
+                
+                // --- Actually Fired Visualizer ---
+                var drawColor = new Color(1f, 0.4f, 0f, 0.8f);
+                TriggerGizmoUtility.DrawActuallyFired(
+                    triggerEntity, config.EventState, pos, ref Drawer,
+                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "TRIGGERED!");
             }
         }
     }

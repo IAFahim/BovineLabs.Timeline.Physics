@@ -21,7 +21,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class DragDebugSystem
     {
-        [ConfigVar("draggizmo.draw-enabled", true, "Enable the drag gizmo.")]
+        [ConfigVar("draggizmo.draw-enabled", false, "Enable the drag gizmo.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("draggizmo.trail-color", 0.6f, 0.4f, 0.2f, 0.8f, "Color for predicted drag trail (Warm Brown)")]
@@ -57,6 +57,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsDragAnimated, ClipActive>()
                 .Build();
+            state.RequireForUpdate(_query);
         }
 
         [BurstCompile]

@@ -11,6 +11,74 @@ namespace BovineLabs.Timeline.Physics
 {
     public static class PhysicsMath
     {
+        public struct RicochetStepResult
+        {
+            public bool HitFound;
+            public float3 HitPosition;
+            public float3 SurfaceNormal;
+            public Entity HitEntity;
+            public bool IsTerminal;
+            public bool IsRicochet;
+            public float DistanceTraveled;
+        }
+
+        public static RicochetStepResult StepRicochet(
+            float3 currentPos,
+            float3 currentDir,
+            float remainingDistance,
+            uint ricochetMask,
+            uint terminalHitMask,
+            float minGrazingAngle,
+            in CollisionWorld collisionWorld,
+            in UnsafeComponentLookup<PhysicsCollider> colliderLookup)
+        {
+            var result = new RicochetStepResult();
+            
+            var rayInput = new RaycastInput
+            {
+                Start = currentPos,
+                End = currentPos + currentDir * remainingDistance,
+                Filter = new CollisionFilter
+                {
+                    BelongsTo = ~0u,
+                    CollidesWith = ricochetMask | terminalHitMask,
+                    GroupIndex = 0
+                }
+            };
+
+            if (!collisionWorld.CastRay(rayInput, out var hit))
+                return result;
+
+            result.HitFound = true;
+            result.DistanceTraveled = math.distance(currentPos, hit.Position);
+            result.HitPosition = hit.Position;
+            result.SurfaceNormal = hit.SurfaceNormal;
+            result.HitEntity = hit.Entity;
+            
+            var surfaceBelongsTo = 0u;
+            if (colliderLookup.HasComponent(hit.Entity))
+            {
+                var col = colliderLookup[hit.Entity];
+                if (col.IsValid)
+                {
+                    surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
+                }
+            }
+
+            var grazingAngle = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
+            
+            if (grazingAngle >= minGrazingAngle || (surfaceBelongsTo & terminalHitMask) != 0)
+            {
+                result.IsTerminal = true;
+            }
+            else if ((surfaceBelongsTo & ricochetMask) != 0)
+            {
+                result.IsRicochet = true;
+            }
+
+            return result;
+        }
+
         public static void ResolveSpaceVector(
             Target space,
             float3 vector,

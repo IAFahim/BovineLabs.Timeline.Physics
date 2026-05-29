@@ -1,11 +1,7 @@
 using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Essence.Data;
-using BovineLabs.Essence.Data.Builders;
-using BovineLabs.Core.EntityCommands;
-using BovineLabs.Core.Collections;
 using BovineLabs.Core.PhysicsStates;
 using NUnit.Framework;
 using Unity.Collections;
@@ -25,7 +21,6 @@ namespace BovineLabs.Timeline.Physics.Tests
         public void Accumulator_MissingLocalToWorld_SkipsEntity()
         {
             var target = Manager.CreateEntity();
-            // Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity }); // Missing LTW
             Manager.AddComponentData(target, new PhysicsVelocity { Linear = float3.zero });
             Manager.AddComponentData(target, new PhysicsMass { InverseMass = 1f, InverseInertia = new float3(1), Transform = RigidTransform.identity });
             
@@ -47,8 +42,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddComponentData(target, LocalTransform.Identity);
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
             Manager.AddComponentData(target, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
-            // Missing PhysicsMass!
-            
+
             var forceBuffer = Manager.AddBuffer<PendingForce>(target);
             forceBuffer.Add(new PendingForce { Linear = new float3(0, 10, 0), Angular = float3.zero });
 
@@ -67,7 +61,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddComponentData(target, LocalTransform.Identity);
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
             Manager.AddComponentData(target, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
-            // Infinite mass: InverseMass = 0
             Manager.AddComponentData(target, new PhysicsMass { InverseMass = 0f, InverseInertia = float3.zero, Transform = RigidTransform.identity });
             
             var forceBuffer = Manager.AddBuffer<PendingForce>(target);
@@ -150,7 +143,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 {
                     Mode = PhysicsVelocityMode.SetContinuous,
                     Linear = new float3(0, 5, 0),
-                    Space = Target.Owner // No owner exists!
+                    Space = Target.Owner
                 }
             });
 
@@ -184,7 +177,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 }
             });
 
-            World.SetTime(new TimeData(0.1, 0f)); // DeltaTime = 0
+            World.SetTime(new TimeData(0.1, 0f));
             var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
@@ -275,8 +268,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             var accumulatorSys = World.GetOrCreateSystem<PhysicsModifierForceAccumulatorSystem>();
             var overrideSys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
-            
-            // If accumulator runs first:
+
             accumulatorSys.Update(WorldUnmanaged);
             overrideSys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
@@ -285,9 +277,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(5f, vel.Linear.x);
             Assert.AreEqual(0f, vel.Linear.y, "Override should have overwritten the accumulated force");
 
-            // Reset and try reverse order
             Manager.SetComponentData(target, new PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
-            // Re-get forces buffer as it was drained and might be invalidated
             Manager.GetBuffer<PendingForce>(target).Add(new PendingForce { Linear = new float3(0, 10, 0) });
             
             overrideSys.Update(WorldUnmanaged);
@@ -313,7 +303,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddBuffer<PendingForce>(target);
             Manager.AddBuffer<PendingVelocity>(target);
 
-            // 1. Producer Group (Add Force)
             Manager.AddComponentData(target, new ActiveForce
             {
                 Config = new PhysicsForceData
@@ -334,11 +323,9 @@ namespace BovineLabs.Timeline.Physics.Tests
             var velAfterProducer = Manager.GetComponentData<PhysicsVelocity>(target);
             Assert.AreEqual(10f, velAfterProducer.Linear.y, "Producer should have added 10");
 
-            // 2. Physics Step (Simulation)
             velAfterProducer.Linear.y -= 2f;
             Manager.SetComponentData(target, velAfterProducer);
 
-            // 3. Modifier Group (Override and Add)
             Manager.AddComponentData(target, new ActiveVelocity
             {
                 Config = new PhysicsVelocityData

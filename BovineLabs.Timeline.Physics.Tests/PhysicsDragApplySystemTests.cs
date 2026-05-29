@@ -1,10 +1,7 @@
 using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics;
-using BovineLabs.Timeline.Data;
 using BovineLabs.Essence.Data;
 using NUnit.Framework;
 using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Core;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -56,7 +53,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 Config = new PhysicsDragData { Linear = 1f, Angular = 1f, Strength = default }
             });
 
-            World.SetTime(new TimeData(0.1, 0.0f)); // dt = 0
+            World.SetTime(new TimeData(0.1, 0.0f));
             var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
@@ -73,9 +70,9 @@ namespace BovineLabs.Timeline.Physics.Tests
             
             var stats = Manager.AddBuffer<Stat>(target);
             StatKey statKey = 12345;
-            stats.Initialize(); // Initialize dynamic hash map
-            stats.AsMap().Add(statKey, new StatValue { Added = 0, Multi = 0f }); // Multiplier of 0
-            
+            stats.Initialize();
+            stats.AsMap().Add(statKey, new StatValue { Added = 0, Multi = 0f });
+
             Manager.AddComponentData(target, new ActiveDrag
             {
                 Config = new PhysicsDragData { 

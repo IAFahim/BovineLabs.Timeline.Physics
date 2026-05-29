@@ -1,5 +1,4 @@
 using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -60,7 +59,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.CompleteAllTrackedJobs();
 
             var vel = Manager.GetComponentData<PhysicsVelocity>(target);
-            // 1 + 5, 1 + 10, 1
             Assert.AreEqual(6f, vel.Linear.x, 0.001f);
             Assert.AreEqual(11f, vel.Linear.y, 0.001f);
             Assert.AreEqual(1f, vel.Linear.z, 0.001f);

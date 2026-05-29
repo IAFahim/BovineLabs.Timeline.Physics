@@ -20,8 +20,12 @@ namespace BovineLabs.Timeline.Physics
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     /// <summary>
-    /// Applies teleports. Invariant: At most one teleport track may act on a single target entity per tick.
-    /// Multiple teleports on the same target in the same tick cause non-deterministic last-writer-wins behavior.
+    /// Applies teleports. 
+    /// IMPORTANT INVARIANT: At most one teleport clip may act on a single target entity per tick.
+    /// The job uses [NativeDisableParallelForRestriction] on LocalTransformLookup and PhysicsVelocityLookup
+    /// for performance (keyed on clip entities, not teleport targets). Two teleport clips resolving
+    /// the same EntityToTeleport in one frame will cause a non-deterministic last-writer-wins race
+    /// on that entity's transform/velocity. This is by design — enforce the invariant at authoring time.
     /// </summary>
     public partial struct PhysicsTeleportApplySystem : ISystem
     {
@@ -163,7 +167,7 @@ namespace BovineLabs.Timeline.Physics
 
                     var teleportPos = teleportLtw.Position;
                     var referencePos = referenceLtw.Position;
-                    var referenceRot = new quaternion(referenceLtw.Value);
+                    var referenceRot = new quaternion(math.orthonormalize(new float3x3(referenceLtw.Value)));
 
                     var targets = TargetsLookup.TryGetComponent(selfEntity, out var t) ? t : default;
                     var radiusMultiplier = StatStrengthUtility.Resolve(
@@ -230,7 +234,7 @@ namespace BovineLabs.Timeline.Physics
 
                     TeleportMath.ComputeFacingRotation(
                         config.FacingMode, validPosition, referencePos,
-                        new quaternion(teleportLtw.Value), referenceRot,
+                        new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value))), referenceRot,
                         out var facingRot);
 
                     var worldTransform = LocalTransform.FromPositionRotation(validPosition, facingRot);

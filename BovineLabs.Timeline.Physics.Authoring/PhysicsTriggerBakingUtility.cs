@@ -14,7 +14,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             int validCount = 0;
             for (int i = 0; i < requireLinks.Length; i++)
             {
-                if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out _))
+                if (requireLinks[i] != null && EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out _))
                     validCount++;
             }
 
@@ -25,7 +25,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             int index = 0;
             for (int i = 0; i < requireLinks.Length; i++)
             {
-                if (EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
+                if (requireLinks[i] != null && EntityLinkAuthoringUtility.TryGetKey(requireLinks[i], out var reqKey))
                     array[index++] = reqKey;
             }
 

@@ -100,7 +100,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Drawer.Arrow(transform.Position, forward, ColorForward);
                 Drawer.Arrow(transform.Position, up, ColorUp);
 
-                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(transform.Value),
+                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(math.orthonormalize(new float3x3(transform.Value))),
                     finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))

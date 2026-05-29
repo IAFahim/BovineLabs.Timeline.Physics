@@ -19,6 +19,7 @@ namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
+    [UpdateAfter(typeof(PhysicsPidApplySystem))]
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]

@@ -8,7 +8,7 @@ using Unity.Physics;
 namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
-    [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsGravityOverrideApplySystem : ISystem
     {

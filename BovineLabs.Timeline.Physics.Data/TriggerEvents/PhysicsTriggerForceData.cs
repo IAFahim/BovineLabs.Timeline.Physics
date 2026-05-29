@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Physics
         None,           // Constant force regardless of distance
         Linear,         // Force decreases linearly from Start to End radius
         InverseSquare,  // Realistic physical attenuation (1/r^2)
-        Step            // Max force inside StartRadius, zero outside
+        Step            // Full magnitude up to FalloffEndRadius, zero outside
     }
 
     public struct PhysicsTriggerForceData : IComponentData

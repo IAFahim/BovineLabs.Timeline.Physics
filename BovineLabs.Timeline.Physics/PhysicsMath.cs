@@ -65,7 +65,12 @@ namespace BovineLabs.Timeline.Physics
                 }
             }
 
-            var grazingAngle = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
+            // Angle from normal: head-on = 0, grazing = π/2.
+            // True grazing angle: head-on = π/2, grazing = 0.
+            // Small grazing angle = shallow hit → should ricochet.
+            // Large grazing angle = head-on hit → should embed/terminate.
+            var angleFromNormal = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
+            var grazingAngle = (math.PI / 2f) - angleFromNormal;
             
             if (grazingAngle >= minGrazingAngle || (surfaceBelongsTo & terminalHitMask) != 0)
             {
@@ -99,7 +104,7 @@ namespace BovineLabs.Timeline.Physics
 
             if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var ltw))
             {
-                resolvedVector = math.rotate(new quaternion(ltw.Value), vector);
+                resolvedVector = math.rotate(new quaternion(math.orthonormalize(new float3x3(ltw.Value))), vector);
                 return;
             }
 
@@ -200,11 +205,11 @@ namespace BovineLabs.Timeline.Physics
             {
                 PidLinearTargetMode.TargetLocal or
                     PidLinearTargetMode.InitialLocal =>
-                    targetTransform.Position + math.rotate(new quaternion(targetTransform.Value), config.TargetOffset),
+                    targetTransform.Position + math.rotate(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), config.TargetOffset),
 
                 PidLinearTargetMode.LineOfSight =>
                     ResolveLineOfSight(transform.Position, targetTransform.Position,
-                        new quaternion(transform.Value), config.TargetOffset),
+                        new quaternion(math.orthonormalize(new float3x3(transform.Value))), config.TargetOffset),
 
                 PidLinearTargetMode.World => config.TargetOffset,
 
@@ -233,25 +238,25 @@ namespace BovineLabs.Timeline.Physics
             targetRotation = config.TargetMode switch
             {
                 PidAngularTargetMode.MatchTarget =>
-                    math.mul(new quaternion(targetTransform.Value), config.TargetRotation),
+                    math.mul(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), config.TargetRotation),
 
                 PidAngularTargetMode.LookAtTarget =>
                     ResolveLookAtTarget(transform.Position, targetTransform.Position,
-                        new quaternion(transform.Value), config.TargetRotation),
+                        new quaternion(math.orthonormalize(new float3x3(transform.Value))), config.TargetRotation),
 
                 PidAngularTargetMode.World => config.TargetRotation,
 
                 PidAngularTargetMode.FleeFromTarget =>
                     ResolveLookAtTarget(transform.Position,
                         transform.Position + (transform.Position - targetTransform.Position),
-                        new quaternion(transform.Value),
+                        new quaternion(math.orthonormalize(new float3x3(transform.Value))),
                         config.TargetRotation),
 
                 PidAngularTargetMode.MatchTargetOpposite =>
-                    math.mul(math.mul(new quaternion(targetTransform.Value), quaternion.AxisAngle(math.up(), math.PI)),
+                    math.mul(math.mul(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), quaternion.AxisAngle(math.up(), math.PI)),
                         config.TargetRotation),
 
-                _ => new quaternion(transform.Value)
+                _ => new quaternion(math.orthonormalize(new float3x3(transform.Value)))
             };
         }
 
@@ -286,7 +291,7 @@ namespace BovineLabs.Timeline.Physics
         {
             velocityOut = velocityIn;
             var invInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
-            var rotation = new quaternion(transform.Value);
+            var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
             var localTorque = math.rotate(math.inverse(rotation), torque);
             var localAngularVelocityChange = localTorque * invInertia * deltaTime;
             velocityOut.Angular += math.rotate(rotation, localAngularVelocityChange);

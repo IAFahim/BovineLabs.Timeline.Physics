@@ -50,8 +50,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             context.Baker.DependsOn(objectDefinition);
 
-            if (!EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
-            if (!EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
+            if (assignParentLink == null || !EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
+            if (targetLinkOverride == null || !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
             {

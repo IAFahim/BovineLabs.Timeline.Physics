@@ -33,7 +33,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            if (!EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
+            if (routeLink == null || !EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerConditionData
             {

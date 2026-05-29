@@ -37,8 +37,8 @@ namespace BovineLabs.Timeline.Physics
         {
             rotation = mode switch
             {
-                PhysicsTriggerRotationMode.MatchSelf => new quaternion(self.Value),
-                PhysicsTriggerRotationMode.MatchCollidedEntity => new quaternion(other.Value),
+                PhysicsTriggerRotationMode.MatchSelf => new quaternion(math.orthonormalize(new float3x3(self.Value))),
+                PhysicsTriggerRotationMode.MatchCollidedEntity => new quaternion(math.orthonormalize(new float3x3(other.Value))),
                 PhysicsTriggerRotationMode.AlignToContactNormal =>
                     quaternion.LookRotationSafe(contactNormal, math.up()),
                 PhysicsTriggerRotationMode.Identity => quaternion.identity,

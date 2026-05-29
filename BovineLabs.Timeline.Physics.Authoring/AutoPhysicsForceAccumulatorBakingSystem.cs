@@ -27,7 +27,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
     public struct PhysicsForceAccumulatorOptOut : IComponentData { }
 
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
-    [UpdateAfter(typeof(PhysicsForceAccumulatorAuthoring))]
     public partial struct AutoPhysicsForceAccumulatorBakingSystem : ISystem
     {
         [BurstCompile]

@@ -89,6 +89,15 @@ namespace BovineLabs.Timeline.Physics
                         state.Fired = true;
                         states[i] = state;
                     }
+                    else if (isActive && state.Fired)
+                    {
+                        // Re-apply: the blended config may have changed while the clip remains active.
+                        var config = actives[i].Config;
+                        var currentFilter = ptr->GetCollisionFilter();
+                        currentFilter.BelongsTo = config.BelongsToOverride;
+                        currentFilter.CollidesWith = config.CollidesWithOverride;
+                        ptr->SetCollisionFilter(currentFilter);
+                    }
                     else if (!isActive && state.Fired)
                     {
                         var config = actives[i].Config;

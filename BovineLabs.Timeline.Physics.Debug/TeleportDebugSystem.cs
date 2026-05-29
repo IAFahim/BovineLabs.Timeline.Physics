@@ -149,7 +149,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     referencePos = refLtw.Position;
                     origin = referencePos;
-                    rawReferenceRot = new quaternion(refLtw.Value);
+                    rawReferenceRot = new quaternion(math.orthonormalize(new float3x3(refLtw.Value)));
                 }
 
                 TeleportMath.ResolveReferenceRotation(

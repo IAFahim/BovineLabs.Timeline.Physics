@@ -38,6 +38,8 @@ namespace BovineLabs.Timeline.Physics
             _massHandle = state.GetComponentTypeHandle<PhysicsMass>(true);
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
+
+            state.RequireForUpdate(_query);
         }
 
         public void OnUpdate(ref SystemState state)
@@ -92,7 +94,7 @@ namespace BovineLabs.Timeline.Physics
                     var inverseMass = mass.InverseMass;
                     var inverseInertia = mass.InverseInertia;
 
-                    var rotation = new quaternion(transform.Value);
+                    var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
                     var inverseRotation = math.inverse(rotation);
 
                     var forces = forceAccessor[i];

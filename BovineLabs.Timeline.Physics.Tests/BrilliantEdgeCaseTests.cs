@@ -467,5 +467,33 @@ namespace BovineLabs.Timeline.Physics.Tests
         }
 
         #endregion
+
+        #region Recent Bug Fix
+
+        [Test]
+        public void VelocityMixer_DifferingSpaces_AddsVectors()
+        {
+            var mixer = new PhysicsVelocityMixer();
+            var a = new PhysicsVelocityData
+            {
+                Space = Target.Self,
+                Linear = new float3(1, 0, 0),
+                Angular = new float3(0, 1, 0)
+            };
+            var b = new PhysicsVelocityData
+            {
+                Space = Target.Owner,
+                Linear = new float3(0, 2, 0),
+                Angular = new float3(0, 0, 2)
+            };
+
+            var result = mixer.Add(a, b);
+            
+            Assert.AreEqual(Target.Self, result.Space, "Dominant space should be preserved.");
+            Assert.AreEqual(new float3(1, 2, 0), result.Linear, "Linear vectors should be added even if spaces differ.");
+            Assert.AreEqual(new float3(0, 1, 2), result.Angular, "Angular vectors should be added even if spaces differ.");
+        }
+
+        #endregion
     }
 }

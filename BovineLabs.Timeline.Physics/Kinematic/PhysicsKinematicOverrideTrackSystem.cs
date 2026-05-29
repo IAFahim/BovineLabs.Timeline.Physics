@@ -61,10 +61,11 @@ namespace BovineLabs.Timeline.Physics
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsKinematicOverrideState>
+            state.Dependency = new ResetStateTrackJob<PhysicsKinematicOverrideState, ActiveKinematicOverride>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
+                ActiveLookup = _activeLookup,
                 ResetValue = new PhysicsKinematicOverrideState { Fired = false, AddedGravityComponent = false, AddedMassOverrideComponent = false, OriginalGravityScale = 1f, OriginalIsKinematic = 0 }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 

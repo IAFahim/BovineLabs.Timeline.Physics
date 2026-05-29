@@ -15,6 +15,7 @@ namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
+    [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsPidApplySystem : ISystem
     {
@@ -222,7 +223,7 @@ namespace BovineLabs.Timeline.Physics
                     PhysicsMath.ResolveAngularPidTarget(transform, config, body,
                         in TargetsLookup, in TransformLookup, out var targetRot);
 
-                    PhysicsMath.ComputeAngularError(new quaternion(transform.Value), targetRot, out var error);
+                    PhysicsMath.ComputeAngularError(new quaternion(math.orthonormalize(new float3x3(transform.Value))), targetRot, out var error);
 
                     PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
                         out var torque, out var nextState);

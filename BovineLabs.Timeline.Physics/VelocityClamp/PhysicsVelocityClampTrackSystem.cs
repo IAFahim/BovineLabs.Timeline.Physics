@@ -61,10 +61,11 @@ namespace BovineLabs.Timeline.Physics
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsVelocityClampState>
+            state.Dependency = new ResetStateTrackJob<PhysicsVelocityClampState, ActiveVelocityClamp>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
+                ActiveLookup = _activeLookup,
                 ResetValue = new PhysicsVelocityClampState { Fired = false }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 

@@ -10,6 +10,8 @@ namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
+    [UpdateAfter(typeof(PhysicsVelocityOverrideSystem))]
+    [UpdateAfter(typeof(PhysicsModifierForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsVelocityClampApplySystem : ISystem
     {

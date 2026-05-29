@@ -10,7 +10,6 @@ namespace BovineLabs.Timeline.Physics
 {
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [UpdateBefore(typeof(PhysicsGravityOverrideApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsKinematicOverrideApplySystem : ISystem
     {
@@ -19,6 +18,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<PhysicsMassOverride> _massOverrideHandle;
         private ComponentTypeHandle<PhysicsGravityFactor> _gravityFactorHandle;
         private ComponentTypeHandle<PhysicsVelocity> _velocityHandle;
+        private ComponentTypeHandle<ActiveGravityOverride> _activeGravityOverrideHandle;
 
         private EntityQuery _query;
 
@@ -30,6 +30,7 @@ namespace BovineLabs.Timeline.Physics
             _massOverrideHandle = state.GetComponentTypeHandle<PhysicsMassOverride>();
             _gravityFactorHandle = state.GetComponentTypeHandle<PhysicsGravityFactor>();
             _velocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
+            _activeGravityOverrideHandle = state.GetComponentTypeHandle<ActiveGravityOverride>(true);
 
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsKinematicOverrideState>()
@@ -46,6 +47,7 @@ namespace BovineLabs.Timeline.Physics
             _massOverrideHandle.Update(ref state);
             _gravityFactorHandle.Update(ref state);
             _velocityHandle.Update(ref state);
+            _activeGravityOverrideHandle.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
@@ -58,6 +60,7 @@ namespace BovineLabs.Timeline.Physics
                 MassOverrideHandle = _massOverrideHandle,
                 GravityFactorHandle = _gravityFactorHandle,
                 VelocityHandle = _velocityHandle,
+                ActiveGravityOverrideHandle = _activeGravityOverrideHandle,
                 ECB = ecb
             }.ScheduleParallel(_query, state.Dependency);
         }
@@ -71,6 +74,7 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsMassOverride> MassOverrideHandle;
             public ComponentTypeHandle<PhysicsGravityFactor> GravityFactorHandle;
             public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
+            [ReadOnly] public ComponentTypeHandle<ActiveGravityOverride> ActiveGravityOverrideHandle;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -90,6 +94,10 @@ namespace BovineLabs.Timeline.Physics
 
                 var hasVelocity = chunk.Has(ref VelocityHandle);
                 var velocities = hasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
+
+                // When a dedicated gravity override clip is also present, skip gravity management
+                // to avoid two systems fighting over the same PhysicsGravityFactor component.
+                var hasGravityOverride = chunk.Has(ref ActiveGravityOverrideHandle);
 
                 var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -126,7 +134,7 @@ namespace BovineLabs.Timeline.Physics
                             ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
                         }
 
-                        if (config.ZeroGravity)
+                        if (config.ZeroGravity && !hasGravityOverride)
                         {
                             if (hasGravityFactor)
                             {
@@ -148,6 +156,25 @@ namespace BovineLabs.Timeline.Physics
                         state.Fired = true;
                         states[i] = state;
                     }
+                    else if (isActive && state.Fired)
+                    {
+                        // Re-apply: the blended config may have changed while the clip remains active.
+                        var config = actives[i].Config;
+
+                        if (hasMassOverride)
+                        {
+                            var mo = massOverrides[i];
+                            mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
+                            massOverrides[i] = mo;
+                        }
+
+                        if (config.ZeroGravity && hasGravityFactor && !hasGravityOverride)
+                        {
+                            var factor = gravityFactors[i];
+                            factor.Value = 0f;
+                            gravityFactors[i] = factor;
+                        }
+                    }
                     else if (!isActive && state.Fired)
                     {
                         if (state.AddedMassOverrideComponent)
@@ -165,19 +192,22 @@ namespace BovineLabs.Timeline.Physics
                             ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
                         }
 
-                        if (state.AddedGravityComponent)
+                        if (!hasGravityOverride)
                         {
-                            ECB.RemoveComponent<PhysicsGravityFactor>(unfilteredChunkIndex, entity);
-                        }
-                        else if (hasGravityFactor)
-                        {
-                            var factor = gravityFactors[i];
-                            factor.Value = state.OriginalGravityScale;
-                            gravityFactors[i] = factor;
-                        }
-                        else
-                        {
-                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                            if (state.AddedGravityComponent)
+                            {
+                                ECB.RemoveComponent<PhysicsGravityFactor>(unfilteredChunkIndex, entity);
+                            }
+                            else if (hasGravityFactor)
+                            {
+                                var factor = gravityFactors[i];
+                                factor.Value = state.OriginalGravityScale;
+                                gravityFactors[i] = factor;
+                            }
+                            else
+                            {
+                                ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                            }
                         }
 
                         state.Fired = false;

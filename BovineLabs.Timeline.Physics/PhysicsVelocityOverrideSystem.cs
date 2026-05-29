@@ -27,7 +27,9 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
 
         private ComponentLookup<Targets> _targetsLookup;
-        private UnsafeComponentLookup<LocalToWorld> _transformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
@@ -48,7 +50,9 @@ namespace BovineLabs.Timeline.Physics
             _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
 
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _transformLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
@@ -64,7 +68,9 @@ namespace BovineLabs.Timeline.Physics
             _velocityStateHandle.Update(ref state);
             _physicsVelocityHandle.Update(ref state);
             _targetsLookup.Update(ref state);
-            _transformLookup.Update(ref state);
+            _localToWorldLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
@@ -76,7 +82,9 @@ namespace BovineLabs.Timeline.Physics
                 VelocityStateHandle = _velocityStateHandle,
                 PhysicsVelocityHandle = _physicsVelocityHandle,
                 TargetsLookup = _targetsLookup,
-                TransformLookup = _transformLookup,
+                LocalTransformLookup = _localTransformLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                ParentLookup = _parentLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 StatLookup = _statLookup
@@ -92,7 +100,9 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
@@ -125,9 +135,9 @@ namespace BovineLabs.Timeline.Physics
                     if (math.abs(multiplier) < 1e-5f) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
-                        in TransformLookup, out var linVel);
+                        in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, entities[i], in TargetsLookup,
-                        in TransformLookup, out var angVel);
+                        in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angVel);
 
                     var pv = physicsVelocities[i];
                     pv.Linear = linVel * multiplier;

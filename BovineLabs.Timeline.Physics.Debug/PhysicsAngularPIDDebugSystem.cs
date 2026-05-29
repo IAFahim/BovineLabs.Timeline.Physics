@@ -41,6 +41,8 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsAngularPIDDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<Targets> _targetsLookup;
 
@@ -49,6 +51,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
         }
@@ -61,13 +65,17 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return;
 
             _localToWorldLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _targetsLookup.Update(ref state);
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
-                TransformLookup = _localToWorldLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                LocalTransformLookup = _localTransformLookup,
+                ParentLookup = _parentLookup,
                 VelocityLookup = _velocityLookup,
                 TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
@@ -78,7 +86,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
@@ -90,21 +100,23 @@ namespace BovineLabs.Timeline.Physics.Debug
             private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated, in LocalTime localTime)
             {
                 var entity = binding.Value;
-                if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
+                PhysicsMath.ResolveTransform(entity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup,
+                    out var selfPos, out var selfRot);
+                if (math.lengthsq(selfPos) < 1e-6f) return;
 
-                PhysicsMath.ResolveAngularPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                    in TransformLookup, out var finalRot);
+                PhysicsMath.ResolveAngularPidTarget(animated.AuthoredData, entity, in TargetsLookup,
+                    in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var finalRot);
 
                 var forward = math.mul(finalRot, math.forward());
                 var up = math.mul(finalRot, math.up());
-                Drawer.Arrow(transform.Position, forward, ColorForward);
-                Drawer.Arrow(transform.Position, up, ColorUp);
+                Drawer.Arrow(selfPos, forward, ColorForward);
+                Drawer.Arrow(selfPos, up, ColorUp);
 
-                PhysicsMath.DrawAngularPidPrediction(ref Drawer, transform.Position, new quaternion(math.orthonormalize(new float3x3(transform.Value))),
+                PhysicsMath.DrawAngularPidPrediction(ref Drawer, selfPos, selfRot,
                     finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(transform.Position, velocity.Angular, ColorAngVel);
+                    Drawer.Arrow(selfPos, velocity.Angular, ColorAngVel);
             }
         }
     }

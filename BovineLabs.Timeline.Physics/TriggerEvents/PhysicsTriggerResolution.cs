@@ -12,6 +12,24 @@ namespace BovineLabs.Timeline.Physics
     {
         public static bool TryResolvePosition(
             PhysicsTriggerPositionMode mode,
+            float3 selfPos,
+            float3 otherPos,
+            float3 contactPoint,
+            out float3 position)
+        {
+            position = mode switch
+            {
+                PhysicsTriggerPositionMode.MatchSelf => selfPos,
+                PhysicsTriggerPositionMode.MatchCollidedEntity => otherPos,
+                PhysicsTriggerPositionMode.MatchContactPoint => contactPoint,
+                _ => contactPoint
+            };
+
+            return true;
+        }
+
+        public static bool TryResolvePosition(
+            PhysicsTriggerPositionMode mode,
             LocalToWorld self,
             LocalToWorld other,
             float3 contactPoint,

@@ -41,6 +41,8 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsLinearPIDDebugSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
         private ComponentLookup<Targets> _targetsLookup;
 
@@ -49,6 +51,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
         }
@@ -61,13 +65,17 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return;
 
             _localToWorldLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _velocityLookup.Update(ref state);
             _targetsLookup.Update(ref state);
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
-                TransformLookup = _localToWorldLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                LocalTransformLookup = _localTransformLookup,
+                ParentLookup = _parentLookup,
                 VelocityLookup = _velocityLookup,
                 TargetsLookup = _targetsLookup
             }.Schedule(state.Dependency);
@@ -78,7 +86,9 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
 
@@ -89,20 +99,21 @@ namespace BovineLabs.Timeline.Physics.Debug
             private void Execute(in TrackBinding binding, in PhysicsLinearPIDAnimated animated, in LocalTime localTime)
             {
                 var entity = binding.Value;
-                if (!TransformLookup.TryGetComponent(entity, out var transform)) return;
+                var selfPos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                if (math.lengthsq(selfPos) < 1e-6f) return;
 
-                PhysicsMath.ResolveLinearPidTarget(transform, animated.AuthoredData, entity, in TargetsLookup,
-                    in TransformLookup, out var finalPos);
+                PhysicsMath.ResolveLinearPidTarget(animated.AuthoredData, entity, in TargetsLookup,
+                    in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var finalPos);
 
-                Drawer.Line(transform.Position, finalPos, ColorLine);
+                Drawer.Line(selfPos, finalPos, ColorLine);
                 Drawer.Point(finalPos, 0.2f, Color.red);
                 Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", ColorLine, 12f);
 
-                PhysicsMath.DrawLinearPidPrediction(ref Drawer, transform.Position, finalPos,
+                PhysicsMath.DrawLinearPidPrediction(ref Drawer, selfPos, finalPos,
                     animated.AuthoredData.Tuning, (float)localTime.Value);
 
                 if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(transform.Position, velocity.Linear, ColorVel);
+                    Drawer.Arrow(selfPos, velocity.Linear, ColorVel);
             }
         }
     }

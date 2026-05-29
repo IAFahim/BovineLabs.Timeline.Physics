@@ -20,7 +20,9 @@ namespace BovineLabs.Timeline.Physics
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
         private ComponentLookup<Targets> _targetsLookup;
-        private UnsafeComponentLookup<LocalToWorld> _transformLookup;
+        private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
@@ -41,7 +43,9 @@ namespace BovineLabs.Timeline.Physics
         public void OnCreate(ref SystemState state)
         {
             _targetsLookup = state.GetComponentLookup<Targets>(true);
-            _transformLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
@@ -72,7 +76,9 @@ namespace BovineLabs.Timeline.Physics
             var dt = SystemAPI.Time.DeltaTime;
 
             _targetsLookup.Update(ref state);
-            _transformLookup.Update(ref state);
+            _localToWorldLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
@@ -94,7 +100,9 @@ namespace BovineLabs.Timeline.Physics
                 StateTypeHandle = _forceStateHandle,
                 PendingForceHandle = _pendingForceHandle,
                 TargetsLookup = _targetsLookup,
-                TransformLookup = _transformLookup,
+                LocalTransformLookup = _localTransformLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                ParentLookup = _parentLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 StatLookup = _statLookup
@@ -108,7 +116,9 @@ namespace BovineLabs.Timeline.Physics
                 StateTypeHandle = _velocityStateHandle,
                 PendingVelocityHandle = _pendingVelocityHandle,
                 TargetsLookup = _targetsLookup,
-                TransformLookup = _transformLookup,
+                LocalTransformLookup = _localTransformLookup,
+                LocalToWorldLookup = _localToWorldLookup,
+                ParentLookup = _parentLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 StatLookup = _statLookup
@@ -125,7 +135,9 @@ namespace BovineLabs.Timeline.Physics
             public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
@@ -159,7 +171,7 @@ namespace BovineLabs.Timeline.Physics
                     if (config.DirectionMode == PhysicsForceDirectionMode.FixedVector)
                     {
                         PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                            in TransformLookup, out linForce);
+                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out linForce);
                     }
                     else
                     {
@@ -180,19 +192,16 @@ namespace BovineLabs.Timeline.Physics
                             }
                         }
 
-                        if (targetEntity != Entity.Null &&
-                            TransformLookup.TryGetComponent(targetEntity, out var targetLtw) &&
-                            TransformLookup.TryGetComponent(body, out var selfLtw))
+                        var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                        var targetPos = PhysicsMath.ResolvePosition(targetEntity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                        var diff = targetPos - selfPos;
+                        var distSq = math.lengthsq(diff);
+                        if (distSq > 1e-5f)
                         {
-                            var diff = targetLtw.Position - selfLtw.Position;
-                            var distSq = math.lengthsq(diff);
-                            if (distSq > 1e-5f)
-                            {
-                                var dir = diff / math.sqrt(distSq);
-                                linForce = dir * config.Magnitude;
-                                if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
-                                    linForce = -linForce;
-                            }
+                            var dir = diff / math.sqrt(distSq);
+                            linForce = dir * config.Magnitude;
+                            if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
+                                linForce = -linForce;
                         }
                         else
                         {
@@ -201,7 +210,7 @@ namespace BovineLabs.Timeline.Physics
                     }
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
-                        in TransformLookup, out var angForce);
+                        in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angForce);
 
                     var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
                     pendingForces[i].Add(new PendingForce
@@ -229,7 +238,9 @@ namespace BovineLabs.Timeline.Physics
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
-            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
@@ -265,9 +276,9 @@ namespace BovineLabs.Timeline.Physics
                     if (!skip)
                     {
                         PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                            in TransformLookup, out var linVel);
+                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);
                         PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
-                            in TransformLookup, out var angVel);
+                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angVel);
 
                         var timeScale = isInstant ? 1f : DeltaTime;
                         pendingVelocities[i].Add(new PendingVelocity

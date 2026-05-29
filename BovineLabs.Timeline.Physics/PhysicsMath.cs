@@ -65,10 +65,6 @@ namespace BovineLabs.Timeline.Physics
                 }
             }
 
-            // Angle from normal: head-on = 0, grazing = π/2.
-            // True grazing angle: head-on = π/2, grazing = 0.
-            // Small grazing angle = shallow hit → should ricochet.
-            // Large grazing angle = head-on hit → should embed/terminate.
             var angleFromNormal = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
             var grazingAngle = (math.PI / 2f) - angleFromNormal;
             
@@ -84,12 +80,104 @@ namespace BovineLabs.Timeline.Physics
             return result;
         }
 
+        /// <summary>
+        /// Resolves position for an entity using the Rule 1.1 LocalTransform-first strategy.
+        /// For unparented physics bodies, LocalTransform is up-to-date after the physics step.
+        /// Falls back to LocalToWorld for parented entities.
+        /// </summary>
+        public static float3 ResolvePosition(
+            Entity target,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup)
+        {
+            if (target == Entity.Null)
+                return float3.zero;
+
+            // Rule 1.1: Prefer LocalTransform for unparented physics bodies
+            if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
+            {
+                return lt.Position;
+            }
+
+            // Fallback to LocalToWorld for parented entities or when LocalTransform unavailable
+            if (localToWorldLookup.TryGetComponent(target, out var ltw))
+            {
+                return ltw.Position;
+            }
+
+            return float3.zero;
+        }
+
+        /// <summary>
+        /// Resolves rotation for an entity using the Rule 1.1 LocalTransform-first strategy.
+        /// </summary>
+        public static quaternion ResolveRotation(
+            Entity target,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup)
+        {
+            if (target == Entity.Null)
+                return quaternion.identity;
+
+            if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
+            {
+                return lt.Rotation;
+            }
+
+            if (localToWorldLookup.TryGetComponent(target, out var ltw))
+            {
+                return new quaternion(math.orthonormalize(new float3x3(ltw.Value)));
+            }
+
+            return quaternion.identity;
+        }
+
+        /// <summary>
+        /// Resolves both position and rotation for an entity using the Rule 1.1 LocalTransform-first strategy.
+        /// </summary>
+        public static void ResolveTransform(
+            Entity target,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup,
+            out float3 position,
+            out quaternion rotation)
+        {
+            if (target == Entity.Null)
+            {
+                position = float3.zero;
+                rotation = quaternion.identity;
+                return;
+            }
+
+            if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
+            {
+                position = lt.Position;
+                rotation = lt.Rotation;
+                return;
+            }
+
+            if (localToWorldLookup.TryGetComponent(target, out var ltw))
+            {
+                position = ltw.Position;
+                rotation = new quaternion(math.orthonormalize(new float3x3(ltw.Value)));
+                return;
+            }
+
+            position = float3.zero;
+            rotation = quaternion.identity;
+        }
+
         public static void ResolveSpaceVector(
             Target space,
             float3 vector,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalToWorld> transformLookup,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup,
             out float3 resolvedVector)
         {
             if (space == Target.None)
@@ -102,9 +190,11 @@ namespace BovineLabs.Timeline.Physics
             if (space != Target.Self && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(space, entity);
 
-            if (targetEntity != Entity.Null && transformLookup.TryGetComponent(targetEntity, out var ltw))
+            var rotation = ResolveRotation(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup);
+            // Check if we got a meaningful rotation (non-identity)
+            if (math.lengthsq(rotation.value.xyz) > 1e-6f || math.abs(rotation.value.w - 1f) > 1e-6f)
             {
-                resolvedVector = math.rotate(new quaternion(math.orthonormalize(new float3x3(ltw.Value))), vector);
+                resolvedVector = math.rotate(rotation, vector);
                 return;
             }
 
@@ -187,76 +277,91 @@ namespace BovineLabs.Timeline.Physics
 
 
         public static void ResolveLinearPidTarget(
-            in LocalToWorld transform,
             in PhysicsLinearPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalToWorld> transformLookup,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup,
             out float3 targetPosition)
         {
+            ResolveTransform(entity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+                out var selfPos, out var selfRot);
+
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(config.TrackingTarget, entity);
 
-            if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
-                targetTransform = transform;
+            ResolveTransform(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+                out var targetPos, out var targetRot);
+
+            // Fall back to self transform if target not found
+            if (targetEntity == Entity.Null || math.lengthsq(targetPos) < 1e-6f)
+            {
+                targetPos = selfPos;
+                targetRot = selfRot;
+            }
 
             targetPosition = config.TargetMode switch
             {
                 PidLinearTargetMode.TargetLocal or
                     PidLinearTargetMode.InitialLocal =>
-                    targetTransform.Position + math.rotate(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), config.TargetOffset),
+                    targetPos + math.rotate(targetRot, config.TargetOffset),
 
                 PidLinearTargetMode.LineOfSight =>
-                    ResolveLineOfSight(transform.Position, targetTransform.Position,
-                        new quaternion(math.orthonormalize(new float3x3(transform.Value))), config.TargetOffset),
+                    ResolveLineOfSight(selfPos, targetPos, selfRot, config.TargetOffset),
 
                 PidLinearTargetMode.World => config.TargetOffset,
 
                 PidLinearTargetMode.FleeFromTarget =>
-                    transform.Position + (transform.Position - targetTransform.Position),
+                    selfPos + (selfPos - targetPos),
 
-                _ => transform.Position
+                _ => selfPos
             };
         }
 
         public static void ResolveAngularPidTarget(
-            in LocalToWorld transform,
             in PhysicsAngularPIDData config,
             Entity entity,
             in ComponentLookup<Targets> targetsLookup,
-            in UnsafeComponentLookup<LocalToWorld> transformLookup,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup,
             out quaternion targetRotation)
         {
+            ResolveTransform(entity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+                out var selfPos, out var selfRot);
+
             var targetEntity = Entity.Null;
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(config.TrackingTarget, entity);
 
-            if (targetEntity == Entity.Null || !transformLookup.TryGetComponent(targetEntity, out var targetTransform))
-                targetTransform = transform;
+            ResolveTransform(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+                out var targetPos, out var targetRot);
+
+            if (targetEntity == Entity.Null || math.lengthsq(targetPos) < 1e-6f)
+            {
+                targetPos = selfPos;
+                targetRot = selfRot;
+            }
 
             targetRotation = config.TargetMode switch
             {
                 PidAngularTargetMode.MatchTarget =>
-                    math.mul(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), config.TargetRotation),
+                    math.mul(targetRot, config.TargetRotation),
 
                 PidAngularTargetMode.LookAtTarget =>
-                    ResolveLookAtTarget(transform.Position, targetTransform.Position,
-                        new quaternion(math.orthonormalize(new float3x3(transform.Value))), config.TargetRotation),
+                    ResolveLookAtTarget(selfPos, targetPos, selfRot, config.TargetRotation),
 
                 PidAngularTargetMode.World => config.TargetRotation,
 
                 PidAngularTargetMode.FleeFromTarget =>
-                    ResolveLookAtTarget(transform.Position,
-                        transform.Position + (transform.Position - targetTransform.Position),
-                        new quaternion(math.orthonormalize(new float3x3(transform.Value))),
-                        config.TargetRotation),
+                    ResolveLookAtTarget(selfPos, selfPos + (selfPos - targetPos), selfRot, config.TargetRotation),
 
                 PidAngularTargetMode.MatchTargetOpposite =>
-                    math.mul(math.mul(new quaternion(math.orthonormalize(new float3x3(targetTransform.Value))), quaternion.AxisAngle(math.up(), math.PI)),
-                        config.TargetRotation),
+                    math.mul(math.mul(targetRot, quaternion.AxisAngle(math.up(), math.PI)), config.TargetRotation),
 
-                _ => new quaternion(math.orthonormalize(new float3x3(transform.Value)))
+                _ => selfRot
             };
         }
 

@@ -65,6 +65,8 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsRicochetGizmoSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private ComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private EntityQuery _query;
@@ -76,6 +78,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.RequireForUpdate<PhysicsWorldSingleton>();
             
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _targetsLookup = state.GetComponentLookup<Targets>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
 
@@ -89,6 +93,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             _localToWorldLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _colliderLookup.Update(ref state);
 
@@ -108,6 +114,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 OriginColor    = RicochetDebugSystem.OriginColor.Data,
                 TextColor      = RicochetDebugSystem.TextColor.Data,
                 TransformLookup = _localToWorldLookup,
+                LocalTransformLookup = _localTransformLookup,
+                ParentLookup = _parentLookup,
                 TargetsLookup  = _targetsLookup,
                 ColliderLookup = _colliderLookup,
                 CollisionWorld = collisionWorld
@@ -127,6 +135,18 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color TextColor;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
+
+            private float3 GetAntiJitterPosition(Entity e, float3 fallback)
+            {
+                if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
+                {
+                    return LocalTransformLookup[e].Position;
+                }
+                return fallback;
+            }
+
             [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
             
@@ -143,7 +163,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var originEntity = ResolveTarget(entity, d.RayOrigin, targets);
                 if (originEntity != Entity.Null && TransformLookup.HasComponent(originEntity))
                 {
-                    origin = TransformLookup[originEntity].Position;
+                    origin = GetAntiJitterPosition(originEntity, TransformLookup[originEntity].Position);
                 }
                 
                 var dirEntity = ResolveTarget(entity, d.RayDirection, targets);

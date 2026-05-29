@@ -29,6 +29,8 @@ namespace BovineLabs.Timeline.Physics
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
+        private ComponentLookup<LocalTransform> _localTransformLookup;
+        private ComponentLookup<Parent> _parentLookup;
         private BufferLookup<Stat> _statLookup;
         private BufferLookup<PendingForce> _pendingForceLookup;
 
@@ -41,6 +43,8 @@ namespace BovineLabs.Timeline.Physics
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
+            _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
+            _parentLookup = state.GetComponentLookup<Parent>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
 
@@ -56,6 +60,8 @@ namespace BovineLabs.Timeline.Physics
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _ltwLookup.Update(ref state);
+            _localTransformLookup.Update(ref state);
+            _parentLookup.Update(ref state);
             _statLookup.Update(ref state);
             _pendingForceLookup.Update(ref state);
 
@@ -78,6 +84,8 @@ namespace BovineLabs.Timeline.Physics
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
                 LtwLookup = _ltwLookup,
+                LocalTransformLookup = _localTransformLookup,
+                ParentLookup = _parentLookup,
                 StatLookup = _statLookup,
                 PendingForceLookup = _pendingForceLookup,
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
@@ -117,6 +125,8 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
             [ReadOnly] public BufferLookup<PendingForce> PendingForceLookup;
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
@@ -152,8 +162,8 @@ namespace BovineLabs.Timeline.Physics
                         {
                             if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = LtwLookup[self].Position;
-                            var otherPos = LtwLookup[evt.EntityB].Position;
+                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup, in LtwLookup, in ParentLookup);
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
                         }
@@ -163,8 +173,8 @@ namespace BovineLabs.Timeline.Physics
                         {
                             if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = LtwLookup[self].Position;
-                            var otherPos = LtwLookup[evt.EntityB].Position;
+                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup, in LtwLookup, in ParentLookup);
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                             ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
@@ -201,12 +211,13 @@ namespace BovineLabs.Timeline.Physics
 
                 if (math.abs(multiplier) < 1e-5f || math.abs(cfg.Magnitude) < 1e-5f) return;
 
-                var selfLtw = LtwLookup[self];
-                var targetLtw = LtwLookup.HasComponent(targetToApply) ? LtwLookup[targetToApply] : LtwLookup[other];
+                var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                var targetPos = PhysicsMath.ResolvePosition(targetToApply, in LocalTransformLookup, in LtwLookup, in ParentLookup);
                 var magnitude = cfg.Magnitude * multiplier;
 
-                PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfLtw, targetLtw, contactPoint, out var origin);
-                var offset = targetLtw.Position - origin;
+                PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfPos, targetPos, contactPoint, out var origin);
+                var offset = targetPos - origin;
                 var distSq = math.lengthsq(offset);
 
                 if (cfg.FalloffCurve != PhysicsTriggerFalloffCurve.None && distSq > 1e-5f)
@@ -236,7 +247,7 @@ namespace BovineLabs.Timeline.Physics
                 switch (cfg.ForceType)
                 {
                     case PhysicsTriggerForceType.Directional:
-                        force = math.rotate(selfLtw.Rotation, cfg.Direction) * magnitude;
+                        force = math.rotate(selfRot, cfg.Direction) * magnitude;
                         break;
                     case PhysicsTriggerForceType.Radial:
                     {
@@ -246,7 +257,7 @@ namespace BovineLabs.Timeline.Physics
                     }
                     case PhysicsTriggerForceType.Vortex:
                     {
-                        var up = math.rotate(selfLtw.Rotation, math.up());
+                        var up = math.rotate(selfRot, math.up());
                         var projOffset = offset - math.dot(offset, up) * up;
                         var projSq = math.lengthsq(projOffset);
                         if (projSq > 1e-5f)

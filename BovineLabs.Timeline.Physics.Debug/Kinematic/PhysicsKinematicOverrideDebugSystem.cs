@@ -70,7 +70,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                 BoxColor   = KinematicOverrideDebugSystem.BoxColor.Data,
                 ZeroGColor = KinematicOverrideDebugSystem.ZeroGColor.Data,
                 TextColor  = KinematicOverrideDebugSystem.TextColor.Data,
-                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true)
+                TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
+                LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
+                ParentLookup = SystemAPI.GetComponentLookup<Parent>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -83,6 +85,18 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color TextColor;
             
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<Parent> ParentLookup;
+
+            private float3 GetAntiJitterPosition(Entity e, float3 fallback)
+            {
+                if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
+                {
+                    return LocalTransformLookup[e].Position;
+                }
+                return fallback;
+            }
+
 
             public void Execute(Entity entity, in TrackBinding binding, in PhysicsKinematicOverrideAnimated animated)
             {
@@ -91,7 +105,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                     return;
 
                 var d = animated.Value;
-                var pos = ltw.Position;
+                var pos = GetAntiJitterPosition(target, ltw.Position);
                 var rot = ltw.Rotation;
 
                 if (d.IsKinematic)

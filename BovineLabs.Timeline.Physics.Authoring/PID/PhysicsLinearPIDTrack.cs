@@ -4,7 +4,7 @@ using BovineLabs.Timeline.Authoring;
 using Unity.Physics.Authoring;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.PID
 {
     [Serializable]
     [TrackClipType(typeof(PhysicsLinearPIDClip))]

@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using BovineLabs.Timeline.Physics.Authoring.PID;
 using UnityEditor;
 
 namespace BovineLabs.Timeline.Physics.Authoring.Editor

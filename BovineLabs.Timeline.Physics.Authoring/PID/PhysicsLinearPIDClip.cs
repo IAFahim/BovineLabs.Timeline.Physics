@@ -6,7 +6,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.PID
 {
     public class PhysicsLinearPIDClip : DOTSClip, ITimelineClipAsset
     {

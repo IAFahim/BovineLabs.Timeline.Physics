@@ -3,7 +3,7 @@ using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     [UpdateAfter(typeof(PhysicsTimelineBakingSystem))]

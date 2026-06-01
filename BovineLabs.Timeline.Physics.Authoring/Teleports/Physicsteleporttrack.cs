@@ -4,7 +4,7 @@ using BovineLabs.Reaction.Authoring.Core;
 using BovineLabs.Timeline.Authoring;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
     [Serializable]
     [TrackClipType(typeof(PhysicsTeleportClip))]

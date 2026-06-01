@@ -10,7 +10,7 @@ using Unity.Physics.Authoring;
 using UnityEngine;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
     public sealed class PhysicsTeleportClip : DOTSClip, ITimelineClipAsset
     {

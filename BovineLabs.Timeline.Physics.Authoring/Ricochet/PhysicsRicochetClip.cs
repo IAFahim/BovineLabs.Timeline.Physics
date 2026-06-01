@@ -1,7 +1,6 @@
-using System;
 using BovineLabs.Essence.Authoring;
-using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Reaction.Authoring.Conditions;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
 using Unity.Entities;
@@ -10,7 +9,7 @@ using Unity.Physics.Authoring;
 using UnityEngine;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.Ricochet
 {
     public sealed class PhysicsRicochetClip : DOTSClip, ITimelineClipAsset
     {

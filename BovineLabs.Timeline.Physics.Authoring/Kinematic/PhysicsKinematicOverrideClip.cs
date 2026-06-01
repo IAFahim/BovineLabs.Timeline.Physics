@@ -3,7 +3,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
 
-namespace BovineLabs.Timeline.Physics.Authoring
+namespace BovineLabs.Timeline.Physics.Authoring.Kinematic
 {
     public sealed class PhysicsKinematicOverrideClip : DOTSClip, ITimelineClipAsset
     {

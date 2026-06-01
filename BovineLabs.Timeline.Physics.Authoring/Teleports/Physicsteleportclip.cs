@@ -50,7 +50,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 
         [Header("Facing After Teleport")]
         public TeleportFacingMode facingMode = TeleportFacingMode.FaceTarget;
-
+        [Tooltip("Which entity FaceTarget, FaceAway, and MatchTarget use. This is separate from Teleport Relative To.")]
+        public Target facingTarget = Target.Target;
+        public EntityLinkSchema facingTargetLink;
         [Header("Clearance")]
         [Tooltip("Sphere radius for obstacle clearance checks at each candidate.")]
         [Min(0.1f)]
@@ -112,14 +114,15 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             ushort failureLinkKey = 0;
             if (failureRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(failureRouteLink, out var k2))
                 failureLinkKey = k2;
-
+            ushort facingTargetLinkKey = 0;
+            if (facingTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(facingTargetLink, out var k3))
+                facingTargetLinkKey = k3;
 context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
             {
                 AuthoredData = new PhysicsTeleportData
                 {
                     EntityToTeleport = entityToTeleport,
                     EntityToTeleportLinkKey = teleportTargetLinkKey,
-
                     Radius = radius,
                     AzimuthCenter = math.radians(azimuthCenter),
                     AzimuthHalfRange = math.radians(azimuthHalfRange),
@@ -127,6 +130,8 @@ context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
                     ElevationHalfRange = math.radians(elevationHalfRange),
                     ReferenceFrame = referenceFrame,
                     FacingMode = facingMode,
+                    FacingTarget = facingTarget,
+                    FacingTargetLinkKey = facingTargetLinkKey,
                     ClearanceRadius = clearanceRadius,
                     MaxCandidates = maxCandidates,
                     ObstacleMask = obstacleMask.Value,

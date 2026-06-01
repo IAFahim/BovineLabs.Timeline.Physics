@@ -231,10 +231,23 @@ namespace BovineLabs.Timeline.Physics
                         FireFailure(selfEntity, targetToTeleport, config, targets);
                         continue;
                     }
-
+                    // Resolve FacingTarget separately from TeleportRelativeTo.
+                    // TeleportRelativeTo defines where the landing patch is centered.
+                    // FacingTarget defines what FaceTarget / FaceAway / MatchTarget use.
+                    var facingTargetEntity = TeleportMath.ResolveTargetEntity(
+                        selfEntity, config.FacingTarget, config.FacingTargetLinkKey,
+                        TargetsLookup, LinkSources, Links);
+                    float3 facingTargetPos = referencePos;
+                    quaternion facingTargetRot = referenceRot;
+                    if (facingTargetEntity != Entity.Null &&
+                        LocalToWorldLookup.TryGetComponent(facingTargetEntity, out var facingLtw))
+                    {
+                        facingTargetPos = facingLtw.Position;
+                        facingTargetRot = new quaternion(math.orthonormalize(new float3x3(facingLtw.Value)));
+                    }
                     TeleportMath.ComputeFacingRotation(
-                        config.FacingMode, validPosition, referencePos,
-                        new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value))), referenceRot,
+                        config.FacingMode, validPosition, facingTargetPos,
+                        new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value))), facingTargetRot,
                         out var facingRot);
 
                     var worldTransform = LocalTransform.FromPositionRotation(validPosition, facingRot);

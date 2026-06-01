@@ -27,34 +27,31 @@ namespace BovineLabs.Timeline.Physics
     {
         public Target EntityToTeleport;
         public ushort EntityToTeleportLinkKey;
-
         public float Radius;
-
         public float AzimuthCenter;
         public float AzimuthHalfRange;
         public float ElevationCenter;
         public float ElevationHalfRange;
-
         public TeleportReferenceFrame ReferenceFrame;
         public TeleportFacingMode FacingMode;
-
+        // Separate from TeleportRelativeTo on purpose.
+        // TeleportRelativeTo defines where the landing patch is centered.
+        // FacingTarget defines what FaceTarget / FaceAway / MatchTarget use after landing.
+        public Target FacingTarget;
+        public ushort FacingTargetLinkKey;
         public float ClearanceRadius;
         public int MaxCandidates;
         public uint ObstacleMask;
-
         public bool RequireLineOfSight;
         public bool RequireCandidateVisibility;
         public float LineOfSightOffset;
         public bool ResetVelocity;
-
         public Target TeleportRelativeTo;
         public ushort TeleportRelativeToLinkKey;
-
         public ConditionKey FailureCondition;
         public int FailureValue;
         public Target FailureRouteTo;
         public ushort FailureRouteLinkKey;
-
         public StatStrengthConfig Strength;
     }
 

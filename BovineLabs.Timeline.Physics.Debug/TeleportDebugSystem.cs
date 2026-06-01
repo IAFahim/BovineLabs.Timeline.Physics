@@ -131,104 +131,88 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             private void Execute(Entity entity, in TrackBinding binding, in PhysicsTeleportAnimated animated)
             {
-                // Get origin (where the teleport sphere is centered)
                 if (!TransformLookup.TryGetComponent(binding.Value, out var trackLtw))
                     return;
 
                 var d = animated.AuthoredData;
-                var origin = trackLtw.Position;
 
-                // Resolve teleport relative-to target
-                var referenceEntity = ResolveTarget(entity, d.TeleportRelativeTo, d.TeleportRelativeToLinkKey);
-                
-                // Calculate reference transform (center of sphere = teleportRelativeTo)
-                float3 referencePos = origin;
-                quaternion rawReferenceRot = quaternion.identity;
-
-                if (referenceEntity != Entity.Null && TransformLookup.TryGetComponent(referenceEntity, out var refLtw))
+                // 1. Resolve teleported entity position
+                var teleportedEntity = ResolveTarget(entity, d.EntityToTeleport, d.EntityToTeleportLinkKey);
+                float3 teleportPos = trackLtw.Position;
+                quaternion teleportRot = quaternion.identity;
+                if (teleportedEntity != Entity.Null && TransformLookup.TryGetComponent(teleportedEntity, out var teleportLtw))
                 {
-                    referencePos = refLtw.Position;
-                    origin = referencePos;
-                    rawReferenceRot = new quaternion(math.orthonormalize(new float3x3(refLtw.Value)));
+                    teleportPos = teleportLtw.Position;
+                    teleportRot = new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value)));
                 }
 
+                // 2. Resolve landing sphere origin (TeleportRelativeTo)
+                var landingEntity = ResolveTarget(entity, d.TeleportRelativeTo, d.TeleportRelativeToLinkKey);
+                float3 landingPos = teleportPos;
+                if (landingEntity != Entity.Null && TransformLookup.TryGetComponent(landingEntity, out var landingLtw))
+                {
+                    landingPos = landingLtw.Position;
+                }
+
+                // 3. Resolve azimuth reference (AzimuthTarget)
+                var azimuthEntity = ResolveTarget(entity, d.AzimuthTarget, d.AzimuthTargetLinkKey);
+                float3 azimuthPos = landingPos;
+                quaternion azimuthRot = quaternion.identity;
+                if (azimuthEntity != Entity.Null && TransformLookup.TryGetComponent(azimuthEntity, out var azimuthLtw))
+                {
+                    azimuthPos = azimuthLtw.Position;
+                    azimuthRot = new quaternion(math.orthonormalize(new float3x3(azimuthLtw.Value)));
+                }
+
+                // 4. Resolve facing target (FacingTarget)
+                var facingEntity = ResolveTarget(entity, d.FacingTarget, d.FacingTargetLinkKey);
+                float3 facingPos = landingPos;
+                quaternion facingRot = azimuthRot;
+                if (facingEntity != Entity.Null && TransformLookup.TryGetComponent(facingEntity, out var facingLtw))
+                {
+                    facingPos = facingLtw.Position;
+                    facingRot = new quaternion(math.orthonormalize(new float3x3(facingLtw.Value)));
+                }
+
+                // Compute reference rotation for candidate generation
                 TeleportMath.ResolveReferenceRotation(
-                    d.ReferenceFrame,
-                    trackLtw.Position, // selfPos (the track target)
-                    referencePos,      // targetPos
-                    rawReferenceRot,   // targetRot
+                    teleportPos, teleportRot, azimuthPos, azimuthRot,
+                    TeleportReferenceFrame.TargetToSelf,
                     out var referenceRot);
 
-                // Draw radius circle (horizontal at origin)
-                Drawer.Circle(origin, new float3(0f, d.Radius, 0f), RadiusColor);
+                // Draw landing sphere circle
+                Drawer.Circle(landingPos, new float3(0f, d.Radius, 0f), RadiusColor);
+                Drawer.Sphere(landingPos, 0.15f, Segments, ReferenceColor);
 
-                // Draw radius label
-                if (Verbose) Drawer.Text32(origin + new float3(0f, 0.5f, 0f), $"r={d.Radius:G1}m", RadiusColor, 10f);
-
-                // Draw reference frame arrows
-                Drawer.Arrow(referencePos, math.mul(referenceRot, math.forward()) * 1.5f, ReferenceColor);
-                if (Verbose) Drawer.Text32(referencePos + math.mul(referenceRot, math.forward()) * 1.8f, "Ref Fwd", ReferenceColor, 8f);
-
-                // Draw spherical patch boundary
-                DrawPatchBoundary(origin, d.Radius, referenceRot,
+                // Draw patch boundary
+                DrawPatchBoundary(landingPos, d.Radius, referenceRot,
                     d.AzimuthCenter, d.AzimuthHalfRange,
                     d.ElevationCenter, d.ElevationHalfRange);
 
-                // Draw center direction (azimuth/elevation center)
-                var centerDir = SphericalToCartesian(d.AzimuthCenter, d.ElevationCenter);
-                var worldCenterDir = math.rotate(referenceRot, centerDir);
-                var centerPoint = origin + worldCenterDir * d.Radius;
-                Drawer.Line(origin, centerPoint, PatchColor);
-                Drawer.Arrow(centerPoint, worldCenterDir * 0.5f, PatchColor);
+                // Draw reference rotation arrow (where azimuth 0° points)
+                Drawer.Arrow(landingPos, math.mul(referenceRot, math.forward()) * 1.5f, ReferenceColor);
 
-                // Draw center line to reference
-                Drawer.Line(referencePos, origin, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+                // Draw azimuth target to landing line
+                Drawer.Line(azimuthPos, landingPos, new Color(0.5f, 0.5f, 0.5f, 0.3f));
 
-                // Draw clearance sphere at center point
-                Drawer.Sphere(centerPoint, d.ClearanceRadius, Segments, ClearanceColor);
-
-                // Draw entity being teleported
-                var teleportedEntity = ResolveTarget(entity, d.EntityToTeleport, d.EntityToTeleportLinkKey);
-                if (teleportedEntity != Entity.Null && TransformLookup.TryGetComponent(teleportedEntity, out var teleportLtw))
+                // Draw LOS check
+                if (d.RequireLineOfSight)
                 {
-                    Drawer.Line(teleportLtw.Position, origin, LosColor);
-
-                    // Draw line of sight check if enabled
-                    if (d.RequireLineOfSight)
-                    {
-                        var losStart = teleportLtw.Position + new float3(0f, d.LineOfSightOffset, 0f);
-                        var losEnd = origin + new float3(0f, d.LineOfSightOffset, 0f);
-                        Drawer.Line(losStart, losEnd, LosColor);
-                        if (Verbose) Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.3f, 0f), "LOS Check", LosColor, 8f);
-                    }
+                    var losStart = teleportPos + new float3(0f, d.LineOfSightOffset, 0f);
+                    var losEnd = landingPos + new float3(0f, d.LineOfSightOffset, 0f);
+                    Drawer.Line(losStart, losEnd, LosColor);
+                    if (Verbose) Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.25f, 0f), "LOS Check", LosColor, 8f);
                 }
+
+                // Draw facing arrow
+                Drawer.Arrow(landingPos + new float3(0f, 0.2f, 0f), math.mul(facingRot, math.forward()) * 1.25f, new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
 
                 if (Verbose)
                 {
-                    // Draw reference frame type
-                    var refFrameLabel = d.ReferenceFrame switch
-                    {
-                        TeleportReferenceFrame.TargetToSelf => "Target→Self",
-                        TeleportReferenceFrame.SelfToTarget => "Self→Target",
-                        TeleportReferenceFrame.TargetForward => "TargetForward",
-                        TeleportReferenceFrame.WorldForward => "WorldForward",
-                        _ => "?"
-                    };
-                    Drawer.Text32(referencePos + new float3(0f, 2f, 0f), refFrameLabel, ReferenceColor, 10f);
+                    Drawer.Text32(landingPos + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor, 10f);
+                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 1f, 0f), $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor, 8f);
+                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 0.6f, 0f), $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°", TextColor, 8f);
 
-                    // Draw angular settings as text labels
-                    var azDeg = math.degrees(d.AzimuthCenter);
-                    var azRangeDeg = math.degrees(d.AzimuthHalfRange);
-                    var elDeg = math.degrees(d.ElevationCenter);
-                    var elRangeDeg = math.degrees(d.ElevationHalfRange);
-
-                    var labelOffset = new float3(0f, d.Radius + 0.5f, 0f);
-                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 1f, 0f),
-                        $"Az: {azDeg:G0}° ±{azRangeDeg:G0}°", TextColor, 8f);
-                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.6f, 0f),
-                        $"El: {elDeg:G0}° ±{elRangeDeg:G0}°", TextColor, 8f);
-
-                    // Draw facing mode
                     var facingLabel = d.FacingMode switch
                     {
                         TeleportFacingMode.FaceTarget => "Face Target",
@@ -237,17 +221,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                         TeleportFacingMode.MatchTarget => "Match Target",
                         _ => "?"
                     };
-                    Drawer.Text32(origin + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
-
-                    // Draw clearance settings
-                    if (d.RequireLineOfSight)
-                    {
-                        Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.5f, 0f), "Require LOS", LosColor, 8f);
-                    }
-                    if (d.RequireCandidateVisibility)
-                    {
-                        Drawer.Text32(origin + new float3(-d.Radius - 1f, 0.2f, 0f), "Candidate LOS", LosColor, 8f);
-                    }
+                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
                 }
             }
 

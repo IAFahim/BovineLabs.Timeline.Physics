@@ -27,31 +27,43 @@ namespace BovineLabs.Timeline.Physics
     {
         public Target EntityToTeleport;
         public ushort EntityToTeleportLinkKey;
+
         public float Radius;
+
         public float AzimuthCenter;
         public float AzimuthHalfRange;
         public float ElevationCenter;
         public float ElevationHalfRange;
-        public TeleportReferenceFrame ReferenceFrame;
+
+        // Landing patch origin - where the spherical patch is centered.
+        public Target TeleportRelativeTo;
+        public ushort TeleportRelativeToLinkKey;
+
+        // Azimuth reference - what direction counts as azimuth 0°.
+        // Separate from TeleportRelativeTo so the landing direction can be independent
+        // of where the patch is centered.
+        public Target AzimuthTarget;
+        public ushort AzimuthTargetLinkKey;
+
+        // Facing mode and target - where the entity looks after teleport.
         public TeleportFacingMode FacingMode;
-        // Separate from TeleportRelativeTo on purpose.
-        // TeleportRelativeTo defines where the landing patch is centered.
-        // FacingTarget defines what FaceTarget / FaceAway / MatchTarget use after landing.
         public Target FacingTarget;
         public ushort FacingTargetLinkKey;
+
         public float ClearanceRadius;
         public int MaxCandidates;
         public uint ObstacleMask;
+
         public bool RequireLineOfSight;
         public bool RequireCandidateVisibility;
         public float LineOfSightOffset;
         public bool ResetVelocity;
-        public Target TeleportRelativeTo;
-        public ushort TeleportRelativeToLinkKey;
+
         public ConditionKey FailureCondition;
         public int FailureValue;
         public Target FailureRouteTo;
         public ushort FailureRouteLinkKey;
+
         public StatStrengthConfig Strength;
     }
 
@@ -85,21 +97,31 @@ namespace BovineLabs.Timeline.Physics
                 AzimuthHalfRange = math.lerp(a.AzimuthHalfRange, b.AzimuthHalfRange, s),
                 ElevationCenter = math.lerp(a.ElevationCenter, b.ElevationCenter, s),
                 ElevationHalfRange = math.lerp(a.ElevationHalfRange, b.ElevationHalfRange, s),
-                ReferenceFrame = s < 0.5f ? a.ReferenceFrame : b.ReferenceFrame,
+
+                TeleportRelativeTo = s < 0.5f ? a.TeleportRelativeTo : b.TeleportRelativeTo,
+                TeleportRelativeToLinkKey = s < 0.5f ? a.TeleportRelativeToLinkKey : b.TeleportRelativeToLinkKey,
+
+                AzimuthTarget = s < 0.5f ? a.AzimuthTarget : b.AzimuthTarget,
+                AzimuthTargetLinkKey = s < 0.5f ? a.AzimuthTargetLinkKey : b.AzimuthTargetLinkKey,
+
                 FacingMode = s < 0.5f ? a.FacingMode : b.FacingMode,
+                FacingTarget = s < 0.5f ? a.FacingTarget : b.FacingTarget,
+                FacingTargetLinkKey = s < 0.5f ? a.FacingTargetLinkKey : b.FacingTargetLinkKey,
+
                 ClearanceRadius = math.lerp(a.ClearanceRadius, b.ClearanceRadius, s),
                 MaxCandidates = s < 0.5f ? a.MaxCandidates : b.MaxCandidates,
                 ObstacleMask = s < 0.5f ? a.ObstacleMask : b.ObstacleMask,
+
                 RequireLineOfSight = s < 0.5f ? a.RequireLineOfSight : b.RequireLineOfSight,
                 RequireCandidateVisibility = s < 0.5f ? a.RequireCandidateVisibility : b.RequireCandidateVisibility,
                 LineOfSightOffset = math.lerp(a.LineOfSightOffset, b.LineOfSightOffset, s),
                 ResetVelocity = s < 0.5f ? a.ResetVelocity : b.ResetVelocity,
-                TeleportRelativeTo = s < 0.5f ? a.TeleportRelativeTo : b.TeleportRelativeTo,
-                TeleportRelativeToLinkKey = s < 0.5f ? a.TeleportRelativeToLinkKey : b.TeleportRelativeToLinkKey,
+
                 FailureCondition = s < 0.5f ? a.FailureCondition : b.FailureCondition,
                 FailureValue = s < 0.5f ? a.FailureValue : b.FailureValue,
                 FailureRouteTo = s < 0.5f ? a.FailureRouteTo : b.FailureRouteTo,
                 FailureRouteLinkKey = s < 0.5f ? a.FailureRouteLinkKey : b.FailureRouteLinkKey,
+
                 Strength = s < 0.5f ? a.Strength : b.Strength
             };
         }
@@ -116,21 +138,31 @@ namespace BovineLabs.Timeline.Physics
                 AzimuthHalfRange = a.AzimuthHalfRange + b.AzimuthHalfRange,
                 ElevationCenter = a.ElevationCenter + b.ElevationCenter,
                 ElevationHalfRange = a.ElevationHalfRange + b.ElevationHalfRange,
-                ReferenceFrame = a.ReferenceFrame,
+
+                TeleportRelativeTo = a.TeleportRelativeTo,
+                TeleportRelativeToLinkKey = a.TeleportRelativeToLinkKey,
+
+                AzimuthTarget = a.AzimuthTarget,
+                AzimuthTargetLinkKey = a.AzimuthTargetLinkKey,
+
                 FacingMode = a.FacingMode,
+                FacingTarget = a.FacingTarget,
+                FacingTargetLinkKey = a.FacingTargetLinkKey,
+
                 ClearanceRadius = a.ClearanceRadius + b.ClearanceRadius,
                 MaxCandidates = a.MaxCandidates,
                 ObstacleMask = a.ObstacleMask,
+
                 RequireLineOfSight = a.RequireLineOfSight,
                 RequireCandidateVisibility = a.RequireCandidateVisibility,
                 LineOfSightOffset = a.LineOfSightOffset + b.LineOfSightOffset,
                 ResetVelocity = a.ResetVelocity,
-                TeleportRelativeTo = a.TeleportRelativeTo,
-                TeleportRelativeToLinkKey = a.TeleportRelativeToLinkKey,
+
                 FailureCondition = a.FailureCondition,
                 FailureValue = a.FailureValue,
                 FailureRouteTo = a.FailureRouteTo,
                 FailureRouteLinkKey = a.FailureRouteLinkKey,
+
                 Strength = a.Strength
             };
         }

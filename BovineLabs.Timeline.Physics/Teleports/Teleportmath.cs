@@ -13,41 +13,41 @@ namespace BovineLabs.Timeline.Physics
         private const float GoldenAngle = 2.39996322972865332f;
         private const float ElevationClamp = math.PI * 0.5f - 0.01f;
 
+        /// <summary>
+        /// Computes the reference rotation used for azimuth/elevation candidate generation.
+        /// The forward direction of the returned quaternion defines what azimuth 0° points toward.
+        /// </summary>
+        /// <param name="selfPos">Position of the entity being teleported.</param>
+        /// <param name="selfRot">Rotation of the entity being teleported.</param>
+        /// <param name="azimuthTargetPos">Position that defines the azimuth reference direction.</param>
+        /// <param name="azimuthTargetRot">Rotation of the azimuth target entity.</param>
+        /// <param name="referenceFrame">Legacy frame selector (kept for compatibility, prefer direct pos/rot).</param>
+        /// <param name="referenceRotation">Output: quaternion where forward = azimuth 0°.</param>
         public static void ResolveReferenceRotation(
-            TeleportReferenceFrame frame,
             float3 selfPos,
-            float3 targetPos,
-            quaternion targetRot,
+            quaternion selfRot,
+            float3 azimuthTargetPos,
+            quaternion azimuthTargetRot,
+            TeleportReferenceFrame referenceFrame,
             out quaternion referenceRotation)
         {
-            var diff = frame switch
-            {
-                TeleportReferenceFrame.TargetToSelf => selfPos - targetPos,
-                TeleportReferenceFrame.SelfToTarget => targetPos - selfPos,
-                _ => float3.zero
-            };
+            // Compute the direction from azimuth target to self (what "self is relative to the target").
+            var toSelf = selfPos - azimuthTargetPos;
+            var lenSq = math.lengthsq(toSelf);
 
-            if (frame == TeleportReferenceFrame.TargetForward)
-            {
-                referenceRotation = targetRot;
-                return;
-            }
-
-            if (frame == TeleportReferenceFrame.WorldForward)
-            {
-                referenceRotation = quaternion.identity;
-                return;
-            }
-
-            var lenSq = math.lengthsq(diff);
             if (lenSq < 1e-6f)
             {
-                referenceRotation = targetRot;
+                // Fallback: use the azimuth target's rotation as the reference.
+                referenceRotation = azimuthTargetRot;
                 return;
             }
 
-            var dir = diff * math.rsqrt(lenSq);
-            referenceRotation = quaternion.LookRotationSafe(dir, math.up());
+            var toSelfDir = toSelf * math.rsqrt(lenSq);
+
+            // Build the reference rotation where:
+            // - forward points toward azimuthTargetPos
+            // - up is world up
+            referenceRotation = quaternion.LookRotationSafe(toSelfDir, math.up());
         }
 
         public static void GenerateCandidate(

@@ -151,6 +151,7 @@ namespace BovineLabs.Timeline.Physics
                     teleportState.Fired = true;
                     teleportStates[i] = teleportState;
 
+                    // 1. Resolve entity to teleport
                     var targetToTeleport = TeleportMath.ResolveTargetEntity(
                         selfEntity, config.EntityToTeleport, config.EntityToTeleportLinkKey, 
                         TargetsLookup, LinkSources, Links);
@@ -158,28 +159,60 @@ namespace BovineLabs.Timeline.Physics
                     if (targetToTeleport == Entity.Null || !LocalToWorldLookup.TryGetComponent(targetToTeleport, out var teleportLtw))
                         continue;
 
-                    var referenceEntity = TeleportMath.ResolveTargetEntity(
+                    var teleportPos = teleportLtw.Position;
+                    var teleportRot = new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value)));
+
+                    // 2. Resolve landing sphere origin (TeleportRelativeTo)
+                    var landingEntity = TeleportMath.ResolveTargetEntity(
                         selfEntity, config.TeleportRelativeTo, config.TeleportRelativeToLinkKey, 
                         TargetsLookup, LinkSources, Links);
 
-                    if (!LocalToWorldLookup.TryGetComponent(referenceEntity, out var referenceLtw))
-                        referenceLtw = teleportLtw;
+                    if (!LocalToWorldLookup.TryGetComponent(landingEntity, out var landingLtw))
+                        landingLtw = teleportLtw;
 
-                    var teleportPos = teleportLtw.Position;
-                    var referencePos = referenceLtw.Position;
-                    var referenceRot = new quaternion(math.orthonormalize(new float3x3(referenceLtw.Value)));
+                    var landingPos = landingLtw.Position;
+
+                    // 3. Resolve azimuth reference (AzimuthTarget - what azimuth 0° points toward)
+                    var azimuthEntity = TeleportMath.ResolveTargetEntity(
+                        selfEntity, config.AzimuthTarget, config.AzimuthTargetLinkKey, 
+                        TargetsLookup, LinkSources, Links);
+
+                    float3 azimuthPos = landingPos;
+                    quaternion azimuthRot = quaternion.identity;
+                    if (LocalToWorldLookup.TryGetComponent(azimuthEntity, out var azimuthLtw))
+                    {
+                        azimuthPos = azimuthLtw.Position;
+                        azimuthRot = new quaternion(math.orthonormalize(new float3x3(azimuthLtw.Value)));
+                    }
+
+                    // 4. Resolve facing target (FacingTarget - where entity looks after teleport)
+                    var facingEntity = TeleportMath.ResolveTargetEntity(
+                        selfEntity, config.FacingTarget, config.FacingTargetLinkKey, 
+                        TargetsLookup, LinkSources, Links);
+
+                    float3 facingPos = landingPos;
+                    quaternion facingRot = azimuthRot;
+                    if (facingEntity != Entity.Null &&
+                        LocalToWorldLookup.TryGetComponent(facingEntity, out var facingLtw))
+                    {
+                        facingPos = facingLtw.Position;
+                        facingRot = new quaternion(math.orthonormalize(new float3x3(facingLtw.Value)));
+                    }
 
                     var targets = TargetsLookup.TryGetComponent(selfEntity, out var t) ? t : default;
+
+                    // 5. Apply stat multiplier to radius
                     var radiusMultiplier = StatStrengthUtility.Resolve(
                         in config.Strength, selfEntity, targets, LinkSources, Links, StatLookup);
                     var radius = config.Radius * math.max(radiusMultiplier, 0f);
 
+                    // 6. Line of sight check from teleport position to landing position
                     if (config.RequireLineOfSight)
                     {
                         var hasLos = TeleportMath.CheckLineOfSight(
-                            in CollisionWorld, teleportPos, referencePos,
+                            in CollisionWorld, teleportPos, landingPos,
                             config.LineOfSightOffset, config.ObstacleMask,
-                            targetToTeleport, referenceEntity);
+                            targetToTeleport, landingEntity);
 
                         if (!hasLos)
                         {
@@ -188,10 +221,14 @@ namespace BovineLabs.Timeline.Physics
                         }
                     }
 
+                    // 7. Compute reference rotation for candidate generation
+                    // The forward of this rotation defines what azimuth 0° points toward.
                     TeleportMath.ResolveReferenceRotation(
-                        config.ReferenceFrame, teleportPos, referencePos, referenceRot,
+                        teleportPos, teleportRot, azimuthPos, azimuthRot,
+                        TeleportReferenceFrame.TargetToSelf,
                         out var referenceRotation);
 
+                    // 8. Generate candidates and find valid landing position
                     var maxCandidates = math.clamp(config.MaxCandidates, 1, 64);
                     var foundValid = false;
                     var validPosition = float3.zero;
@@ -202,7 +239,7 @@ namespace BovineLabs.Timeline.Physics
                             c, maxCandidates,
                             config.AzimuthCenter, config.AzimuthHalfRange,
                             config.ElevationCenter, config.ElevationHalfRange,
-                            referenceRotation, radius, referencePos,
+                            referenceRotation, radius, landingPos,
                             out var candidatePos);
 
                         var clearanceOk = TeleportMath.CheckClearance(
@@ -214,9 +251,9 @@ namespace BovineLabs.Timeline.Physics
                         if (config.RequireCandidateVisibility)
                         {
                             var candidateLos = TeleportMath.CheckLineOfSight(
-                                in CollisionWorld, candidatePos, referencePos,
+                                in CollisionWorld, candidatePos, landingPos,
                                 config.LineOfSightOffset, config.ObstacleMask,
-                                targetToTeleport, referenceEntity);
+                                targetToTeleport, landingEntity);
 
                             if (!candidateLos) continue;
                         }
@@ -231,27 +268,16 @@ namespace BovineLabs.Timeline.Physics
                         FireFailure(selfEntity, targetToTeleport, config, targets);
                         continue;
                     }
-                    // Resolve FacingTarget separately from TeleportRelativeTo.
-                    // TeleportRelativeTo defines where the landing patch is centered.
-                    // FacingTarget defines what FaceTarget / FaceAway / MatchTarget use.
-                    var facingTargetEntity = TeleportMath.ResolveTargetEntity(
-                        selfEntity, config.FacingTarget, config.FacingTargetLinkKey,
-                        TargetsLookup, LinkSources, Links);
-                    float3 facingTargetPos = referencePos;
-                    quaternion facingTargetRot = referenceRot;
-                    if (facingTargetEntity != Entity.Null &&
-                        LocalToWorldLookup.TryGetComponent(facingTargetEntity, out var facingLtw))
-                    {
-                        facingTargetPos = facingLtw.Position;
-                        facingTargetRot = new quaternion(math.orthonormalize(new float3x3(facingLtw.Value)));
-                    }
+
+                    // 9. Compute final facing rotation
                     TeleportMath.ComputeFacingRotation(
-                        config.FacingMode, validPosition, facingTargetPos,
-                        new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value))), facingTargetRot,
-                        out var facingRot);
+                        config.FacingMode, validPosition, facingPos,
+                        teleportRot, facingRot,
+                        out var finalFacingRot);
 
-                    var worldTransform = LocalTransform.FromPositionRotation(validPosition, facingRot);
+                    var worldTransform = LocalTransform.FromPositionRotation(validPosition, finalFacingRot);
 
+                    // 10. Handle parent transforms
                     if (ParentLookup.HasComponent(targetToTeleport))
                     {
                         var parent = ParentLookup[targetToTeleport];
@@ -263,9 +289,11 @@ namespace BovineLabs.Timeline.Physics
                         }
                     }
 
+                    // 11. Apply transform
                     if (LocalTransformLookup.HasComponent(targetToTeleport))
                         LocalTransformLookup[targetToTeleport] = worldTransform;
 
+                    // 12. Reset velocity if configured
                     if (config.ResetVelocity && PhysicsVelocityLookup.HasComponent(targetToTeleport))
                     {
                         var vel = PhysicsVelocityLookup[targetToTeleport];

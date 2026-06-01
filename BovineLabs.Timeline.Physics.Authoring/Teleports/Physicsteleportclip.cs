@@ -19,25 +19,30 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         public Target entityToTeleport = Target.Owner;
         public EntityLinkSchema entityToTeleportLink;
         
-        [Header("Destination")]
-        [Tooltip("Distance from the target entity to teleport to.")]
+        [Header("Landing Sphere")]
+        [Tooltip("Distance from the sphere origin to land at.")]
         public float radius = 3f;
 
-        [Tooltip("Whose position defines the sphere origin.")]
-        public Target teleportRelativeTo = Target.Target;
+        [Tooltip("Whose position defines the sphere origin (landing patch center).")]
+        public Target teleportRelativeTo = Target.Self;
 
         public EntityLinkSchema teleportRelativeToLink;
 
-        [Header("Spherical Patch (degrees)")]
-        [Tooltip("Center azimuth on the reference plane. 0 = reference forward, 180 = behind.")]
+        [Header("Landing Direction")]
+        [Tooltip("What azimuth 0° points toward. Default (Target) means: azCenter=0 lands in the direction of this entity.")]
+        public Target azimuthTarget = Target.Target;
+        public EntityLinkSchema azimuthTargetLink;
+
+        [Header("Azimuth / Elevation (degrees)")]
+        [Tooltip("Center azimuth. 0 = toward azimuth target, 90 = 90° clockwise from it, 180 = opposite (away from azimuth target).")]
         [Range(-180f, 180f)]
         public float azimuthCenter;
 
-        [Tooltip("Half-spread in azimuth. 180 = full ring.")]
+        [Tooltip("Half-spread in azimuth. 180 = full ring around the azimuth target.")]
         [Range(0f, 180f)]
         public float azimuthHalfRange = 180f;
 
-        [Tooltip("Center elevation. 0 = horizontal plane, 90 = directly above.")]
+        [Tooltip("Center elevation. 0 = horizontal plane, 90 = directly above, -90 = directly below.")]
         [Range(-90f, 90f)]
         public float elevationCenter;
 
@@ -45,31 +50,31 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         [Range(0f, 90f)]
         public float elevationHalfRange = 30f;
 
-        [Tooltip("How the reference forward direction is derived.")]
-        public TeleportReferenceFrame referenceFrame = TeleportReferenceFrame.TargetToSelf;
-
         [Header("Facing After Teleport")]
+        [Tooltip("How the entity orients after landing.")]
         public TeleportFacingMode facingMode = TeleportFacingMode.FaceTarget;
-        [Tooltip("Which entity FaceTarget, FaceAway, and MatchTarget use. This is separate from Teleport Relative To.")]
+
+        [Tooltip("Which entity it faces. Separate from Landing Direction so these can differ.")]
         public Target facingTarget = Target.Target;
         public EntityLinkSchema facingTargetLink;
+
         [Header("Clearance")]
         [Tooltip("Sphere radius for obstacle clearance checks at each candidate.")]
         [Min(0.1f)]
         public float clearanceRadius = 0.5f;
 
         [Tooltip("Maximum candidate positions to evaluate before giving up.")]
-        [Range(1, 16)]
-        public int maxCandidates = 4;
+        [Range(1, 64)]
+        public int maxCandidates = 8;
 
         [Tooltip("Physics layers that count as obstacles for clearance and LOS.")]
         public PhysicsCategoryTags obstacleMask;
 
         [Header("Line of Sight")]
-        [Tooltip("Require unobstructed LOS from self to target before teleporting. On failure, fires the failure condition.")]
+        [Tooltip("Require unobstructed LOS from the teleported entity to the landing sphere origin before teleporting.")]
         public bool requireLineOfSight;
 
-        [Tooltip("Also require each candidate position to have LOS back to the target.")]
+        [Tooltip("Also require each candidate position to have LOS back to the landing sphere origin.")]
         public bool requireCandidateVisibility;
 
         [Tooltip("Vertical offset applied to ray origins for LOS checks (eye height).")]
@@ -107,6 +112,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             if (teleportRelativeToLink != null && EntityLinkAuthoringUtility.TryGetKey(teleportRelativeToLink, out var k0))
                 teleportLinkKey = k0;
 
+            ushort azimuthTargetLinkKey = 0;
+            if (azimuthTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(azimuthTargetLink, out var kAz))
+                azimuthTargetLinkKey = kAz;
+
             ushort readStatKey = 0;
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
@@ -114,37 +123,48 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             ushort failureLinkKey = 0;
             if (failureRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(failureRouteLink, out var k2))
                 failureLinkKey = k2;
+
             ushort facingTargetLinkKey = 0;
             if (facingTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(facingTargetLink, out var k3))
                 facingTargetLinkKey = k3;
-context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
+
+            context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
             {
                 AuthoredData = new PhysicsTeleportData
                 {
                     EntityToTeleport = entityToTeleport,
                     EntityToTeleportLinkKey = teleportTargetLinkKey,
+
                     Radius = radius,
+
                     AzimuthCenter = math.radians(azimuthCenter),
                     AzimuthHalfRange = math.radians(azimuthHalfRange),
                     ElevationCenter = math.radians(elevationCenter),
                     ElevationHalfRange = math.radians(elevationHalfRange),
-                    ReferenceFrame = referenceFrame,
-                    FacingMode = facingMode,
+
+                    TeleportRelativeTo = teleportRelativeTo,
+                    TeleportRelativeToLinkKey = teleportLinkKey,
+
+                    AzimuthTarget = azimuthTarget,
+                    AzimuthTargetLinkKey = azimuthTargetLinkKey,
+
                     FacingTarget = facingTarget,
                     FacingTargetLinkKey = facingTargetLinkKey,
+
                     ClearanceRadius = clearanceRadius,
                     MaxCandidates = maxCandidates,
                     ObstacleMask = obstacleMask.Value,
+
                     RequireLineOfSight = requireLineOfSight,
                     RequireCandidateVisibility = requireCandidateVisibility,
                     LineOfSightOffset = lineOfSightOffset,
                     ResetVelocity = resetVelocity,
-                    TeleportRelativeTo = teleportRelativeTo,
-                    TeleportRelativeToLinkKey = teleportLinkKey,
+
                     FailureCondition = failureCondition ? failureCondition.Key : ConditionKey.Null,
                     FailureValue = failureValue,
                     FailureRouteTo = failureRouteTo,
                     FailureRouteLinkKey = failureLinkKey,
+
                     Strength = new StatStrengthConfig
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,

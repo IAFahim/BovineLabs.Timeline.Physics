@@ -67,7 +67,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<Parent> _parentLookup;
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private EntityQuery _query;
 
@@ -80,7 +80,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
             _parentLookup = state.GetComponentLookup<Parent>(true);
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
 
             _query = SystemAPI.QueryBuilder()
@@ -147,7 +147,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return fallback;
             }
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;
             
             [ReadOnly] public CollisionWorld CollisionWorld;

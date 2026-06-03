@@ -44,7 +44,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<PhysicsVelocity> _velocityLookup;
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -54,7 +54,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
             _parentLookup = state.GetComponentLookup<Parent>(true);
             _velocityLookup = state.GetUnsafeComponentLookup<PhysicsVelocity>(true);
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
         }
 
         [BurstCompile]
@@ -90,7 +90,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsVelocity> VelocityLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private static readonly Color ColorForward = Color.blue;
             private static readonly Color ColorUp      = Color.green;

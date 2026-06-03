@@ -21,7 +21,7 @@ namespace BovineLabs.Timeline.Physics
     [BurstCompile]
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
@@ -81,7 +81,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;

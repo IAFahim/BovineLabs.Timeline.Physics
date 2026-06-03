@@ -19,7 +19,7 @@ namespace BovineLabs.Timeline.Physics
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsPidApplySystem : ISystem
     {
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<Parent> _parentLookup;
@@ -40,7 +40,7 @@ namespace BovineLabs.Timeline.Physics
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
             _parentLookup = state.GetComponentLookup<Parent>(true);
@@ -127,7 +127,7 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsLinearPIDState> StateTypeHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -211,7 +211,7 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsAngularPIDState> StateTypeHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;

@@ -184,7 +184,7 @@ namespace BovineLabs.Timeline.Physics
             Entity selfEntity,
             Target targetMode,
             ushort linkKey,
-            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<Targets> targetsLookup,
             in UnsafeComponentLookup<EntityLinkSource> linkSources,
             in UnsafeBufferLookup<EntityLinkEntry> linkEntries)
         {

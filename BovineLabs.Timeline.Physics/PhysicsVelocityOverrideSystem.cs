@@ -26,7 +26,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
         private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
 
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<Parent> _parentLookup;
@@ -49,7 +49,7 @@ namespace BovineLabs.Timeline.Physics
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
             _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
 
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _localTransformLookup = state.GetComponentLookup<LocalTransform>(true);
             _parentLookup = state.GetComponentLookup<Parent>(true);
@@ -99,7 +99,7 @@ namespace BovineLabs.Timeline.Physics
             public ComponentTypeHandle<PhysicsVelocityState> VelocityStateHandle;
             public ComponentTypeHandle<PhysicsVelocity> PhysicsVelocityHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;

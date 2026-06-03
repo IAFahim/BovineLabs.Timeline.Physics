@@ -25,7 +25,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentTypeHandle<ActiveRicochet> _activeHandle;
         private ComponentTypeHandle<PhysicsRicochetState> _stateHandle;
         
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<LocalToWorld> _ltwLookup;
@@ -41,7 +41,7 @@ namespace BovineLabs.Timeline.Physics
             _activeHandle = state.GetComponentTypeHandle<ActiveRicochet>(true);
             _stateHandle = state.GetComponentTypeHandle<PhysicsRicochetState>();
 
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
@@ -97,7 +97,7 @@ namespace BovineLabs.Timeline.Physics
             [ReadOnly] public ComponentTypeHandle<ActiveRicochet> ActiveHandle;
             public ComponentTypeHandle<PhysicsRicochetState> StateHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LtwLookup;

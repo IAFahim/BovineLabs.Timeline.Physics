@@ -38,7 +38,7 @@ namespace BovineLabs.Timeline.Physics
         private ComponentLookup<PhysicsVelocity> _physicsVelocityLookup;
         
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<Parent> _parentLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
@@ -63,7 +63,7 @@ namespace BovineLabs.Timeline.Physics
             _physicsVelocityLookup = state.GetComponentLookup<PhysicsVelocity>();
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _parentLookup = state.GetComponentLookup<Parent>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
@@ -125,7 +125,7 @@ namespace BovineLabs.Timeline.Physics
             [NativeDisableParallelForRestriction]
             public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;

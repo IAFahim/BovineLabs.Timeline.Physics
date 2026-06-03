@@ -70,7 +70,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsTeleportGizmoSystem : ISystem
     {
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
 
         private EntityQuery _query;
 
@@ -79,7 +79,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             state.RequireForUpdate<DrawSystem.Singleton>();
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
@@ -127,7 +127,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color TextColor;
             public bool Verbose;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private void Execute(Entity entity, in TrackBinding binding, in PhysicsTeleportAnimated animated)
             {

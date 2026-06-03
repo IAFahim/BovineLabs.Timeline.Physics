@@ -26,7 +26,7 @@ namespace BovineLabs.Timeline.Physics
         private PhysicsBodyFacet.TypeHandle _facetHandle;
         private ComponentTypeHandle<ActiveDrag> _activeDragHandle;
 
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
@@ -45,7 +45,7 @@ namespace BovineLabs.Timeline.Physics
             _facetHandle.Create(ref state);
             _activeDragHandle = state.GetComponentTypeHandle<ActiveDrag>(true);
 
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
@@ -87,7 +87,7 @@ namespace BovineLabs.Timeline.Physics
             public PhysicsBodyFacet.TypeHandle FacetHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveDrag> ActiveDragHandle;
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
             [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
             [ReadOnly] public BufferLookup<Stat> StatLookup;

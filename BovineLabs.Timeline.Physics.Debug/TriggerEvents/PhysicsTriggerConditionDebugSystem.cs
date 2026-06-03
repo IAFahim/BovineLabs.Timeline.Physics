@@ -6,6 +6,8 @@ using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 
 using BovineLabs.Core;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using Unity.Burst;
@@ -70,7 +72,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
-                TargetsLookup   = SystemAPI.GetComponentLookup<Targets>(true),
+                TargetsLookup   = state.GetUnsafeComponentLookup<Targets>(true),
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
@@ -96,7 +98,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return fallback;
             }
 
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 

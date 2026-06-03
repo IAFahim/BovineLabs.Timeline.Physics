@@ -174,7 +174,7 @@ namespace BovineLabs.Timeline.Physics
             Target space,
             float3 vector,
             Entity entity,
-            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<Targets> targetsLookup,
             in ComponentLookup<LocalTransform> localTransformLookup,
             in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
             in ComponentLookup<Parent> parentLookup,
@@ -279,7 +279,7 @@ namespace BovineLabs.Timeline.Physics
         public static void ResolveLinearPidTarget(
             in PhysicsLinearPIDData config,
             Entity entity,
-            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<Targets> targetsLookup,
             in ComponentLookup<LocalTransform> localTransformLookup,
             in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
             in ComponentLookup<Parent> parentLookup,
@@ -323,7 +323,7 @@ namespace BovineLabs.Timeline.Physics
         public static void ResolveAngularPidTarget(
             in PhysicsAngularPIDData config,
             Entity entity,
-            in ComponentLookup<Targets> targetsLookup,
+            in UnsafeComponentLookup<Targets> targetsLookup,
             in ComponentLookup<LocalTransform> localTransformLookup,
             in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
             in ComponentLookup<Parent> parentLookup,

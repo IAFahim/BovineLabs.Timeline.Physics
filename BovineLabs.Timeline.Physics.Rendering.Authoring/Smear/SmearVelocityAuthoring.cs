@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BovineLabs.Timeline.Physics.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Smear/Smear Velocity Authoring")]
+    [AddComponentMenu("BovineLabs/Smear/Smear Velocity Authoring")]
     public class SmearVelocityAuthoring : MonoBehaviour
     {
         private class Baker : Baker<SmearVelocityAuthoring>

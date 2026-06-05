@@ -16,7 +16,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
-            // 1. Linear PID
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsLinearPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -34,7 +33,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // 2. Angular PID
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsAngularPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -52,7 +50,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // 3. Force
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsForceAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -70,7 +67,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // 4. Velocity
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsVelocityAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -88,7 +84,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // 5. Drag
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsDragAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -105,7 +100,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // 6. Ricochet
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsRicochetAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -121,7 +115,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 }
             }
 
-            // 7. Filter Override
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsFilterOverrideAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -137,7 +130,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 }
             }
 
-            // 8. Gravity Override
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsGravityOverrideAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -153,7 +145,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 }
             }
 
-            // 9. Velocity Clamp
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsVelocityClampAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -169,7 +160,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 }
             }
 
-            // 10. Kinematic Override
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsKinematicOverrideAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))

@@ -8,6 +8,7 @@ using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -71,6 +72,8 @@ namespace BovineLabs.Timeline.Physics.Debug
     {
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private UnsafeComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
+        private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
 
         private EntityQuery _query;
 
@@ -80,6 +83,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.RequireForUpdate<DrawSystem.Singleton>();
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
+            _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
+            _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
@@ -92,6 +97,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         {
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
+            _linkSourceLookup.Update(ref state);
+            _linkLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTeleportGizmoSystem>(
                   ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
@@ -110,6 +117,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 Verbose        = TeleportDebugSystem.Verbose.Data,
                 TransformLookup = _localToWorldLookup,
                 TargetsLookup  = _targetsLookup,
+                LinkSources    = _linkSourceLookup,
+                Links          = _linkLookup,
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -128,6 +137,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             public bool Verbose;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
+            [ReadOnly] public UnsafeBufferLookup<EntityLinkEntry> Links;
 
             private void Execute(Entity entity, in TrackBinding binding, in PhysicsTeleportAnimated animated)
             {
@@ -136,82 +147,36 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var d = animated.AuthoredData;
 
-                // 1. Resolve teleported entity position
-                var teleportedEntity = ResolveTarget(entity, d.EntityToTeleport, d.EntityToTeleportLinkKey);
-                float3 teleportPos = trackLtw.Position;
-                quaternion teleportRot = quaternion.identity;
-                if (teleportedEntity != Entity.Null && TransformLookup.TryGetComponent(teleportedEntity, out var teleportLtw))
-                {
-                    teleportPos = teleportLtw.Position;
-                    teleportRot = new quaternion(math.orthonormalize(new float3x3(teleportLtw.Value)));
-                }
+                var frame = TeleportResolver.Resolve(
+                    entity, d, trackLtw.Position,
+                    TransformLookup, TargetsLookup, LinkSources, Links);
 
-                // 2. Resolve landing sphere origin (TeleportRelativeTo)
-                var landingEntity = ResolveTarget(entity, d.TeleportRelativeTo, d.TeleportRelativeToLinkKey);
-                float3 landingPos = teleportPos;
-                if (landingEntity != Entity.Null && TransformLookup.TryGetComponent(landingEntity, out var landingLtw))
-                {
-                    landingPos = landingLtw.Position;
-                }
+                Drawer.Circle(frame.LandingPosition, new float3(0f, d.Radius, 0f), RadiusColor);
+                Drawer.Sphere(frame.LandingPosition, 0.15f, Segments, ReferenceColor);
 
-                // 3. Resolve azimuth reference (AzimuthTarget)
-                var azimuthEntity = ResolveTarget(entity, d.AzimuthTarget, d.AzimuthTargetLinkKey);
-                float3 azimuthPos = landingPos;
-                quaternion azimuthRot = quaternion.identity;
-                if (azimuthEntity != Entity.Null && TransformLookup.TryGetComponent(azimuthEntity, out var azimuthLtw))
-                {
-                    azimuthPos = azimuthLtw.Position;
-                    azimuthRot = new quaternion(math.orthonormalize(new float3x3(azimuthLtw.Value)));
-                }
-
-                // 4. Resolve facing target (FacingTarget)
-                var facingEntity = ResolveTarget(entity, d.FacingTarget, d.FacingTargetLinkKey);
-                float3 facingPos = landingPos;
-                quaternion facingRot = azimuthRot;
-                if (facingEntity != Entity.Null && TransformLookup.TryGetComponent(facingEntity, out var facingLtw))
-                {
-                    facingPos = facingLtw.Position;
-                    facingRot = new quaternion(math.orthonormalize(new float3x3(facingLtw.Value)));
-                }
-
-                // Compute reference rotation for candidate generation
-                TeleportMath.ResolveReferenceRotation(
-                    teleportPos, teleportRot, azimuthPos, azimuthRot,
-                    TeleportReferenceFrame.TargetToSelf,
-                    out var referenceRot);
-
-                // Draw landing sphere circle
-                Drawer.Circle(landingPos, new float3(0f, d.Radius, 0f), RadiusColor);
-                Drawer.Sphere(landingPos, 0.15f, Segments, ReferenceColor);
-
-                // Draw patch boundary
-                DrawPatchBoundary(landingPos, d.Radius, referenceRot,
+                DrawPatchBoundary(frame.LandingPosition, d.Radius, frame.ReferenceRotation,
                     d.AzimuthCenter, d.AzimuthHalfRange,
                     d.ElevationCenter, d.ElevationHalfRange);
 
-                // Draw reference rotation arrow (where azimuth 0° points)
-                Drawer.Arrow(landingPos, math.mul(referenceRot, math.forward()) * 1.5f, ReferenceColor);
+                Drawer.Arrow(frame.LandingPosition, math.mul(frame.ReferenceRotation, math.forward()) * 1.5f, ReferenceColor);
 
-                // Draw azimuth target to landing line
-                Drawer.Line(azimuthPos, landingPos, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+                Drawer.Line(frame.AzimuthPosition, frame.LandingPosition, new Color(0.5f, 0.5f, 0.5f, 0.3f));
 
-                // Draw LOS check
                 if (d.RequireLineOfSight)
                 {
-                    var losStart = teleportPos + new float3(0f, d.LineOfSightOffset, 0f);
-                    var losEnd = landingPos + new float3(0f, d.LineOfSightOffset, 0f);
+                    var losStart = frame.TeleportedPosition + new float3(0f, d.LineOfSightOffset, 0f);
+                    var losEnd = frame.LandingPosition + new float3(0f, d.LineOfSightOffset, 0f);
                     Drawer.Line(losStart, losEnd, LosColor);
                     if (Verbose) Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.25f, 0f), "LOS Check", LosColor, 8f);
                 }
 
-                // Draw facing arrow
-                Drawer.Arrow(landingPos + new float3(0f, 0.2f, 0f), math.mul(facingRot, math.forward()) * 1.25f, new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
+                Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f), math.mul(frame.FacingRotation, math.forward()) * 1.25f, new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
 
                 if (Verbose)
                 {
-                    Drawer.Text32(landingPos + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor, 10f);
-                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 1f, 0f), $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor, 8f);
-                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 0.6f, 0f), $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°", TextColor, 8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor, 10f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 1f, 0f), $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor, 8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.6f, 0f), $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°", TextColor, 8f);
 
                     var facingLabel = d.FacingMode switch
                     {
@@ -221,7 +186,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                         TeleportFacingMode.MatchTarget => "Match Target",
                         _ => "?"
                     };
-                    Drawer.Text32(landingPos + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
                 }
             }
 
@@ -274,18 +239,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                     math.sin(azimuth) * cosEl,
                     math.sin(elevation),
                     math.cos(azimuth) * cosEl);
-            }
-
-            private Entity ResolveTarget(Entity self, Target target, ushort linkKey)
-            {
-                if (target == Target.None)
-                    return self;
-
-                if (!TargetsLookup.TryGetComponent(self, out var targets))
-                    return self;
-
-                var baseTarget = targets.Get(target, self);
-                return baseTarget != Entity.Null ? baseTarget : self;
             }
         }
     }

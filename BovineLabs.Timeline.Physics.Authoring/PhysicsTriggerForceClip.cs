@@ -64,8 +64,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var bakedState = triggerState;
             if (mode == PhysicsForceMode.Continuous && bakedState != StatefulEventState.Stay)
             {
-                // A continuous force on Enter/Exit only applies for one frame (force * DeltaTime).
-                // To actually be continuous, it MUST evaluate every frame during Stay.
                 bakedState = StatefulEventState.Stay;
             }
 
@@ -90,7 +88,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 ApplyToLinkKey = applyToKey
             });
 
-            // Bake the filter data
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData

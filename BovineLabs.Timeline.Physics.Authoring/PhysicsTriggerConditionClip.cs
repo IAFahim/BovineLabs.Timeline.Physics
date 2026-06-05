@@ -1,4 +1,4 @@
-using System; // Required for Array.Empty
+using System;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
@@ -45,7 +45,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 RouteLinkKey = linkKey
             });
 
-            // Bake the filter data
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData

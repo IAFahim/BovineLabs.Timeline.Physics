@@ -67,7 +67,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 TargetLinkKey = targetKey
             });
 
-            // Bake the filter data
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData

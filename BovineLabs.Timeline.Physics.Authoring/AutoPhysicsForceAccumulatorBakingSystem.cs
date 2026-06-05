@@ -6,10 +6,6 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    /// <summary>
-    /// Add this to a GameObject to prevent the PhysicsForceAccumulatorBakingSystem from automatically
-    /// adding PendingForce and PendingVelocity buffers to its physics body.
-    /// </summary>
     [DisallowMultipleComponent]
     [AddComponentMenu("BovineLabs/Physics/Physics Force Accumulator Opt-Out")]
     public class PhysicsForceAccumulatorOptOutAuthoring : MonoBehaviour
@@ -34,8 +30,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            // Automatically add PendingForce and PendingVelocity to any dynamic physics body
-            // that doesn't explicitly opt out, and hasn't already received them.
             foreach (var (_, entity) in SystemAPI.Query<RefRO<PhysicsVelocity>>()
                          .WithNone<PhysicsForceAccumulatorOptOut, PendingForce>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)

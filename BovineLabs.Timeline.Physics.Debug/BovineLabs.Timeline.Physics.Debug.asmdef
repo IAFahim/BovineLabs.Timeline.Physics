@@ -16,7 +16,8 @@
     "Unity.Physics",
     "Unity.Transforms",
     "BovineLabs.Reaction.Data",
-    "BovineLabs.Essence.Data"
+    "BovineLabs.Essence.Data",
+    "BovineLabs.Timeline.EntityLinks.Data"
   ],
   "includePlatforms": [
     "Editor"

@@ -3,6 +3,8 @@ using BovineLabs.Timeline.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Essence.Data;
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Data.Mixers;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;

@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || BL_DEBUG
 using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
@@ -7,7 +6,7 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
-using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -16,6 +15,7 @@ using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 
+#if UNITY_EDITOR || BL_DEBUG
 namespace BovineLabs.Timeline.Physics.Debug
 {
     [Configurable]
@@ -30,7 +30,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
+            public struct Enabled
+            {
+            }
         }
     }
 
@@ -62,7 +64,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicsDebugSystem>(
-                  ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
@@ -117,11 +119,13 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             private void Execute(Entity entity, in ActiveForce active, in PhysicsForceState state)
             {
-                var pos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                var pos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup,
+                    in ParentLookup);
                 if (math.lengthsq(pos) < 1e-6f) return;
 
                 PhysicsMath.ResolveSpaceVector(active.Config.Space, active.Config.Linear, entity,
-                    in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var forceVec);
+                    in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup,
+                    out var forceVec);
 
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
@@ -166,11 +170,13 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             private void Execute(Entity entity, in ActiveVelocity active, in PhysicsVelocityState state)
             {
-                var pos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                var pos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup,
+                    in ParentLookup);
                 if (math.lengthsq(pos) < 1e-6f) return;
 
                 PhysicsMath.ResolveSpaceVector(active.Config.Space, active.Config.Linear, entity,
-                    in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var targetVel);
+                    in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup,
+                    out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
                 Drawer.Arrow(pos, targetVel, ColorVel);

@@ -1,12 +1,10 @@
 #if UNITY_EDITOR || BL_DEBUG
-using System.Diagnostics.CodeAnalysis;
+
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
-
-using BovineLabs.Core;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

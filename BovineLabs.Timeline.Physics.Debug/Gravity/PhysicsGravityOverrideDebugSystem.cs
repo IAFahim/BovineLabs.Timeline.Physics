@@ -1,5 +1,4 @@
 #if UNITY_EDITOR || BL_DEBUG
-using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Quill;

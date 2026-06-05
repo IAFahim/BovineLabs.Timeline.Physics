@@ -1,5 +1,5 @@
+using System.Runtime.CompilerServices;
 using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Quill;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -9,7 +9,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 {
     public static class TriggerGizmoUtility
     {
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void DrawActuallyFired(
             Entity triggerEntity,
             StatefulEventState configEventState,

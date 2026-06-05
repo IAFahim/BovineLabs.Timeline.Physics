@@ -1,20 +1,18 @@
 #if UNITY_EDITOR || BL_DEBUG
-using System.Diagnostics.CodeAnalysis;
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Quill;
-using BovineLabs.Timeline.Core.Debug;
-using BovineLabs.Timeline.Data;
 
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core.Debug;
+using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -118,12 +116,12 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 // Draw chevron/marker for State
                 var markerSize = 0.5f;
-                if (config.EventState == BovineLabs.Core.PhysicsStates.StatefulEventState.Enter)
+                if (config.EventState == StatefulEventState.Enter)
                 {
                     Drawer.Line(pos + new float3(-markerSize, 0, markerSize), pos, RouteColor);
                     Drawer.Line(pos + new float3(markerSize, 0, markerSize), pos, RouteColor);
                 }
-                else if (config.EventState == BovineLabs.Core.PhysicsStates.StatefulEventState.Exit)
+                else if (config.EventState == StatefulEventState.Exit)
                 {
                     Drawer.Line(pos, pos + new float3(-markerSize, 0, markerSize), RouteColor);
                     Drawer.Line(pos, pos + new float3(markerSize, 0, markerSize), RouteColor);

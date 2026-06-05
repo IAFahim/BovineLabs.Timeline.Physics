@@ -1,10 +1,10 @@
-using BovineLabs.Timeline.Authoring;
-using Unity.Entities;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamp
 {
+    using BovineLabs.Timeline.Authoring;
+    using Unity.Entities;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsVelocityClampClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Maximum linear speed. Set to negative to ignore.")]
@@ -26,7 +26,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamp
                     MaxAngularSpeed = maxAngularSpeed
                 }
             });
-            
+
             base.Bake(clipEntity, context);
         }
     }

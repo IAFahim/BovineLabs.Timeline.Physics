@@ -7,7 +7,6 @@ using BovineLabs.Core.Iterators;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
-using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 using Unity.Burst;
 using Unity.Collections;
@@ -152,7 +151,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             
             [ReadOnly] public CollisionWorld CollisionWorld;
 
-            public unsafe void Execute(Entity entity, in TrackBinding binding, in PhysicsRicochetAnimated animated)
+            public void Execute(Entity entity, in TrackBinding binding, in PhysicsRicochetAnimated animated)
             {
                 var d = animated.AuthoredData;
                 var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;

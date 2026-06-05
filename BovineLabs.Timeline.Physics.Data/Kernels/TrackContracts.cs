@@ -1,0 +1,14 @@
+namespace BovineLabs.Timeline.Physics.Data.Kernel
+{
+    using Unity.Entities;
+    
+    public interface IActive<TData> : IComponentData, IEnableableComponent where TData : unmanaged
+    {
+        TData Config { get; set; }
+    }
+
+    public interface IPreparable
+    {
+        void ResetToAuthored();
+    }
+}

@@ -1,14 +1,13 @@
 #if UNITY_EDITOR || BL_DEBUG
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Quill;
 using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 

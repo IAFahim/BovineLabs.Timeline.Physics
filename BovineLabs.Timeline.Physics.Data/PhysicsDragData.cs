@@ -1,10 +1,12 @@
-using BovineLabs.Timeline.Data;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Properties;
+using BovineLabs.Timeline.Physics.Data.Kernel;
 
 namespace BovineLabs.Timeline.Physics
 {
+    using BovineLabs.Timeline.Data;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Properties;
+
     public struct PhysicsDragData
     {
         public float Linear;
@@ -12,15 +14,17 @@ namespace BovineLabs.Timeline.Physics
         public StatStrengthConfig Strength;
     }
 
-    public struct PhysicsDragAnimated : IAnimatedComponent<PhysicsDragData>
+    public struct PhysicsDragAnimated : IAnimatedComponent<PhysicsDragData>, IPreparable
     {
         public PhysicsDragData AuthoredData;
         [CreateProperty] public PhysicsDragData Value { get; set; }
+
+        public void ResetToAuthored() => Value = AuthoredData;
     }
 
-    public struct ActiveDrag : IComponentData, IEnableableComponent
+    public struct ActiveDrag : IActive<PhysicsDragData>
     {
-        public PhysicsDragData Config;
+        public PhysicsDragData Config { get; set; }
     }
 
     public readonly struct PhysicsDragMixer : IMixer<PhysicsDragData>

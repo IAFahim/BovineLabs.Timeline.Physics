@@ -1,11 +1,12 @@
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Data;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Properties;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Data
 {
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Data;
+    using Data.Kernel;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Properties;
+
     public enum PhysicsVelocityMode : byte
     {
         /// <summary>
@@ -43,14 +44,16 @@ namespace BovineLabs.Timeline.Physics
         public bool Fired;
     }
 
-    public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>
+    public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>, IPreparable
     {
         public PhysicsVelocityData AuthoredData;
         [CreateProperty] public PhysicsVelocityData Value { get; set; }
+
+        public void ResetToAuthored() => Value = AuthoredData;
     }
 
-    public struct ActiveVelocity : IComponentData, IEnableableComponent
+    public struct ActiveVelocity : IActive<PhysicsVelocityData>
     {
-        public PhysicsVelocityData Config;
+        public PhysicsVelocityData Config { get; set; }
     }
 }

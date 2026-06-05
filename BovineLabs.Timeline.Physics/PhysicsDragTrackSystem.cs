@@ -1,9 +1,6 @@
-using BovineLabs.Core.Jobs;
-using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Kernel;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics
@@ -13,104 +10,17 @@ namespace BovineLabs.Timeline.Physics
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsDragTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsDragData, PhysicsDragAnimated> _blendImpl;
-        private ComponentLookup<ActiveDrag> _activeLookup;
-
-        private EntityQuery _prepareQuery;
-        private EntityQuery _disableStaleQuery;
-
-        [BurstCompile]
-        public void OnCreate(ref SystemState state)
-        {
-            _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveDrag>(false);
-
-            _prepareQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsDragAnimated>()
-                .WithAll<ClipActive>()
-                .Build();
-
-            _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsDragAnimated>()
-                .WithNone<TimelineActive>()
-                .Build();
-        }
-
-        [BurstCompile]
-        public void OnDestroy(ref SystemState state)
-        {
-            _blendImpl.OnDestroy(ref state);
-        }
+        private TrackBlendDriver<PhysicsDragData, PhysicsDragAnimated, ActiveDrag, PhysicsDragMixer> _driver;
+        [BurstCompile] public void OnCreate(ref SystemState state) => _driver.OnCreate(ref state);
+        [BurstCompile] public void OnDestroy(ref SystemState state) => _driver.OnDestroy(ref state);
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
-
-            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
-            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsDragAnimated>();
-            state.Dependency = new PrepareJob
-            {
-                AnimatedTypeHandle = animatedType
-            }.ScheduleParallel(_prepareQuery, state.Dependency);
-
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new DisableStaleTrackJob<ActiveDrag>
-            {
-                TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activeLookup
-            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
-
-            state.Dependency = new WriteActiveJob
-            {
-                BlendData = blendData,
-                ActiveLookup = _activeLookup,
-                ECB = ecbWrite
-            }.ScheduleParallel(blendData, 64, state.Dependency);
-        }
-
-        [BurstCompile]
-        private struct PrepareJob : IJobChunk
-        {
-            public ComponentTypeHandle<PhysicsDragAnimated> AnimatedTypeHandle;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var animated = animateds[i];
-                    animated.Value = animated.AuthoredData;
-                    animateds[i] = animated;
-                }
-            }
-        }
-
-
-        [BurstCompile]
-        private struct WriteActiveJob : IJobParallelHashMapDefer
-        {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsDragData>>.ReadOnly BlendData;
-            [ReadOnly] public ComponentLookup<ActiveDrag> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void ExecuteNext(int entryIndex, int jobIndex)
-            {
-                this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
-
-                ECB.SetComponentEnabled<ActiveDrag>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveDrag
-                {
-                    Config = JobHelpers.Blend<PhysicsDragData, PhysicsDragMixer>(ref mixData, default)
-                });
-            }
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged)
+                .AsParallelWriter();
+            _driver.OnUpdate(ref state, ecb);
         }
     }
 }

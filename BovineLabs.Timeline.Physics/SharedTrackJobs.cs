@@ -1,11 +1,13 @@
-using BovineLabs.Timeline.Data;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-
 namespace BovineLabs.Timeline.Physics
 {
+    using BovineLabs.Core.Jobs;
+    using BovineLabs.Timeline.Data;
+    using Data.Kernel;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+
     [BurstCompile]
     public struct ResetStateTrackJob<TState, TActive> : IJobChunk
         where TState : unmanaged, IComponentData
@@ -16,7 +18,8 @@ namespace BovineLabs.Timeline.Physics
         [ReadOnly] public ComponentLookup<TActive> ActiveLookup;
         public TState ResetValue;
 
-        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            in v128 chunkEnabledMask)
         {
             var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
             var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -25,9 +28,6 @@ namespace BovineLabs.Timeline.Physics
                 var target = bindings[i].Value;
                 if (target == Entity.Null || !StateLookup.HasComponent(target)) continue;
 
-                // Only reset the state if there isn't already an active clip running on this target.
-                // If TActive is enabled, another track is currently driving this target entity.
-                // This prevents overlapping clips from wiping out each other's state (e.g. PID integral).
                 if (!ActiveLookup.HasComponent(target) || !ActiveLookup.IsComponentEnabled(target))
                 {
                     StateLookup[target] = ResetValue;
@@ -43,7 +43,8 @@ namespace BovineLabs.Timeline.Physics
         [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
         [NativeDisableParallelForRestriction] public ComponentLookup<TActive> ActiveLookup;
 
-        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            in v128 chunkEnabledMask)
         {
             var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
             var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
@@ -54,6 +55,50 @@ namespace BovineLabs.Timeline.Physics
                 if (ActiveLookup.HasComponent(target))
                     ActiveLookup.SetComponentEnabled(target, false);
             }
+        }
+    }
+
+    [BurstCompile]
+    public struct PrepareAnimatedJob<TData, TAnimated> : IJobChunk
+        where TData : unmanaged
+        where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
+    {
+        public ComponentTypeHandle<TAnimated> AnimatedHandle;
+
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            in v128 chunkEnabledMask)
+        {
+            var animateds = chunk.GetNativeArray(ref AnimatedHandle);
+            var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+            while (enumerator.NextEntityIndex(out var i))
+            {
+                var animated = animateds[i];
+                animated.ResetToAuthored();
+                animateds[i] = animated;
+            }
+        }
+    }
+
+    [BurstCompile]
+    public struct WriteActiveJob<TData, TActive, TMixer> : IJobParallelHashMapDefer
+        where TData : unmanaged
+        where TActive : unmanaged, IActive<TData>
+        where TMixer : unmanaged, IMixer<TData>
+    {
+        [ReadOnly] public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly BlendData;
+        [ReadOnly] public ComponentLookup<TActive> ActiveLookup;
+        public EntityCommandBuffer.ParallelWriter ECB;
+
+        public void ExecuteNext(int entryIndex, int jobIndex)
+        {
+            this.Read(BlendData, entryIndex, out var entity, out var mixData);
+            if (!ActiveLookup.HasComponent(entity)) return;
+
+            ECB.SetComponentEnabled<TActive>(entryIndex, entity, true);
+
+            var active = default(TActive);
+            active.Config = JobHelpers.Blend<TData, TMixer>(ref mixData, default);
+            ECB.SetComponent(entryIndex, entity, active);
         }
     }
 }

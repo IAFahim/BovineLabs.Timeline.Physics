@@ -1,17 +1,15 @@
 #if UNITY_EDITOR || BL_DEBUG
-using System.Diagnostics.CodeAnalysis;
+
+using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
-
-using BovineLabs.Core;
-using BovineLabs.Core.PhysicsStates;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -107,7 +105,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 Drawer.Sphere(origin, 0.1f, 8, ForceColor);
 
-                Unity.Collections.FixedString32Bytes label = new Unity.Collections.FixedString32Bytes();
+                FixedString32Bytes label = new FixedString32Bytes();
                 if (config.ForceType == PhysicsTriggerForceType.Directional) { label.Append('D'); label.Append('i'); label.Append('r'); label.Append(' '); }
                 else if (config.ForceType == PhysicsTriggerForceType.Radial) { label.Append('R'); label.Append('a'); label.Append('d'); label.Append(' '); }
                 else { label.Append('V'); label.Append('o'); label.Append('r'); label.Append(' '); }

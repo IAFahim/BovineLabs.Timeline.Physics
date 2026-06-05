@@ -5,6 +5,7 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Data;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;

@@ -1,6 +1,6 @@
 using Unity.Mathematics;
 
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Data.Mixers
 {
     public readonly struct PhysicsVelocityMixer : IMixer<PhysicsVelocityData>
     {

@@ -1,9 +1,8 @@
-using BovineLabs.Testing;
 using BovineLabs.Essence.Data;
-using NUnit.Framework;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Testing;
+using NUnit.Framework;
 using Unity.Core;
-using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
@@ -32,7 +31,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<Drag.PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -54,7 +53,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.0f));
-            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<Drag.PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -83,7 +82,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<Drag.PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

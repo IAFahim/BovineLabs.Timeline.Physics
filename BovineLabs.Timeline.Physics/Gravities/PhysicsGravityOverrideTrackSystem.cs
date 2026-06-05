@@ -1,4 +1,4 @@
-namespace BovineLabs.Timeline.Physics.Teleports
+namespace BovineLabs.Timeline.Physics.Gravities
 {
 
     using BovineLabs.Core.Jobs;
@@ -13,11 +13,11 @@ namespace BovineLabs.Timeline.Physics.Teleports
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
-    public partial struct PhysicsTeleportTrackSystem : ISystem
+    public partial struct PhysicsGravityOverrideTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsTeleportData, PhysicsTeleportAnimated> _blendImpl;
-        private ComponentLookup<ActiveTeleport> _activeLookup;
-        private ComponentLookup<PhysicsTeleportState> _stateLookup;
+        private TrackBlendImpl<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated> _blendImpl;
+        private ComponentLookup<ActiveGravityOverride> _activeLookup;
+        private ComponentLookup<PhysicsGravityOverrideState> _stateLookup;
 
         private EntityQuery _resetQuery;
         private EntityQuery _prepareQuery;
@@ -27,21 +27,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveTeleport>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsTeleportState>(false);
+            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
+                .WithAll<TrackBinding, PhysicsGravityOverrideAnimated, ClipActive>()
                 .WithNone<ClipActivePrevious>()
                 .Build();
 
             _prepareQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsTeleportAnimated>()
+                .WithAllRW<PhysicsGravityOverrideAnimated>()
                 .WithAll<ClipActive>()
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsTeleportAnimated>()
+                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsGravityOverrideAnimated>()
                 .WithNone<TimelineActive>()
                 .Build();
         }
@@ -63,21 +63,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsTeleportState, ActiveTeleport>
+            state.Dependency = new ResetStateTrackJob<PhysicsGravityOverrideState, ActiveGravityOverride>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
                 ActiveLookup = _activeLookup,
-                ResetValue = new PhysicsTeleportState { Fired = false }
+                ResetValue = new PhysicsGravityOverrideState { Fired = false, AddedComponent = false, OriginalGravityScale = 1f }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
-            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsTeleportAnimated>();
+            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsGravityOverrideAnimated>();
             state.Dependency = new PrepareJob
             {
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveTeleport>
+            state.Dependency = new DisableStaleTrackJob<ActiveGravityOverride>
             {
                 TrackBindingTypeHandle = bindingType,
                 ActiveLookup = _activeLookup
@@ -96,7 +96,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
         [BurstCompile]
         private struct PrepareJob : IJobChunk
         {
-            public ComponentTypeHandle<PhysicsTeleportAnimated> AnimatedTypeHandle;
+            public ComponentTypeHandle<PhysicsGravityOverrideAnimated> AnimatedTypeHandle;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -115,8 +115,8 @@ namespace BovineLabs.Timeline.Physics.Teleports
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsTeleportData>>.ReadOnly BlendData;
-            [ReadOnly] public ComponentLookup<ActiveTeleport> ActiveLookup;
+            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsGravityOverrideData>>.ReadOnly BlendData;
+            [ReadOnly] public ComponentLookup<ActiveGravityOverride> ActiveLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
@@ -124,10 +124,10 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
                 if (!ActiveLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveTeleport>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveTeleport
+                ECB.SetComponentEnabled<ActiveGravityOverride>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveGravityOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsTeleportData, PhysicsTeleportMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsGravityOverrideData, PhysicsGravityOverrideMixer>(ref mixData, default)
                 });
             }
         }

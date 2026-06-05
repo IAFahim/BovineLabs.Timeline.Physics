@@ -1,10 +1,11 @@
-using BovineLabs.Core.Iterators;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Teleports
 {
+
+    using BovineLabs.Core.Iterators;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Transforms;
+
     public static class TeleportPlacement
     {
         public static LocalTransform ComputeLocalTransform(

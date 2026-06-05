@@ -1,25 +1,27 @@
-using BovineLabs.Core;
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Core.EntityCommands;
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
-using BovineLabs.Core.Jobs;
-using BovineLabs.Core.ObjectManagement;
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Core.Utility;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.EntityLinks.Data;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Transforms;
-using EntityCache = BovineLabs.Core.Extensions.EntityCache;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
+
+    using BovineLabs.Core;
+    using BovineLabs.Core.ConfigVars;
+    using BovineLabs.Core.EntityCommands;
+    using BovineLabs.Core.Extensions;
+    using BovineLabs.Core.Iterators;
+    using BovineLabs.Core.Jobs;
+    using BovineLabs.Core.ObjectManagement;
+    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Core.Utility;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Data;
+    using BovineLabs.Timeline.EntityLinks.Data;
+    using Infrastructure;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Transforms;
+    using EntityCache = BovineLabs.Core.Extensions.EntityCache;
+
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]

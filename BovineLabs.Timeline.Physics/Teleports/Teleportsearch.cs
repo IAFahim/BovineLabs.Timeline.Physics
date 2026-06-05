@@ -1,8 +1,9 @@
-using Unity.Mathematics;
-using Unity.Physics;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Teleports
 {
+
+    using Unity.Mathematics;
+    using Unity.Physics;
+
     public static class TeleportSearch
     {
         private const int MinCandidates = 1;

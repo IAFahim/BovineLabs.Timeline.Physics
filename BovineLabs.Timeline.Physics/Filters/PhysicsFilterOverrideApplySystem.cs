@@ -1,12 +1,14 @@
-using BovineLabs.Core.ConfigVars;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Physics;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Filters
 {
+
+    using BovineLabs.Core.ConfigVars;
+    using Infrastructure;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Physics;
+
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]

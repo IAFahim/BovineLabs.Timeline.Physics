@@ -9,6 +9,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Teleports;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

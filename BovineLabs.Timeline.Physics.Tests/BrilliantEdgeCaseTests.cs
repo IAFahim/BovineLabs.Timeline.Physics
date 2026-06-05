@@ -1,17 +1,20 @@
+using System.Diagnostics;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Essence.Data;
-using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Data.Mixers;
+using BovineLabs.Timeline.Physics.TriggerEvents;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;
-using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
+using Debug = UnityEngine.Debug;
+using Entity = Unity.Entities.Entity;
+using WorldExtensions = Unity.Entities.WorldExtensions;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
@@ -117,11 +120,11 @@ namespace BovineLabs.Timeline.Physics.Tests
                 {
                     Mode = PhysicsVelocityMode.SetContinuous,
                     Linear = new float3(0, 5, 0),
-                    Strength = new StatStrengthConfig { Stat = (StatKey)999, ReadFrom = Target.Self }
+                    Strength = new StatStrengthConfig { Stat = 999, ReadFrom = Target.Self }
                 }
             });
 
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -149,7 +152,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 }
             });
 
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -180,7 +183,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0f));
-            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+            var sys = World.GetOrCreateSystem<Kinematic.PhysicsKinematicsApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -211,7 +214,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 }
             });
 
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -269,7 +272,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             var accumulatorSys = World.GetOrCreateSystem<PhysicsModifierForceAccumulatorSystem>();
-            var overrideSys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var overrideSys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
 
             accumulatorSys.Update(WorldUnmanaged);
             overrideSys.Update(WorldUnmanaged);
@@ -314,7 +317,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 }
             });
 
-            var producerApply = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+            var producerApply = World.GetOrCreateSystem<Kinematic.PhysicsKinematicsApplySystem>();
             var producerAccumulator = World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>();
             
             World.SetTime(new TimeData(0.1, 0.1f));
@@ -340,7 +343,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var forces = Manager.GetBuffer<PendingForce>(target);
             forces.Add(new PendingForce { Linear = new float3(0, 0, 7) });
 
-            var overrideSys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var overrideSys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             var modifierAccumulator = World.GetOrCreateSystem<PhysicsModifierForceAccumulatorSystem>();
 
             overrideSys.Update(WorldUnmanaged);
@@ -384,12 +387,12 @@ namespace BovineLabs.Timeline.Physics.Tests
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
             sw.Stop();
 
-            UnityEngine.Debug.Log($"Accumulator System took {sw.Elapsed.TotalMilliseconds:F4}ms for 10,000 entities");
+            Debug.Log($"Accumulator System took {sw.Elapsed.TotalMilliseconds:F4}ms for 10,000 entities");
             Assert.Less(sw.Elapsed.TotalMilliseconds, 50.0, "System should be fast enough");
 
             entities.Dispose();
@@ -417,7 +420,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 1.0f));
-            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<Drag.PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -460,7 +463,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddBuffer<PendingForce>(triggerEntity);
 
-            var sys = World.GetOrCreateSystem<PhysicsTriggerForceSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<PhysicsTriggerForceSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

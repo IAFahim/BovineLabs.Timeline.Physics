@@ -1,4 +1,4 @@
-namespace BovineLabs.Timeline.Physics.Teleports
+namespace BovineLabs.Timeline.Physics.PIDs
 {
 
     using BovineLabs.Core.Jobs;
@@ -11,13 +11,14 @@ namespace BovineLabs.Timeline.Physics.Teleports
     using Unity.Entities;
 
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
+    [UpdateAfter(typeof(PhysicsLinearPIDTrackSystem))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
-    public partial struct PhysicsTeleportTrackSystem : ISystem
+    public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsTeleportData, PhysicsTeleportAnimated> _blendImpl;
-        private ComponentLookup<ActiveTeleport> _activeLookup;
-        private ComponentLookup<PhysicsTeleportState> _stateLookup;
+        private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> _blendImpl;
+        private ComponentLookup<ActiveAngularPid> _activePidLookup;
+        private ComponentLookup<PhysicsAngularPIDState> _stateLookup;
 
         private EntityQuery _resetQuery;
         private EntityQuery _prepareQuery;
@@ -27,21 +28,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveTeleport>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsTeleportState>(false);
+            _activePidLookup = state.GetComponentLookup<ActiveAngularPid>(false);
+            _stateLookup = state.GetComponentLookup<PhysicsAngularPIDState>(false);
 
             _resetQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
+                .WithAll<TrackBinding, PhysicsAngularPIDAnimated, ClipActive>()
                 .WithNone<ClipActivePrevious>()
                 .Build();
 
             _prepareQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsTeleportAnimated>()
+                .WithAllRW<PhysicsAngularPIDAnimated>()
                 .WithAll<ClipActive>()
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsTeleportAnimated>()
+                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsAngularPIDAnimated>()
                 .WithNone<TimelineActive>()
                 .Build();
         }
@@ -55,32 +56,31 @@ namespace BovineLabs.Timeline.Physics.Teleports
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
+            _activePidLookup.Update(ref state);
             _stateLookup.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-
-            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
+            var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsTeleportState, ActiveTeleport>
+            state.Dependency = new ResetStateTrackJob<PhysicsAngularPIDState, ActiveAngularPid>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ActiveLookup = _activeLookup,
-                ResetValue = new PhysicsTeleportState { Fired = false }
+                ActiveLookup = _activePidLookup,
+                ResetValue = default
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
-            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsTeleportAnimated>();
+            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsAngularPIDAnimated>();
             state.Dependency = new PrepareJob
             {
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveTeleport>
+            state.Dependency = new DisableStaleTrackJob<ActiveAngularPid>
             {
                 TrackBindingTypeHandle = bindingType,
-                ActiveLookup = _activeLookup
+                ActiveLookup = _activePidLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
 
             var blendData = _blendImpl.Update(ref state);
@@ -88,15 +88,15 @@ namespace BovineLabs.Timeline.Physics.Teleports
             state.Dependency = new WriteActiveJob
             {
                 BlendData = blendData,
-                ActiveLookup = _activeLookup,
-                ECB = ecbWrite
+                ActivePidLookup = _activePidLookup,
+                ECB = ecb
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
 
         [BurstCompile]
         private struct PrepareJob : IJobChunk
         {
-            public ComponentTypeHandle<PhysicsTeleportAnimated> AnimatedTypeHandle;
+            public ComponentTypeHandle<PhysicsAngularPIDAnimated> AnimatedTypeHandle;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -115,19 +115,19 @@ namespace BovineLabs.Timeline.Physics.Teleports
         [BurstCompile]
         private struct WriteActiveJob : IJobParallelHashMapDefer
         {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsTeleportData>>.ReadOnly BlendData;
-            [ReadOnly] public ComponentLookup<ActiveTeleport> ActiveLookup;
+            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsAngularPIDData>>.ReadOnly BlendData;
+            [ReadOnly] public ComponentLookup<ActiveAngularPid> ActivePidLookup;
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
+                if (!ActivePidLookup.HasComponent(entity)) return;
 
-                ECB.SetComponentEnabled<ActiveTeleport>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveTeleport
+                ECB.SetComponentEnabled<ActiveAngularPid>(entryIndex, entity, true);
+                ECB.SetComponent(entryIndex, entity, new ActiveAngularPid
                 {
-                    Config = JobHelpers.Blend<PhysicsTeleportData, PhysicsTeleportMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsAngularPIDData, PhysicsAngularPIDMixer>(ref mixData, default)
                 });
             }
         }

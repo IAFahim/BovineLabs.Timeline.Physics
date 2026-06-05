@@ -1,13 +1,12 @@
-using BovineLabs.Testing;
-using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Core.EntityCommands;
 using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Data.Builders;
-using BovineLabs.Core.EntityCommands;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Testing;
 using BovineLabs.Timeline.Physics.Data;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Core;
-using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
@@ -39,7 +38,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -74,7 +73,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
 
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
@@ -121,7 +120,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -139,7 +138,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             var statModifier = new StatModifier
             {
-                Type = (StatKey)12345,
+                Type = 12345,
                 ModifyType = StatModifyType.Added,
             };
             statModifier.Value = 250;
@@ -164,12 +163,12 @@ namespace BovineLabs.Timeline.Physics.Tests
                     Linear = new float3(10, 0, 0),
                     Angular = float3.zero,
                     Space = Target.None,
-                    Strength = new StatStrengthConfig { Stat = (StatKey)12345, ReadFrom = Target.Self }
+                    Strength = new StatStrengthConfig { Stat = 12345, ReadFrom = Target.Self }
                 }
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<PhysicsVelocityOverrideSystem>();
+            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

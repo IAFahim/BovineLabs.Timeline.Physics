@@ -7,6 +7,7 @@ using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core.Debug;
 using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;

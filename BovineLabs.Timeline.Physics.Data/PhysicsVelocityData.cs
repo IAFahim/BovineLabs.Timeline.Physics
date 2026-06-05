@@ -1,8 +1,9 @@
+using BovineLabs.Timeline.Physics.Data.Kernels;
+
 namespace BovineLabs.Timeline.Physics.Data
 {
     using BovineLabs.Reaction.Data.Core;
     using BovineLabs.Timeline.Data;
-    using Data.Kernel;
     using Unity.Entities;
     using Unity.Mathematics;
     using Unity.Properties;

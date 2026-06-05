@@ -1,4 +1,4 @@
-namespace BovineLabs.Timeline.Physics.Data.Kernel
+namespace BovineLabs.Timeline.Physics.Data.Kernels
 {
     public readonly struct DiscreteMixer<T> : IMixer<T>
         where T : unmanaged

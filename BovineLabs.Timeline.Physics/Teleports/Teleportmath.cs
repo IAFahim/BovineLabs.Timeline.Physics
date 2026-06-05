@@ -1,13 +1,14 @@
-using BovineLabs.Core.Iterators;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.EntityLinks.Data;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Teleports
 {
+
+    using BovineLabs.Core.Iterators;
+    using BovineLabs.Reaction.Data.Core;
+    using EntityLinks;
+    using BovineLabs.Timeline.EntityLinks.Data;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Physics;
+
     public static class TeleportMath
     {
         private const float GoldenAngle = 2.39996322972865332f;

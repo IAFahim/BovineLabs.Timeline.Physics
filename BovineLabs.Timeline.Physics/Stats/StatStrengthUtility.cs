@@ -1,13 +1,14 @@
-using System.Runtime.CompilerServices;
-using BovineLabs.Core.Iterators;
-using BovineLabs.Essence.Data;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.EntityLinks.Data;
-using Unity.Entities;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Stats
 {
+
+    using System.Runtime.CompilerServices;
+    using BovineLabs.Core.Iterators;
+    using BovineLabs.Essence.Data;
+    using BovineLabs.Reaction.Data.Core;
+    using EntityLinks;
+    using BovineLabs.Timeline.EntityLinks.Data;
+    using Unity.Entities;
+
     public static class StatStrengthUtility
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

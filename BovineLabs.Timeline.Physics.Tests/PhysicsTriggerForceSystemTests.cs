@@ -6,6 +6,7 @@ using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.TriggerEvents;
 using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;

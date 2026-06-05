@@ -1,21 +1,25 @@
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
-using BovineLabs.Essence.Data;
-using BovineLabs.Reaction.Conditions;
-using BovineLabs.Reaction.Data.Conditions;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.EntityLinks.Data;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Transforms;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Teleports
 {
+
+    using BovineLabs.Core.ConfigVars;
+    using BovineLabs.Core.Extensions;
+    using BovineLabs.Core.Iterators;
+    using BovineLabs.Essence.Data;
+    using Reaction.Conditions;
+    using BovineLabs.Reaction.Data.Conditions;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.EntityLinks.Data;
+    using Infrastructure;
+    using Stats;
+    using TriggerEvents;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Physics;
+    using Unity.Transforms;
+
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]

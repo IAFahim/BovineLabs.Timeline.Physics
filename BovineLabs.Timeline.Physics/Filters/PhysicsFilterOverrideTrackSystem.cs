@@ -1,13 +1,15 @@
-using BovineLabs.Core.Jobs;
-using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.EntityLinks;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.Filters
 {
+
+    using BovineLabs.Core.Jobs;
+    using BovineLabs.Timeline.Data;
+    using EntityLinks;
+    using Infrastructure;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]

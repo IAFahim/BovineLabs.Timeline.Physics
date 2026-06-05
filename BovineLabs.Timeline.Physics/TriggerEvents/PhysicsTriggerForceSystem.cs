@@ -1,26 +1,31 @@
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Core.Extensions;
-using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Essence.Data;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.EntityLinks.Data;
-using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Jobs;
-using Unity.Mathematics;
-using Unity.Transforms;
-using UnityEngine;
+using BovineLabs.Timeline.Physics.Forces;
+using BovineLabs.Timeline.Physics.PIDs;
 
-namespace BovineLabs.Timeline.Physics
+namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
+    using BovineLabs.Core.ConfigVars;
+    using BovineLabs.Core.Extensions;
+    using BovineLabs.Core.Iterators;
+    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Essence.Data;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Data;
+    using BovineLabs.Timeline.EntityLinks.Data;
+    using Infrastructure;
+    using Stats;
+    using Unity.Burst;
+    using Unity.Burst.Intrinsics;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Jobs;
+    using Unity.Mathematics;
+    using Unity.Transforms;
+    using UnityEngine;
+
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
-    [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
+    [UpdateBefore(typeof(Forces.PhysicsProducerForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]
     public partial struct PhysicsTriggerForceSystem : ISystem
@@ -229,7 +234,6 @@ namespace BovineLabs.Timeline.Physics
                     {
                         // For Step curve, we maintain 100% magnitude until EndRadius, where it is cut off by the check above.
                         
-
                         var range = math.max(cfg.FalloffEndRadius - cfg.FalloffStartRadius, 0.001f);
                         var factor = math.clamp(1f - ((dist - cfg.FalloffStartRadius) / range), 0f, 1f);
                         

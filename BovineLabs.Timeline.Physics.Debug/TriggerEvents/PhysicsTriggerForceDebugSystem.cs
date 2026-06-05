@@ -29,9 +29,17 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct ForceColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct ForceColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -41,7 +49,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsTriggerForceGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -56,13 +64,13 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerForceGizmoSystem>(
-                  ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
                 return;
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
+                Drawer = drawer,
                 ForceColor = TriggerForceDebugSystem.ForceColor.Data,
-                TextColor  = TriggerForceDebugSystem.TextColor.Data,
+                TextColor = TriggerForceDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
@@ -77,7 +85,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color ForceColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -85,16 +93,15 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerForceData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
+                in PhysicsTriggerForceData config)
             {
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var ltw))
@@ -105,30 +112,88 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 Drawer.Sphere(origin, 0.1f, 8, ForceColor);
 
-                FixedString32Bytes label = new FixedString32Bytes();
-                if (config.ForceType == PhysicsTriggerForceType.Directional) { label.Append('D'); label.Append('i'); label.Append('r'); label.Append(' '); }
-                else if (config.ForceType == PhysicsTriggerForceType.Radial) { label.Append('R'); label.Append('a'); label.Append('d'); label.Append(' '); }
-                else { label.Append('V'); label.Append('o'); label.Append('r'); label.Append(' '); }
-                
+                var label = new FixedString32Bytes();
+                if (config.ForceType == PhysicsTriggerForceType.Directional)
+                {
+                    label.Append('D');
+                    label.Append('i');
+                    label.Append('r');
+                    label.Append(' ');
+                }
+                else if (config.ForceType == PhysicsTriggerForceType.Radial)
+                {
+                    label.Append('R');
+                    label.Append('a');
+                    label.Append('d');
+                    label.Append(' ');
+                }
+                else
+                {
+                    label.Append('V');
+                    label.Append('o');
+                    label.Append('r');
+                    label.Append(' ');
+                }
+
                 label.Append(config.Magnitude);
                 label.Append('\n');
-                
-                if (config.FalloffCurve == PhysicsTriggerFalloffCurve.None) { label.Append('N'); label.Append('o'); label.Append('n'); label.Append('e'); }
-                else if (config.FalloffCurve == PhysicsTriggerFalloffCurve.Linear) { label.Append('L'); label.Append('i'); label.Append('n'); }
-                else if (config.FalloffCurve == PhysicsTriggerFalloffCurve.InverseSquare) { label.Append('I'); label.Append('n'); label.Append('v'); }
-                else { label.Append('S'); label.Append('t'); label.Append('e'); label.Append('p'); }
-                
+
+                if (config.FalloffCurve == PhysicsTriggerFalloffCurve.None)
+                {
+                    label.Append('N');
+                    label.Append('o');
+                    label.Append('n');
+                    label.Append('e');
+                }
+                else if (config.FalloffCurve == PhysicsTriggerFalloffCurve.Linear)
+                {
+                    label.Append('L');
+                    label.Append('i');
+                    label.Append('n');
+                }
+                else if (config.FalloffCurve == PhysicsTriggerFalloffCurve.InverseSquare)
+                {
+                    label.Append('I');
+                    label.Append('n');
+                    label.Append('v');
+                }
+                else
+                {
+                    label.Append('S');
+                    label.Append('t');
+                    label.Append('e');
+                    label.Append('p');
+                }
+
                 label.Append('\n');
-                if (config.Mode == PhysicsForceMode.Impulse) { label.Append('['); label.Append('I'); label.Append('M'); label.Append('P'); label.Append(']'); }
-                else { label.Append('['); label.Append('C'); label.Append('O'); label.Append('N'); label.Append('T'); label.Append(']'); }
-                
+                if (config.Mode == PhysicsForceMode.Impulse)
+                {
+                    label.Append('[');
+                    label.Append('I');
+                    label.Append('M');
+                    label.Append('P');
+                    label.Append(']');
+                }
+                else
+                {
+                    label.Append('[');
+                    label.Append('C');
+                    label.Append('O');
+                    label.Append('N');
+                    label.Append('T');
+                    label.Append(']');
+                }
+
                 Drawer.Text32(origin + new float3(0f, 0.5f, 0f), label, TextColor, 10f);
 
                 if (config.FalloffCurve != PhysicsTriggerFalloffCurve.None)
                 {
-                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffStartRadius, 0f)), ForceColor);
-                    var outerColor = ForceColor; outerColor.a *= 0.3f;
-                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffEndRadius, 0f)), outerColor);
+                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffStartRadius, 0f)),
+                        ForceColor);
+                    var outerColor = ForceColor;
+                    outerColor.a *= 0.3f;
+                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffEndRadius, 0f)),
+                        outerColor);
                 }
 
                 if (config.ForceType == PhysicsTriggerForceType.Directional)
@@ -143,10 +208,10 @@ namespace BovineLabs.Timeline.Physics.Debug
                 }
                 else if (config.ForceType == PhysicsTriggerForceType.Radial)
                 {
-                    int rays = 8;
-                    for (int i = 0; i < rays; i++)
+                    var rays = 8;
+                    for (var i = 0; i < rays; i++)
                     {
-                        var angle = (i / (float)rays) * math.PI * 2f;
+                        var angle = i / (float)rays * math.PI * 2f;
                         var dir = new float3(math.cos(angle), 0, math.sin(angle));
                         if (config.Magnitude < 0) dir = -dir;
                         var globalDir = math.rotate(ltw.Rotation, dir);
@@ -155,21 +220,21 @@ namespace BovineLabs.Timeline.Physics.Debug
                 }
                 else if (config.ForceType == PhysicsTriggerForceType.Vortex)
                 {
-                    int rays = 4;
-                    for (int i = 0; i < rays; i++)
+                    var rays = 4;
+                    for (var i = 0; i < rays; i++)
                     {
-                        var angle = (i / (float)rays) * math.PI * 2f;
+                        var angle = i / (float)rays * math.PI * 2f;
                         var posOffset = new float3(math.cos(angle), 0, math.sin(angle)) * 1f;
                         var tangent = new float3(-posOffset.z, 0, posOffset.x);
                         if (config.Magnitude < 0) tangent = -tangent;
                         tangent = math.normalize(tangent);
-                        
+
                         var globalPosOffset = math.rotate(ltw.Rotation, posOffset);
                         var globalTangent = math.rotate(ltw.Rotation, tangent);
                         Drawer.Arrow(origin + globalPosOffset, globalTangent * 1.5f, ForceColor);
                     }
                 }
-                
+
                 // --- Actually Fired Visualizer ---
                 var drawColor = new Color(0f, 0.8f, 1f, 0.8f);
                 TriggerGizmoUtility.DrawActuallyFired(

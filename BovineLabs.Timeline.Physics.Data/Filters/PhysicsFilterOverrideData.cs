@@ -14,8 +14,6 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsFilterOverrideData AuthoredData;
         public PhysicsFilterOverrideData Value { get; set; }
-        
-
     }
 
     public struct ActiveFilterOverride : IComponentData, IEnableableComponent
@@ -32,7 +30,8 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsFilterOverrideMixer : IMixer<PhysicsFilterOverrideData>
     {
-        public PhysicsFilterOverrideData Lerp(in PhysicsFilterOverrideData a, in PhysicsFilterOverrideData b, in float s)
+        public PhysicsFilterOverrideData Lerp(in PhysicsFilterOverrideData a, in PhysicsFilterOverrideData b,
+            in float s)
         {
             return s >= 0.5f ? b : a;
         }

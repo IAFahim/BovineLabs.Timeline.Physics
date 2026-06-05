@@ -11,11 +11,12 @@ namespace BovineLabs.Timeline.Physics
         public PidTuning Tuning;
         public Target TrackingTarget;
         public PidLinearTargetMode TargetMode;
-        
+
         /// <summary>
-        /// In World mode, this acts as the absolute world position. In Offset mode, it is an offset from the tracking target.
+        ///     In World mode, this acts as the absolute world position. In Offset mode, it is an offset from the tracking target.
         /// </summary>
         public float3 TargetOffset;
+
         public float Strength; // NEW: output force multiplier, default 1
         public StatStrengthConfig StrengthStat;
         public float StopThreshold; // Optional: suppress output when error magnitude < this value (0 = disabled)

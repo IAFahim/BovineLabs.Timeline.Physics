@@ -1,16 +1,17 @@
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Testing;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Drags;
+using NUnit.Framework;
+using Unity.Core;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Tests
 {
-    using Unity.Entities;
-    using BovineLabs.Timeline.Physics.Data;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Testing;
-    using NUnit.Framework;
-    using Unity.Core;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-
     public class PhysicsDragApplySystemTests : ECSTestsFixture
     {
         [Test]
@@ -19,9 +20,11 @@ namespace BovineLabs.Timeline.Physics.Tests
             var target = Manager.CreateEntity();
             Manager.AddComponentData(target, LocalTransform.Identity);
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
-            Manager.AddComponentData(target, new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = new float3(0, 5, 0) });
-            Manager.AddComponentData(target, new PhysicsMass { InverseMass = 1f, InverseInertia = new float3(1,1,1) });
-            
+            Manager.AddComponentData(target,
+                new PhysicsVelocity { Linear = new float3(10, 0, 0), Angular = new float3(0, 5, 0) });
+            Manager.AddComponentData(target,
+                new PhysicsMass { InverseMass = 1f, InverseInertia = new float3(1, 1, 1) });
+
             Manager.AddComponentData(target, new ActiveDrag
             {
                 Config = new PhysicsDragData
@@ -33,7 +36,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<Drags.PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -55,7 +58,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.0f));
-            var sys = World.GetOrCreateSystem<Drags.PhysicsDragApplySystem>();
+            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -68,7 +71,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             var target = Manager.CreateEntity();
             Manager.AddComponentData(target, new PhysicsVelocity { Linear = new float3(10, 0, 0) });
-            
+
             var stats = Manager.AddBuffer<Stat>(target);
             StatKey statKey = 12345;
             stats.Initialize();
@@ -76,15 +79,16 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddComponentData(target, new ActiveDrag
             {
-                Config = new PhysicsDragData { 
-                    Linear = 1f, 
-                    Angular = 1f, 
-                    Strength = new StatStrengthConfig { Stat = statKey, ReadFrom = Target.Self } 
+                Config = new PhysicsDragData
+                {
+                    Linear = 1f,
+                    Angular = 1f,
+                    Strength = new StatStrengthConfig { Stat = statKey, ReadFrom = Target.Self }
                 }
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = WorldExtensions.GetOrCreateSystem<Drags.PhysicsDragApplySystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

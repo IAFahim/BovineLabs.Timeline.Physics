@@ -7,7 +7,8 @@ namespace BovineLabs.Timeline.Physics.Smear
 {
     [BurstCompile]
     [UpdateInGroup(typeof(PresentationSystemGroup))]
-    [Unity.Entities.WorldSystemFilter(Unity.Entities.WorldSystemFilterFlags.LocalSimulation | Unity.Entities.WorldSystemFilterFlags.ClientSimulation | Unity.Entities.WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct UpdateSmearVelocitySystem : ISystem
     {
         [BurstCompile]

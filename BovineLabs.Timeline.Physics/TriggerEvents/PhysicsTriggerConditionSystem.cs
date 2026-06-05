@@ -1,25 +1,25 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Conditions;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Physics;
+
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Core.PhysicsStates;
-    using Reaction.Conditions;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Physics;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]
     public partial struct PhysicsTriggerConditionSystem : ISystem
     {
@@ -92,7 +92,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask, in v128 chunkEnabledMask)
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+                in v128 chunkEnabledMask)
             {
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerConditionDataTypeHandle);

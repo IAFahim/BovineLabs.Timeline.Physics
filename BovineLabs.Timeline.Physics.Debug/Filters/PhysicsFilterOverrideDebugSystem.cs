@@ -28,9 +28,17 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct RingColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct RingColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -40,7 +48,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsFilterOverrideGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -55,14 +63,14 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsFilterOverrideGizmoSystem>(
-                  ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
-                RingColor  = FilterOverrideDebugSystem.RingColor.Data,
-                TextColor  = FilterOverrideDebugSystem.TextColor.Data,
+                Drawer = drawer,
+                RingColor = FilterOverrideDebugSystem.RingColor.Data,
+                TextColor = FilterOverrideDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true)
@@ -75,7 +83,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color RingColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -83,9 +91,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
@@ -98,14 +104,15 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
-                
+
                 // Ring at the entity's feet (approximate base, y - 0.5 or just center if not known)
                 var groundPos = pos - new float3(0f, 0.5f, 0f);
                 Drawer.Circle(groundPos, new float3(0f, 0.7f, 0f), RingColor);
                 Drawer.Circle(groundPos, new float3(0f, 0.65f, 0f), RingColor); // double ring to make it bright
 
                 Drawer.Text32(pos + new float3(0f, 0.4f, 0f), $"Belongs: 0x{d.BelongsToOverride:X8}", TextColor, 10f);
-                Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"Collides: 0x{d.CollidesWithOverride:X8}", TextColor, 10f);
+                Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"Collides: 0x{d.CollidesWithOverride:X8}", TextColor,
+                    10f);
             }
         }
     }

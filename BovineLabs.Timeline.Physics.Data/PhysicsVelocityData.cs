@@ -1,31 +1,31 @@
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Properties;
+
 namespace BovineLabs.Timeline.Physics.Data
 {
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data.Kernels;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Properties;
-
     public enum PhysicsVelocityMode : byte
     {
         /// <summary>
-        /// Continuously overrides the velocity. Note this is applied post-integration (effective next frame).
+        ///     Continuously overrides the velocity. Note this is applied post-integration (effective next frame).
         /// </summary>
         SetContinuous,
 
         /// <summary>
-        /// Instantly overrides the velocity. Note this is applied post-integration (effective next frame).
+        ///     Instantly overrides the velocity. Note this is applied post-integration (effective next frame).
         /// </summary>
         SetInstant,
 
         /// <summary>
-        /// Continuously applies a velocity change pre-integration.
+        ///     Continuously applies a velocity change pre-integration.
         /// </summary>
         AddContinuous,
 
         /// <summary>
-        /// Instantly applies a velocity change pre-integration.
+        ///     Instantly applies a velocity change pre-integration.
         /// </summary>
         AddInstant
     }
@@ -49,7 +49,10 @@ namespace BovineLabs.Timeline.Physics.Data
         public PhysicsVelocityData AuthoredData;
         [CreateProperty] public PhysicsVelocityData Value { get; set; }
 
-        public void ResetToAuthored() => Value = AuthoredData;
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
     public struct ActiveVelocity : IActive<PhysicsVelocityData>

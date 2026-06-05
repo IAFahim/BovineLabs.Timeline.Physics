@@ -1,26 +1,25 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Authoring.Conditions;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics.Authoring;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Authoring.Conditions;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics.Authoring;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsTeleportClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Teleport Target")]
-        [Tooltip("The entity to actually teleport.")]
+        [Header("Teleport Target")] [Tooltip("The entity to actually teleport.")]
         public Target entityToTeleport = Target.Owner;
+
         public EntityLinkSchema entityToTeleportLink;
-        
-        [Header("Landing Sphere")]
-        [Tooltip("Distance from the sphere origin to land at.")]
+
+        [Header("Landing Sphere")] [Tooltip("Distance from the sphere origin to land at.")]
         public float radius = 3f;
 
         [Tooltip("Whose position defines the sphere origin (landing patch center).")]
@@ -29,49 +28,48 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         public EntityLinkSchema teleportRelativeToLink;
 
         [Header("Landing Direction")]
-        [Tooltip("What azimuth 0° points toward. Default (Target) means: azCenter=0 lands in the direction of this entity.")]
+        [Tooltip(
+            "What azimuth 0° points toward. Default (Target) means: azCenter=0 lands in the direction of this entity.")]
         public Target azimuthTarget = Target.Target;
+
         public EntityLinkSchema azimuthTargetLink;
 
         [Header("Azimuth / Elevation (degrees)")]
-        [Tooltip("Center azimuth. 0 = toward azimuth target, 90 = 90° clockwise from it, 180 = opposite (away from azimuth target).")]
+        [Tooltip(
+            "Center azimuth. 0 = toward azimuth target, 90 = 90° clockwise from it, 180 = opposite (away from azimuth target).")]
         [Range(-180f, 180f)]
         public float azimuthCenter;
 
-        [Tooltip("Half-spread in azimuth. 180 = full ring around the azimuth target.")]
-        [Range(0f, 180f)]
+        [Tooltip("Half-spread in azimuth. 180 = full ring around the azimuth target.")] [Range(0f, 180f)]
         public float azimuthHalfRange = 180f;
 
         [Tooltip("Center elevation. 0 = horizontal plane, 90 = directly above, -90 = directly below.")]
         [Range(-90f, 90f)]
         public float elevationCenter;
 
-        [Tooltip("Half-spread in elevation. 90 = full hemisphere.")]
-        [Range(0f, 90f)]
+        [Tooltip("Half-spread in elevation. 90 = full hemisphere.")] [Range(0f, 90f)]
         public float elevationHalfRange = 30f;
 
-        [Header("Facing After Teleport")]
-        [Tooltip("How the entity orients after landing.")]
+        [Header("Facing After Teleport")] [Tooltip("How the entity orients after landing.")]
         public TeleportFacingMode facingMode = TeleportFacingMode.FaceTarget;
 
         [Tooltip("Which entity it faces. Separate from Landing Direction so these can differ.")]
         public Target facingTarget = Target.Target;
+
         public EntityLinkSchema facingTargetLink;
 
-        [Header("Clearance")]
-        [Tooltip("Sphere radius for obstacle clearance checks at each candidate.")]
-        [Min(0.1f)]
+        [Header("Clearance")] [Tooltip("Sphere radius for obstacle clearance checks at each candidate.")] [Min(0.1f)]
         public float clearanceRadius = 0.5f;
 
-        [Tooltip("Maximum candidate positions to evaluate before giving up.")]
-        [Range(1, 64)]
+        [Tooltip("Maximum candidate positions to evaluate before giving up.")] [Range(1, 64)]
         public int maxCandidates = 8;
 
         [Tooltip("Physics layers that count as obstacles for clearance and LOS.")]
         public PhysicsCategoryTags obstacleMask;
 
         [Header("Line of Sight")]
-        [Tooltip("Require unobstructed LOS from the teleported entity to the landing sphere origin before teleporting.")]
+        [Tooltip(
+            "Require unobstructed LOS from the teleported entity to the landing sphere origin before teleporting.")]
         public bool requireLineOfSight;
 
         [Tooltip("Also require each candidate position to have LOS back to the landing sphere origin.")]
@@ -80,12 +78,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         [Tooltip("Vertical offset applied to ray origins for LOS checks (eye height).")]
         public float lineOfSightOffset = 1.5f;
 
-        [Header("Velocity")]
-        [Tooltip("Zero linear and angular velocity after teleport.")]
+        [Header("Velocity")] [Tooltip("Zero linear and angular velocity after teleport.")]
         public bool resetVelocity = true;
 
-        [Header("Stat Multiplier (Optional)")]
-        [Tooltip("If set, multiplies the radius by this stat value.")]
+        [Header("Stat Multiplier (Optional)")] [Tooltip("If set, multiplies the radius by this stat value.")]
         public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
@@ -109,7 +105,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                 teleportTargetLinkKey = k00;
 
             ushort teleportLinkKey = 0;
-            if (teleportRelativeToLink != null && EntityLinkAuthoringUtility.TryGetKey(teleportRelativeToLink, out var k0))
+            if (teleportRelativeToLink != null &&
+                EntityLinkAuthoringUtility.TryGetKey(teleportRelativeToLink, out var k0))
                 teleportLinkKey = k0;
 
             ushort azimuthTargetLinkKey = 0;

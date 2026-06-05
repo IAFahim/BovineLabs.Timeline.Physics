@@ -11,14 +11,17 @@ namespace BovineLabs.Timeline.Physics
         public PidTuning Tuning;
         public Target TrackingTarget;
         public PidAngularTargetMode TargetMode;
-        
+
         /// <summary>
-        /// In World mode, this acts as the absolute world rotation. In Offset mode, it is an offset from the tracking target.
+        ///     In World mode, this acts as the absolute world rotation. In Offset mode, it is an offset from the tracking target.
         /// </summary>
         public quaternion TargetRotation;
+
         public float Strength;
         public StatStrengthConfig StrengthStat;
-        public float StopThreshold; // Optional: suppress output when angular error magnitude (degrees) < this value (0 = disabled)
+
+        public float
+            StopThreshold; // Optional: suppress output when angular error magnitude (degrees) < this value (0 = disabled)
     }
 
     public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>

@@ -1,14 +1,14 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using BovineLabs.Timeline.Physics.Data;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public class PhysicsDragClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Linear drag multiplier. 0 = no drag. 50 = instant stop (at 50hz).")]

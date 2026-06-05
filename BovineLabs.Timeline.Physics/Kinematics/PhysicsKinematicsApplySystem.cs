@@ -1,26 +1,26 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Stats;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Kinematics
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using EntityLinks;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Data;
-    using Infrastructure;
-    using Stats;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -190,14 +190,14 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                                 if (config.DirectionTargetLinkKey != 0 &&
                                     EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
                                         LinkSources, Links, out var linked))
-                                {
                                     targetEntity = linked;
-                                }
                             }
                         }
 
-                        var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
-                        var targetPos = PhysicsMath.ResolvePosition(targetEntity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                        var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup,
+                            in ParentLookup);
+                        var targetPos = PhysicsMath.ResolvePosition(targetEntity, in LocalTransformLookup,
+                            in LocalToWorldLookup, in ParentLookup);
                         var diff = targetPos - selfPos;
                         var distSq = math.lengthsq(diff);
                         if (distSq > 1e-5f)

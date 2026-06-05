@@ -1,32 +1,32 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Stats;
+using BovineLabs.Timeline.Physics.TriggerEvents;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Ricochets
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Essence.Data;
-    using Reaction.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Stats;
-    using TriggerEvents;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsRicochetApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveRicochet> _activeHandle;
         private ComponentTypeHandle<PhysicsRicochetState> _stateHandle;
-        
+
         private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
@@ -56,7 +56,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 .WithAll<ActiveRicochet>()
                 .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                 .Build();
-                
+
             state.RequireForUpdate<PhysicsWorldSingleton>();
         }
 
@@ -109,12 +109,12 @@ namespace BovineLabs.Timeline.Physics.Ricochets
 
             [ReadOnly] public CollisionWorld CollisionWorld;
 
-            public unsafe void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
             {
                 var entities = chunk.GetNativeArray(EntityType);
                 var states = chunk.GetNativeArray(ref StateHandle);
-                
+
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
@@ -129,24 +129,25 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                     {
                         var config = actives[i].Config;
                         var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
-                        
-                        float3 origin = float3.zero;
-                        float3 direction = math.forward();
-                        
-                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey, entity, Entity.Null, targets, LinkSources, Links, out var originEntity) && LtwLookup.HasComponent(originEntity))
-                        {
-                            origin = LtwLookup[originEntity].Position;
-                        }
-                        
-                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection, config.RayDirectionLinkKey, entity, Entity.Null, targets, LinkSources, Links, out var dirEntity) && LtwLookup.HasComponent(dirEntity))
-                        {
-                            direction = math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
-                        }
 
-                        var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources, Links, StatLookup);
+                        var origin = float3.zero;
+                        var direction = math.forward();
+
+                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey,
+                                entity, Entity.Null, targets, LinkSources, Links, out var originEntity) &&
+                            LtwLookup.HasComponent(originEntity)) origin = LtwLookup[originEntity].Position;
+
+                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection,
+                                config.RayDirectionLinkKey, entity, Entity.Null, targets, LinkSources, Links,
+                                out var dirEntity) &&
+                            LtwLookup.HasComponent(dirEntity))
+                            direction = math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
+
+                        var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
+                            Links, StatLookup);
                         var remainingDistance = config.MaxDistance * multiplier;
                         var bounceCount = 0;
-                        
+
                         var currentPos = origin;
                         var currentDir = math.normalize(direction);
 
@@ -159,24 +160,26 @@ namespace BovineLabs.Timeline.Physics.Ricochets
 
                             if (!stepResult.HitFound)
                                 break;
-                            
+
                             remainingDistance -= stepResult.DistanceTraveled;
-                            
+
                             if (stepResult.IsTerminal)
                             {
                                 var hitEntity = stepResult.HitEntity;
                                 var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
-                                if (config.HitConditionKey != 0 && PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links, out var target))
-                                {
+                                if (config.HitConditionKey != 0 &&
+                                    PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo,
+                                        config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links,
+                                        out var target))
                                     if (Writers.TryGet(target, out var writer))
                                         writer.Trigger(config.HitConditionKey, bounceCount);
-                                }
                                 break;
                             }
-                            
+
                             if (stepResult.IsRicochet)
                             {
-                                currentDir = currentDir - 2f * math.dot(currentDir, stepResult.SurfaceNormal) * stepResult.SurfaceNormal;
+                                currentDir = currentDir - 2f * math.dot(currentDir, stepResult.SurfaceNormal) *
+                                    stepResult.SurfaceNormal;
                                 currentPos = stepResult.HitPosition + currentDir * 0.01f;
                                 bounceCount++;
                             }

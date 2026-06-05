@@ -1,10 +1,10 @@
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
+using Unity.Mathematics;
+using Unity.Properties;
+
 namespace BovineLabs.Timeline.Physics.Data
 {
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data.Kernels;
-    using Unity.Mathematics;
-    using Unity.Properties;
-
     public struct PhysicsDragData
     {
         public float Linear;
@@ -17,7 +17,10 @@ namespace BovineLabs.Timeline.Physics.Data
         public PhysicsDragData AuthoredData;
         [CreateProperty] public PhysicsDragData Value { get; set; }
 
-        public void ResetToAuthored() => Value = AuthoredData;
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
     public struct ActiveDrag : IActive<PhysicsDragData>

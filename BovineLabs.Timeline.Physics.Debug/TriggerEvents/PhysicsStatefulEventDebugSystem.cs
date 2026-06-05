@@ -16,7 +16,8 @@ namespace BovineLabs.Timeline.Physics.Debug
     [Configurable]
     public static class StatefulEventDebugSystemConfig
     {
-        [ConfigVar("statefuleventgizmo.draw-enabled", false, "Enable drawing of stateful trigger/collision events in Scene View.")]
+        [ConfigVar("statefuleventgizmo.draw-enabled", false,
+            "Enable drawing of stateful trigger/collision events in Scene View.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
         [ConfigVar("statefuleventgizmo.text-color", 0.1f, 0.9f, 0.1f, 0.9f, "Color for stateful event text labels")]
@@ -24,8 +25,13 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -44,19 +50,20 @@ namespace BovineLabs.Timeline.Physics.Debug
             _triggerQuery = SystemAPI.QueryBuilder()
                 .WithAll<LocalToWorld, StatefulTriggerEvent>()
                 .Build();
-                
+
             _collisionQuery = SystemAPI.QueryBuilder()
                 .WithAll<LocalToWorld, StatefulCollisionEvent>()
                 .Build();
-            
-            state.RequireForUpdate(SystemAPI.QueryBuilder().WithAny<StatefulTriggerEvent, StatefulCollisionEvent>().Build());
+
+            state.RequireForUpdate(SystemAPI.QueryBuilder().WithAny<StatefulTriggerEvent, StatefulCollisionEvent>()
+                .Build());
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsStatefulEventDebugSystem>(
-                  ref state, StatefulEventDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, StatefulEventDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawTriggerJob
@@ -88,19 +95,22 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (triggers.IsEmpty) return;
 
                 var origin = ltw.Position + new float3(0f, 1f, 0f); // Offset slightly up
-                
+
                 FixedString128Bytes label = default;
                 label.Append(Title);
-                
-                for (int i = 0; i < triggers.Length; i++)
+
+                for (var i = 0; i < triggers.Length; i++)
                 {
                     var evt = triggers[i];
-                    
-                    if (evt.State == StatefulEventState.Enter) { label.Append(Enter); }
-                    else if (evt.State == StatefulEventState.Stay) { label.Append(Stay); }
-                    else if (evt.State == StatefulEventState.Exit) { label.Append(Exit); }
-                    
-                    label.Append(' '); label.Append('(');
+
+                    if (evt.State == StatefulEventState.Enter)
+                        label.Append(Enter);
+                    else if (evt.State == StatefulEventState.Stay)
+                        label.Append(Stay);
+                    else if (evt.State == StatefulEventState.Exit) label.Append(Exit);
+
+                    label.Append(' ');
+                    label.Append('(');
                     label.Append(evt.EntityB.Index);
                     label.Append(':');
                     label.Append(evt.EntityB.Version);
@@ -128,19 +138,22 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (collisions.IsEmpty) return;
 
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
-                
+
                 FixedString128Bytes label = default;
                 label.Append(Title);
-                
-                for (int i = 0; i < collisions.Length; i++)
+
+                for (var i = 0; i < collisions.Length; i++)
                 {
                     var evt = collisions[i];
-                    
-                    if (evt.State == StatefulEventState.Enter) { label.Append(Enter); }
-                    else if (evt.State == StatefulEventState.Stay) { label.Append(Stay); }
-                    else if (evt.State == StatefulEventState.Exit) { label.Append(Exit); }
-                    
-                    label.Append(' '); label.Append('(');
+
+                    if (evt.State == StatefulEventState.Enter)
+                        label.Append(Enter);
+                    else if (evt.State == StatefulEventState.Stay)
+                        label.Append(Stay);
+                    else if (evt.State == StatefulEventState.Exit) label.Append(Exit);
+
+                    label.Append(' ');
+                    label.Append('(');
                     label.Append(evt.EntityB.Index);
                     label.Append(':');
                     label.Append(evt.EntityB.Version);

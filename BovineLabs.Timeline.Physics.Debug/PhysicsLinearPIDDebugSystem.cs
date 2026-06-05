@@ -31,7 +31,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
+            public struct Enabled
+            {
+            }
         }
     }
 
@@ -62,7 +64,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsLinearPIDDebugSystem>(
-                  ref state, PhysicsLinearPIDDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsLinearPIDDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             _localToWorldLookup.Update(ref state);
@@ -95,12 +97,13 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             private static readonly Color ColorLine = TimelineDebugColors.PidTarget;
             private static readonly Color ColorGoal = TimelineDebugColors.PidGoal;
-            private static readonly Color ColorVel  = TimelineDebugColors.LinearVelocity;
+            private static readonly Color ColorVel = TimelineDebugColors.LinearVelocity;
 
             private void Execute(in TrackBinding binding, in PhysicsLinearPIDAnimated animated, in LocalTime localTime)
             {
                 var entity = binding.Value;
-                var selfPos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                var selfPos = PhysicsMath.ResolvePosition(entity, in LocalTransformLookup, in LocalToWorldLookup,
+                    in ParentLookup);
                 if (math.lengthsq(selfPos) < 1e-6f) return;
 
                 PhysicsMath.ResolveLinearPidTarget(animated.AuthoredData, entity, in TargetsLookup,

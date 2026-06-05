@@ -1,28 +1,29 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Core.Jobs;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Stats;
+using BovineLabs.Timeline.Physics.VelocityOverrides;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Drags
 {
-    using Data;
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using BovineLabs.Timeline.Physics.Data;
-    using Infrastructure;
-    using Stats;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [UpdateBefore(typeof(VelocityOverrides.PhysicsVelocityOverrideSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [UpdateBefore(typeof(PhysicsVelocityOverrideSystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsDragApplySystem : ISystem
     {
         private EntityQuery _query;

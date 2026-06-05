@@ -1,18 +1,19 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using BovineLabs.Timeline.Physics.Data;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public class PhysicsVelocityClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Instant modes apply velocity exactly once per clip activation and ignore Looping.")]
         public PhysicsVelocityMode mode = PhysicsVelocityMode.SetInstant;
+
         public Vector3 linearVelocity = Vector3.forward;
         public Vector3 angularVelocity;
         public Target space = Target.Self;

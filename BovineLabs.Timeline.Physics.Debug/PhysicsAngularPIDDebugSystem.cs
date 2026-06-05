@@ -31,7 +31,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
+            public struct Enabled
+            {
+            }
         }
     }
 
@@ -62,7 +64,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsAngularPIDDebugSystem>(
-                  ref state, PhysicsAngularPIDDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsAngularPIDDebugSystemConfig.Enabled.Data, out var drawer))
                 return;
 
             _localToWorldLookup.Update(ref state);
@@ -94,9 +96,9 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
 
             private static readonly Color ColorForward = Color.blue;
-            private static readonly Color ColorUp      = Color.green;
+            private static readonly Color ColorUp = Color.green;
             private static readonly Color ColorAngVel = TimelineDebugColors.AngularForce;
-            private static readonly Color ColorPred   = TimelineDebugColors.PidPredicted;
+            private static readonly Color ColorPred = TimelineDebugColors.PidPredicted;
 
             private void Execute(in TrackBinding binding, in PhysicsAngularPIDAnimated animated, in LocalTime localTime)
             {

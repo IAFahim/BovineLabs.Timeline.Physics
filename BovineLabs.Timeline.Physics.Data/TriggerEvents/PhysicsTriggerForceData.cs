@@ -14,10 +14,10 @@ namespace BovineLabs.Timeline.Physics
 
     public enum PhysicsTriggerFalloffCurve : byte
     {
-        None,           // Constant force regardless of distance
-        Linear,         // Force decreases linearly from Start to End radius
-        InverseSquare,  // Realistic physical attenuation (1/r^2)
-        Step            // Full magnitude up to FalloffEndRadius, zero outside
+        None, // Constant force regardless of distance
+        Linear, // Force decreases linearly from Start to End radius
+        InverseSquare, // Realistic physical attenuation (1/r^2)
+        Step // Full magnitude up to FalloffEndRadius, zero outside
     }
 
     public struct PhysicsTriggerForceData : IComponentData
@@ -27,9 +27,9 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsForceMode Mode;
         public float Magnitude;
         public float3 Direction;
-        
+
         /// <summary>
-        /// Note: Radial force combined with MatchCollidedEntity produces a zero-length direction.
+        ///     Note: Radial force combined with MatchCollidedEntity produces a zero-length direction.
         /// </summary>
         public PhysicsTriggerPositionMode OriginMode;
 

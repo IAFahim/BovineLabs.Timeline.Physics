@@ -1,28 +1,17 @@
+using BovineLabs.Core.Iterators;
+using BovineLabs.Quill;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Physics.Data;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+using UnityEngine;
+
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
-    using BovineLabs.Core.Iterators;
-    using Data;
-    using Quill;
-    using BovineLabs.Reaction.Data.Core;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-    using UnityEngine;
-
     public static class PhysicsMath
     {
-        public struct RicochetStepResult
-        {
-            public bool HitFound;
-            public float3 HitPosition;
-            public float3 SurfaceNormal;
-            public Entity HitEntity;
-            public bool IsTerminal;
-            public bool IsRicochet;
-            public float DistanceTraveled;
-        }
-
         public static RicochetStepResult StepRicochet(
             float3 currentPos,
             float3 currentDir,
@@ -34,7 +23,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             in UnsafeComponentLookup<PhysicsCollider> colliderLookup)
         {
             var result = new RicochetStepResult();
-            
+
             var rayInput = new RaycastInput
             {
                 Start = currentPos,
@@ -55,32 +44,24 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             result.HitPosition = hit.Position;
             result.SurfaceNormal = hit.SurfaceNormal;
             result.HitEntity = hit.Entity;
-            
+
             var surfaceBelongsTo = 0u;
             if (colliderLookup.HasComponent(hit.Entity))
             {
                 var col = colliderLookup[hit.Entity];
-                if (col.IsValid)
-                {
-                    surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
-                }
+                if (col.IsValid) surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
             }
 
             var angleFromNormal = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
-            var grazingAngle = (math.PI / 2f) - angleFromNormal;
-            
+            var grazingAngle = math.PI / 2f - angleFromNormal;
+
             if (grazingAngle >= minGrazingAngle || (surfaceBelongsTo & terminalHitMask) != 0)
-            {
                 result.IsTerminal = true;
-            }
-            else if ((surfaceBelongsTo & ricochetMask) != 0)
-            {
-                result.IsRicochet = true;
-            }
+            else if ((surfaceBelongsTo & ricochetMask) != 0) result.IsRicochet = true;
 
             return result;
         }
-        
+
         public static float3 ResolvePosition(
             Entity target,
             in ComponentLookup<LocalTransform> localTransformLookup,
@@ -91,14 +72,9 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 return float3.zero;
 
             if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
-            {
                 return lt.Position;
-            }
 
-            if (localToWorldLookup.TryGetComponent(target, out var ltw))
-            {
-                return ltw.Position;
-            }
+            if (localToWorldLookup.TryGetComponent(target, out var ltw)) return ltw.Position;
 
             return float3.zero;
         }
@@ -114,14 +90,10 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 return quaternion.identity;
 
             if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
-            {
                 return lt.Rotation;
-            }
 
             if (localToWorldLookup.TryGetComponent(target, out var ltw))
-            {
                 return new quaternion(math.orthonormalize(new float3x3(ltw.Value)));
-            }
 
             return quaternion.identity;
         }
@@ -179,7 +151,8 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             if (space != Target.Self && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(space, entity);
 
-            var rotation = ResolveRotation(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup);
+            var rotation = ResolveRotation(targetEntity, in localTransformLookup, in localToWorldLookup,
+                in parentLookup);
             if (math.lengthsq(rotation.value.xyz) > 1e-6f || math.abs(rotation.value.w - 1f) > 1e-6f)
             {
                 resolvedVector = math.rotate(rotation, vector);
@@ -385,6 +358,17 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             var localTorque = math.rotate(math.inverse(rotation), torque);
             var localAngularVelocityChange = localTorque * invInertia * deltaTime;
             velocityOut.Angular += math.rotate(rotation, localAngularVelocityChange);
+        }
+
+        public struct RicochetStepResult
+        {
+            public bool HitFound;
+            public float3 HitPosition;
+            public float3 SurfaceNormal;
+            public Entity HitEntity;
+            public bool IsTerminal;
+            public bool IsRicochet;
+            public float DistanceTraveled;
         }
 
 #if UNITY_EDITOR || BL_DEBUG

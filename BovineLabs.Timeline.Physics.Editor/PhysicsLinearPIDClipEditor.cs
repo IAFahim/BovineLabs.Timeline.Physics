@@ -1,10 +1,10 @@
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Physics.Authoring.PIDs;
+using UnityEditor;
+
 #if UNITY_EDITOR
 namespace BovineLabs.Timeline.Physics.Editor
 {
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Physics.Authoring.PIDs;
-    using UnityEditor;
-
     [CustomEditor(typeof(PhysicsLinearPIDClip))]
     public class PhysicsLinearPIDClipEditor : UnityEditor.Editor
     {
@@ -44,7 +44,8 @@ namespace BovineLabs.Timeline.Physics.Editor
             EditorGUILayout.Space(6);
 
             EditorGUILayout.LabelField("Stop Threshold (Optional)", EditorStyles.boldLabel);
-            PidEditorUtility.DrawStopThreshold(serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.stopThreshold)));
+            PidEditorUtility.DrawStopThreshold(
+                serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.stopThreshold)));
 
             if (clip.trackingTarget == Target.Self && clip.targetMode == PidLinearTargetMode.TargetLocal)
             {

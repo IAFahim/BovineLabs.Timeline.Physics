@@ -14,8 +14,6 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsVelocityClampData AuthoredData;
         public PhysicsVelocityClampData Value { get; set; }
-        
-
     }
 
     public struct ActiveVelocityClamp : IComponentData, IEnableableComponent

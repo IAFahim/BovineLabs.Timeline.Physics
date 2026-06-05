@@ -1,9 +1,9 @@
+using UnityEditor;
+using UnityEngine;
+
 #if UNITY_EDITOR
 namespace BovineLabs.Timeline.Physics.Editor
 {
-    using UnityEditor;
-    using UnityEngine;
-
     public static class PidEditorUtility
     {
         private static readonly PIDPreset[] Presets =

@@ -1,28 +1,28 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Conditions;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Stats;
+using BovineLabs.Timeline.Physics.TriggerEvents;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Teleports
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Essence.Data;
-    using Reaction.Conditions;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Stats;
-    using TriggerEvents;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsTeleportApplySystem : ISystem
     {
         private EntityQuery _query;
@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
 
         private ComponentLookup<LocalTransform> _localTransformLookup;
         private ComponentLookup<PhysicsVelocity> _physicsVelocityLookup;
-        
+
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private UnsafeComponentLookup<Targets> _targetsLookup;
         private ComponentLookup<Parent> _parentLookup;
@@ -93,10 +93,10 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 EntityHandle = _entityHandle,
                 ActiveTeleportHandle = _activeTeleportHandle,
                 TeleportStateHandle = _teleportStateHandle,
-                
+
                 LocalTransformLookup = _localTransformLookup,
                 PhysicsVelocityLookup = _physicsVelocityLookup,
-                
+
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 ParentLookup = _parentLookup,
@@ -116,10 +116,8 @@ namespace BovineLabs.Timeline.Physics.Teleports
             [ReadOnly] public ComponentTypeHandle<ActiveTeleport> ActiveTeleportHandle;
             public ComponentTypeHandle<PhysicsTeleportState> TeleportStateHandle;
 
-            [NativeDisableParallelForRestriction]
-            public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [NativeDisableParallelForRestriction]
-            public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;

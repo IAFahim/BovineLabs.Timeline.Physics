@@ -1,30 +1,31 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
+
         public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
 
-        [Header("Fixed Vector")]
-        public Vector3 linearForce = new(0, 0, 0);
+        [Header("Fixed Vector")] public Vector3 linearForce = new(0, 0, 0);
+
         public Target space = Target.Self;
 
-        [Header("Toward Target")]
-        public float magnitude = 10f;
+        [Header("Toward Target")] public float magnitude = 10f;
+
         public Target directionTarget = Target.Target;
         public EntityLinkSchema directionTargetLink;
 
-        [Header("Angular & Multipliers")]
-        public Vector3 angularForce;
+        [Header("Angular & Multipliers")] public Vector3 angularForce;
+
         public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;

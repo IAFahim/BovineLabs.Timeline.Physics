@@ -1,23 +1,23 @@
+using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Quill;
+using BovineLabs.Timeline.Core.Debug;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Physics.Systems;
+using Unity.Transforms;
+using UnityEngine;
+
 #if UNITY_EDITOR || BL_DEBUG
 
 
 namespace BovineLabs.Timeline.Physics.Debug
 {
-    using BovineLabs.Core;
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Quill;
-    using BovineLabs.Timeline.Core.Debug;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data;
-    using Unity.Burst;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Physics.Systems;
-    using Unity.Transforms;
-    using UnityEngine;
-
     [Configurable]
     public static class DragDebugSystem
     {
@@ -106,9 +106,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
 
                 return fallback;
             }

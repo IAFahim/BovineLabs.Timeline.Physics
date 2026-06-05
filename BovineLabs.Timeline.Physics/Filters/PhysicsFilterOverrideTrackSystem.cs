@@ -1,18 +1,18 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Filters
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using EntityLinks;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsFilterOverrideTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsFilterOverrideData, PhysicsFilterOverrideAnimated> _blendImpl;
@@ -27,8 +27,8 @@ namespace BovineLabs.Timeline.Physics.Filters
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveFilterOverride>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsFilterOverrideState>(false);
+            _activeLookup = state.GetComponentLookup<ActiveFilterOverride>();
+            _stateLookup = state.GetComponentLookup<PhysicsFilterOverrideState>();
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsFilterOverrideAnimated, ClipActive>()
@@ -127,7 +127,8 @@ namespace BovineLabs.Timeline.Physics.Filters
                 ECB.SetComponentEnabled<ActiveFilterOverride>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveFilterOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, PhysicsFilterOverrideMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, PhysicsFilterOverrideMixer>(ref mixData,
+                        default)
                 });
             }
         }

@@ -29,7 +29,8 @@ namespace BovineLabs.Timeline.Physics.Tests
             ref var essenceConfigRoot = ref essenceConfigBuilder.ConstructRoot<EssenceConfig.Data>();
             essenceConfigBuilder.AllocateHashMap(ref essenceConfigRoot.IntrinsicDatas, 0);
             essenceConfigBuilder.AllocateMultiHashMap(ref essenceConfigRoot.StatsLimitIntrinsics, 0);
-            var essenceConfigBlob = essenceConfigBuilder.CreateBlobAssetReference<EssenceConfig.Data>(Allocator.Persistent);
+            var essenceConfigBlob =
+                essenceConfigBuilder.CreateBlobAssetReference<EssenceConfig.Data>(Allocator.Persistent);
             essenceConfigBuilder.Dispose();
 
             var essenceConfigEntity = Manager.CreateSingleton<EssenceConfig>();
@@ -41,7 +42,8 @@ namespace BovineLabs.Timeline.Physics.Tests
             debugNamesBuilder.AllocateHashMap(ref debugNamesRoot.StatNames, 0);
             debugNamesBuilder.AllocateHashMap(ref debugNamesRoot.IntrinsicNames, 0);
             debugNamesBuilder.AllocateHashMap(ref debugNamesRoot.EventNames, 0);
-            var debugNamesBlob = debugNamesBuilder.CreateBlobAssetReference<EssenceDebugNames.Data>(Allocator.Persistent);
+            var debugNamesBlob =
+                debugNamesBuilder.CreateBlobAssetReference<EssenceDebugNames.Data>(Allocator.Persistent);
             debugNamesBuilder.Dispose();
 
             var debugNamesEntity = Manager.CreateSingleton<EssenceDebugNames>();
@@ -92,7 +94,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 State = StatefulEventState.Stay
             });
 
-            var sys = WorldExtensions.GetOrCreateSystem<PhysicsTriggerForceSystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsTriggerForceSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -100,7 +102,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(1, pendingForces.Length);
             Assert.AreEqual(10f, pendingForces[0].Linear.z, 0.001f);
         }
-        
+
         [Test]
         public void StepFalloff_DropsToZeroOutsideEndRadius()
         {
@@ -142,7 +144,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 State = StatefulEventState.Stay
             });
 
-            var sys = WorldExtensions.GetOrCreateSystem<PhysicsTriggerForceSystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsTriggerForceSystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

@@ -1,17 +1,17 @@
+using System;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Authoring.Conditions;
+using BovineLabs.Reaction.Data.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Physics.Authoring;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using System;
-    using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Reaction.Authoring.Conditions;
-    using BovineLabs.Reaction.Data.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using Unity.Physics.Authoring;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsTriggerConditionClip : DOTSClip, ITimelineClipAsset
     {
         public StatefulEventState triggerState = StatefulEventState.Enter;
@@ -21,10 +21,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target routeTo = Target.Target;
         public EntityLinkSchema routeLink;
 
-        [Header("Filtering")]
-        [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
+        [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
-        
+
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
         public EntityLinkSchema[] requireLinks = Array.Empty<EntityLinkSchema>();
 

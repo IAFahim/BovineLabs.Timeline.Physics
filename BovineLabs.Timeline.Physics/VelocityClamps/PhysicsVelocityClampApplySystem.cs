@@ -1,22 +1,22 @@
+using BovineLabs.Core.ConfigVars;
 using BovineLabs.Timeline.Physics.Forces;
+using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.VelocityOverrides;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
 
 namespace BovineLabs.Timeline.Physics.VelocityClamps
 {
-    using BovineLabs.Core.ConfigVars;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [UpdateAfter(typeof(PhysicsVelocityOverrideSystem))]
-    [UpdateAfter(typeof(BovineLabs.Timeline.Physics.Forces.PhysicsModifierForceAccumulatorSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [UpdateAfter(typeof(PhysicsModifierForceAccumulatorSystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsVelocityClampApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveVelocityClamp> _activeHandle;
@@ -66,7 +66,7 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
             {
                 var states = chunk.GetNativeArray(ref StateHandle);
                 var velocities = chunk.GetNativeArray(ref VelocityHandle);
-                
+
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
@@ -85,22 +85,18 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
                         {
                             var linSq = math.lengthsq(vel.Linear);
                             if (linSq > config.MaxLinearSpeed * config.MaxLinearSpeed)
-                            {
                                 vel.Linear = math.normalize(vel.Linear) * config.MaxLinearSpeed;
-                            }
                         }
 
                         if (config.MaxAngularSpeed >= 0f)
                         {
                             var angSq = math.lengthsq(vel.Angular);
                             if (angSq > config.MaxAngularSpeed * config.MaxAngularSpeed)
-                            {
                                 vel.Angular = math.normalize(vel.Angular) * config.MaxAngularSpeed;
-                            }
                         }
 
                         velocities[i] = vel;
-                        
+
                         if (!state.Fired)
                         {
                             state.Fired = true;

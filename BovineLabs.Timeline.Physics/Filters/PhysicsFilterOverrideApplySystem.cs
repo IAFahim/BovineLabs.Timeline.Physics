@@ -1,17 +1,17 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Physics;
+
 namespace BovineLabs.Timeline.Physics.Filters
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Physics;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsFilterOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveFilterOverride> _activeHandle;

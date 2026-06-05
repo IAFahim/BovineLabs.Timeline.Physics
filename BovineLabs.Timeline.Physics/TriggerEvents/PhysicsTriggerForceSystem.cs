@@ -1,32 +1,32 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Forces;
+using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.PIDs;
+using BovineLabs.Timeline.Physics.Stats;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Jobs;
+using Unity.Mathematics;
+using Unity.Transforms;
+using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Stats;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Jobs;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-    using UnityEngine;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
-    [UpdateBefore(typeof(Forces.PhysicsProducerForceAccumulatorSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]
     public partial struct PhysicsTriggerForceSystem : ISystem
     {
@@ -105,9 +105,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         }
 
         /// <summary>
-        /// Intermediate event produced by <see cref="GatherJob"/> and consumed by <see cref="ApplyForcesJob"/>.
-        /// Stored in a <see cref="NativeStream"/> so that buffer appends happen in a deterministic order
-        /// without requiring a managed ECB system.
+        ///     Intermediate event produced by <see cref="GatherJob" /> and consumed by <see cref="ApplyForcesJob" />.
+        ///     Stored in a <see cref="NativeStream" /> so that buffer appends happen in a deterministic order
+        ///     without requiring a managed ECB system.
         /// </summary>
         private struct TriggerForceEvent
         {
@@ -167,8 +167,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         {
                             if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
-                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup,
+                                in ParentLookup);
+                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup,
+                                in LtwLookup, in ParentLookup);
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
                         }
@@ -178,24 +180,28 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         {
                             if (!StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, false) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
-                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup,
+                                in ParentLookup);
+                            var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup,
+                                in LtwLookup, in ParentLookup);
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                             ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
                         }
                 }
-                
+
                 Events.EndForEachIndex();
             }
 
             [BurstDiscard]
             private static void LogWarning()
             {
-                Debug.LogWarning("PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
+                Debug.LogWarning(
+                    "PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
             }
 
-            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg, in PhysicsTriggerFilterData filter, float3 contactPoint,
+            private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg,
+                in PhysicsTriggerFilterData filter, float3 contactPoint,
                 in Targets targets)
             {
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
@@ -218,10 +224,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
                 var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
-                var targetPos = PhysicsMath.ResolvePosition(targetToApply, in LocalTransformLookup, in LtwLookup, in ParentLookup);
+                var targetPos = PhysicsMath.ResolvePosition(targetToApply, in LocalTransformLookup, in LtwLookup,
+                    in ParentLookup);
                 var magnitude = cfg.Magnitude * multiplier;
 
-                PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfPos, targetPos, contactPoint, out var origin);
+                PhysicsTriggerResolution.TryResolvePosition(cfg.OriginMode, selfPos, targetPos, contactPoint,
+                    out var origin);
                 var offset = targetPos - origin;
                 var distSq = math.lengthsq(offset);
 
@@ -229,12 +237,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 {
                     var dist = math.sqrt(distSq);
                     if (dist > cfg.FalloffEndRadius) return;
-                    
+
                     if (dist > cfg.FalloffStartRadius)
                     {
                         var range = math.max(cfg.FalloffEndRadius - cfg.FalloffStartRadius, 0.001f);
-                        var factor = math.clamp(1f - ((dist - cfg.FalloffStartRadius) / range), 0f, 1f);
-                        
+                        var factor = math.clamp(1f - (dist - cfg.FalloffStartRadius) / range, 0f, 1f);
+
                         if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.Linear)
                             magnitude *= factor;
                         else if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.InverseSquare)
@@ -285,9 +293,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         }
 
         /// <summary>
-        /// Applies gathered force events to their target entity's <see cref="PendingForce"/> buffer.
-        /// Runs single-threaded to avoid parallel <see cref="BufferLookup{T}"/> write conflicts when
-        /// multiple events target the same entity.
+        ///     Applies gathered force events to their target entity's <see cref="PendingForce" /> buffer.
+        ///     Runs single-threaded to avoid parallel <see cref="BufferLookup{T}" /> write conflicts when
+        ///     multiple events target the same entity.
         /// </summary>
         [BurstCompile]
         private struct ApplyForcesJob : IJob
@@ -298,17 +306,15 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public void Execute()
             {
                 var reader = Events.AsReader();
-                for (int i = 0; i < reader.ForEachCount; i++)
+                for (var i = 0; i < reader.ForEachCount; i++)
                 {
                     reader.BeginForEachIndex(i);
                     while (reader.RemainingItemCount > 0)
                     {
                         var evt = reader.Read<TriggerForceEvent>();
-                        if (PendingForceLookup.HasBuffer(evt.Target))
-                        {
-                            PendingForceLookup[evt.Target].Add(evt.Force);
-                        }
+                        if (PendingForceLookup.HasBuffer(evt.Target)) PendingForceLookup[evt.Target].Add(evt.Force);
                     }
+
                     reader.EndForEachIndex();
                 }
             }

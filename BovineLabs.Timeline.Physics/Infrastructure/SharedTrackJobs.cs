@@ -1,14 +1,13 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data.Kernels;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [BurstCompile]
     public struct ResetStateTrackJob<TState, TActive> : IJobChunk
         where TState : unmanaged, IComponentData
@@ -30,9 +29,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 if (target == Entity.Null || !StateLookup.HasComponent(target)) continue;
 
                 if (!ActiveLookup.HasComponent(target) || !ActiveLookup.IsComponentEnabled(target))
-                {
                     StateLookup[target] = ResetValue;
-                }
             }
         }
     }

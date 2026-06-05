@@ -1,13 +1,12 @@
+using BovineLabs.Core.Iterators;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Teleports
 {
-
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-
     public static class TeleportResolver
     {
         public static TeleportFrame Resolve(
@@ -47,9 +46,9 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 self, data.FacingTarget, data.FacingTargetLinkKey, targets, linkSources, links);
 
             LocalToWorld facingLtw = default;
-            var hasFacing = facingEntity != Entity.Null && 
+            var hasFacing = facingEntity != Entity.Null &&
                             transforms.TryGetComponent(facingEntity, out facingLtw);
-            
+
             var facingPosition = hasFacing ? facingLtw.Position : landingPosition;
             var facingRotation = hasFacing ? Orientation(facingLtw) : azimuthRotation;
 

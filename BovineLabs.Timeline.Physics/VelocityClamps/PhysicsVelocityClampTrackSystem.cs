@@ -1,18 +1,18 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.VelocityClamps
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using EntityLinks;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsVelocityClampTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsVelocityClampData, PhysicsVelocityClampAnimated> _blendImpl;
@@ -27,8 +27,8 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveVelocityClamp>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsVelocityClampState>(false);
+            _activeLookup = state.GetComponentLookup<ActiveVelocityClamp>();
+            _stateLookup = state.GetComponentLookup<PhysicsVelocityClampState>();
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsVelocityClampAnimated, ClipActive>()

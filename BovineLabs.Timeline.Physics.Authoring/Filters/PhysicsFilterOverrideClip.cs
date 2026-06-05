@@ -1,15 +1,15 @@
+using BovineLabs.Timeline.Authoring;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.Filters
 {
-    using BovineLabs.Timeline.Authoring;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsFilterOverrideClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("The new BelongsTo collision mask (as an integer bitmask).")]
         public uint belongsToOverride = 0xFFFFFFFF;
-        
+
         [Tooltip("The new CollidesWith collision mask (as an integer bitmask).")]
         public uint collidesWithOverride = 0xFFFFFFFF;
 
@@ -30,7 +30,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Filters
                     RestoreOnExit = restoreOnExit
                 }
             });
-            
+
             base.Bake(clipEntity, context);
         }
     }

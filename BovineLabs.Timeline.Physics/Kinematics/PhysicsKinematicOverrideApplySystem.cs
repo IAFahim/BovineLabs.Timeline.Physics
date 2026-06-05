@@ -1,18 +1,18 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+
 namespace BovineLabs.Timeline.Physics.Kinematics
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsKinematicOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveKinematicOverride> _activeHandle;
@@ -84,13 +84,13 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             {
                 var entities = chunk.GetNativeArray(EntityType);
                 var states = chunk.GetNativeArray(ref StateHandle);
-                
+
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
-                
+
                 var hasMassOverride = chunk.Has(ref MassOverrideHandle);
                 var massOverrides = hasMassOverride ? chunk.GetNativeArray(ref MassOverrideHandle) : default;
-                
+
                 var hasGravityFactor = chunk.Has(ref GravityFactorHandle);
                 var gravityFactors = hasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
 
@@ -122,7 +122,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         {
                             state.OriginalIsKinematic = massOverrides[i].IsKinematic;
                             state.AddedMassOverrideComponent = false;
-                            
+
                             var mo = massOverrides[i];
                             mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
                             massOverrides[i] = mo;
@@ -131,7 +131,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         {
                             state.OriginalIsKinematic = 0;
                             state.AddedMassOverrideComponent = true;
-                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
+                            ECB.AddComponent(unfilteredChunkIndex, entity,
+                                new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
                         }
 
                         if (config.ZeroGravity && !hasGravityOverride)
@@ -140,7 +141,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                             {
                                 state.OriginalGravityScale = gravityFactors[i].Value;
                                 state.AddedGravityComponent = false;
-                                
+
                                 var factor = gravityFactors[i];
                                 factor.Value = 0f;
                                 gravityFactors[i] = factor;
@@ -188,7 +189,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         }
                         else
                         {
-                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
+                            ECB.AddComponent(unfilteredChunkIndex, entity,
+                                new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
                         }
 
                         if (!hasGravityOverride)
@@ -205,7 +207,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                             }
                             else
                             {
-                                ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                                ECB.AddComponent(unfilteredChunkIndex, entity,
+                                    new PhysicsGravityFactor { Value = state.OriginalGravityScale });
                             }
                         }
 

@@ -1,13 +1,12 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Kernels
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data.Kernels;
-    using Infrastructure;
-    using Unity.Collections;
-    using Unity.Entities;
-
     public struct TrackBlendDriver<TData, TAnimated, TActive, TMixer>
         where TData : unmanaged
         where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
@@ -28,8 +27,8 @@ namespace BovineLabs.Timeline.Physics.Kernels
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<TActive>(false);
-            _animatedHandle = state.GetComponentTypeHandle<TAnimated>(false);
+            _activeLookup = state.GetComponentLookup<TActive>();
+            _animatedHandle = state.GetComponentTypeHandle<TAnimated>();
             _bindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
 
             using (var prepare = new EntityQueryBuilder(Allocator.Temp)
@@ -50,7 +49,10 @@ namespace BovineLabs.Timeline.Physics.Kernels
                 ComponentType.ReadOnly<BeginSimulationEntityCommandBufferSystem.Singleton>());
         }
 
-        public void OnDestroy(ref SystemState state) => _blendImpl.OnDestroy(ref state);
+        public void OnDestroy(ref SystemState state)
+        {
+            _blendImpl.OnDestroy(ref state);
+        }
 
         public void UpdateLookups(ref SystemState state)
         {

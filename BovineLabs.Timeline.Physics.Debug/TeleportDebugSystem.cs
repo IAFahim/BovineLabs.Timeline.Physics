@@ -1,4 +1,3 @@
-#if UNITY_EDITOR || BL_DEBUG
 using System.Diagnostics.CodeAnalysis;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
@@ -17,6 +16,7 @@ using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
+#if UNITY_EDITOR || BL_DEBUG
 namespace BovineLabs.Timeline.Physics.Debug
 {
     [Configurable]
@@ -34,10 +34,12 @@ namespace BovineLabs.Timeline.Physics.Debug
         public static readonly SharedStatic<Color> RadiusColor = SharedStatic<Color>.GetOrCreate<Tags.RadiusColor>();
 
         [ConfigVar("teleportgizmo.clearance-color", 0.95f, 0.4f, 0.3f, 0.6f, "Accent for the clearance sphere.")]
-        public static readonly SharedStatic<Color> ClearanceColor = SharedStatic<Color>.GetOrCreate<Tags.ClearanceColor>();
+        public static readonly SharedStatic<Color> ClearanceColor =
+            SharedStatic<Color>.GetOrCreate<Tags.ClearanceColor>();
 
         [ConfigVar("teleportgizmo.reference-color", 0.4f, 0.8f, 1f, 0.7f, "Accent for reference frame arrows.")]
-        public static readonly SharedStatic<Color> ReferenceColor = SharedStatic<Color>.GetOrCreate<Tags.ReferenceColor>();
+        public static readonly SharedStatic<Color> ReferenceColor =
+            SharedStatic<Color>.GetOrCreate<Tags.ReferenceColor>();
 
         [ConfigVar("teleportgizmo.los-color", 0.3f, 1f, 0.5f, 0.5f, "Accent for line of sight line.")]
         public static readonly SharedStatic<Color> LosColor = SharedStatic<Color>.GetOrCreate<Tags.LosColor>();
@@ -53,15 +55,41 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct PatchColor { }
-            public struct RadiusColor { }
-            public struct ClearanceColor { }
-            public struct ReferenceColor { }
-            public struct LosColor { }
-            public struct TextColor { }
-            public struct Segments { }
-            public struct Verbose { }
+            public struct Enabled
+            {
+            }
+
+            public struct PatchColor
+            {
+            }
+
+            public struct RadiusColor
+            {
+            }
+
+            public struct ClearanceColor
+            {
+            }
+
+            public struct ReferenceColor
+            {
+            }
+
+            public struct LosColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
+
+            public struct Segments
+            {
+            }
+
+            public struct Verbose
+            {
+            }
         }
     }
 
@@ -86,7 +114,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
-            
+
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsTeleportAnimated, ClipActive>()
                 .Build();
@@ -102,24 +130,24 @@ namespace BovineLabs.Timeline.Physics.Debug
             _linkLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTeleportGizmoSystem>(
-                  ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawTeleportJob
             {
-                Drawer         = drawer,
-                Segments       = math.clamp(TeleportDebugSystem.Segments.Data, 8, 64),
-                PatchColor     = TeleportDebugSystem.PatchColor.Data,
-                RadiusColor    = TeleportDebugSystem.RadiusColor.Data,
+                Drawer = drawer,
+                Segments = math.clamp(TeleportDebugSystem.Segments.Data, 8, 64),
+                PatchColor = TeleportDebugSystem.PatchColor.Data,
+                RadiusColor = TeleportDebugSystem.RadiusColor.Data,
                 ClearanceColor = TeleportDebugSystem.ClearanceColor.Data,
                 ReferenceColor = TeleportDebugSystem.ReferenceColor.Data,
-                LosColor       = TeleportDebugSystem.LosColor.Data,
-                TextColor      = TeleportDebugSystem.TextColor.Data,
-                Verbose        = TeleportDebugSystem.Verbose.Data,
+                LosColor = TeleportDebugSystem.LosColor.Data,
+                TextColor = TeleportDebugSystem.TextColor.Data,
+                Verbose = TeleportDebugSystem.Verbose.Data,
                 TransformLookup = _localToWorldLookup,
-                TargetsLookup  = _targetsLookup,
-                LinkSources    = _linkSourceLookup,
-                Links          = _linkLookup,
+                TargetsLookup = _targetsLookup,
+                LinkSources = _linkSourceLookup,
+                Links = _linkLookup
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -159,7 +187,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                     d.AzimuthCenter, d.AzimuthHalfRange,
                     d.ElevationCenter, d.ElevationHalfRange);
 
-                Drawer.Arrow(frame.LandingPosition, math.mul(frame.ReferenceRotation, math.forward()) * 1.5f, ReferenceColor);
+                Drawer.Arrow(frame.LandingPosition, math.mul(frame.ReferenceRotation, math.forward()) * 1.5f,
+                    ReferenceColor);
 
                 Drawer.Line(frame.AzimuthPosition, frame.LandingPosition, new Color(0.5f, 0.5f, 0.5f, 0.3f));
 
@@ -168,16 +197,25 @@ namespace BovineLabs.Timeline.Physics.Debug
                     var losStart = frame.TeleportedPosition + new float3(0f, d.LineOfSightOffset, 0f);
                     var losEnd = frame.LandingPosition + new float3(0f, d.LineOfSightOffset, 0f);
                     Drawer.Line(losStart, losEnd, LosColor);
-                    if (Verbose) Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.25f, 0f), "LOS Check", LosColor, 8f);
+                    if (Verbose)
+                        Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.25f, 0f), "LOS Check", LosColor,
+                            8f);
                 }
 
-                Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f), math.mul(frame.FacingRotation, math.forward()) * 1.25f, new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
+                Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f),
+                    math.mul(frame.FacingRotation, math.forward()) * 1.25f,
+                    new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
 
                 if (Verbose)
                 {
-                    Drawer.Text32(frame.LandingPosition + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor, 10f);
-                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 1f, 0f), $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor, 8f);
-                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.6f, 0f), $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°", TextColor, 8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor,
+                        10f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 1f, 0f),
+                        $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor,
+                        8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.6f, 0f),
+                        $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°",
+                        TextColor, 8f);
 
                     var facingLabel = d.FacingMode switch
                     {
@@ -187,7 +225,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                         TeleportFacingMode.MatchTarget => "Match Target",
                         _ => "?"
                     };
-                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor, 8f);
+                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor,
+                        8f);
                 }
             }
 
@@ -214,7 +253,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var prev = origin + math.rotate(referenceRot, SphericalToCartesian(azMin, elevation)) * radius;
                 for (var i = 1; i <= Segments; i++)
                 {
-                    var curr = origin + math.rotate(referenceRot, SphericalToCartesian(azMin + step * i, elevation)) * radius;
+                    var curr = origin + math.rotate(referenceRot, SphericalToCartesian(azMin + step * i, elevation)) *
+                        radius;
                     Drawer.Line(prev, curr, PatchColor);
                     prev = curr;
                 }
@@ -227,7 +267,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var prev = origin + math.rotate(referenceRot, SphericalToCartesian(azimuth, elMin)) * radius;
                 for (var i = 1; i <= steps; i++)
                 {
-                    var curr = origin + math.rotate(referenceRot, SphericalToCartesian(azimuth, elMin + step * i)) * radius;
+                    var curr = origin + math.rotate(referenceRot, SphericalToCartesian(azimuth, elMin + step * i)) *
+                        radius;
                     Drawer.Line(prev, curr, PatchColor);
                     prev = curr;
                 }

@@ -1,18 +1,18 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Gravities
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using EntityLinks;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsGravityOverrideTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated> _blendImpl;
@@ -27,8 +27,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>(false);
+            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>();
+            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>();
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsGravityOverrideAnimated, ClipActive>()
@@ -68,7 +68,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
                 ActiveLookup = _activeLookup,
-                ResetValue = new PhysicsGravityOverrideState { Fired = false, AddedComponent = false, OriginalGravityScale = 1f }
+                ResetValue = new PhysicsGravityOverrideState
+                    { Fired = false, AddedComponent = false, OriginalGravityScale = 1f }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
             var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsGravityOverrideAnimated>();
@@ -127,7 +128,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                 ECB.SetComponentEnabled<ActiveGravityOverride>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveGravityOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsGravityOverrideData, PhysicsGravityOverrideMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsGravityOverrideData, PhysicsGravityOverrideMixer>(ref mixData,
+                        default)
                 });
             }
         }

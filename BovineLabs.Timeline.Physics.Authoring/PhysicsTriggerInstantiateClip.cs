@@ -1,16 +1,16 @@
+using System;
+using BovineLabs.Core.Authoring.ObjectManagement;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using System;
-    using BovineLabs.Core.Authoring.ObjectManagement;
-    using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
         public ObjectDefinition objectDefinition;
@@ -30,8 +30,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Resolves link on collided entity. Assigns to spawned entity Targets.Target.")]
         public EntityLinkSchema targetLinkOverride;
 
-        [Header("Filtering")]
-        [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
+        [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
 
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
@@ -50,8 +49,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             context.Baker.DependsOn(objectDefinition);
 
-            if (assignParentLink == null || !EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
-            if (targetLinkOverride == null || !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
+            if (assignParentLink == null ||
+                !EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
+            if (targetLinkOverride == null ||
+                !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
             {

@@ -1,19 +1,30 @@
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Kernels;
+using Unity.Burst;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Drags
 {
-    using BovineLabs.Timeline.Physics.Data;
-    using EntityLinks;
-    using Kernels;
-    using Unity.Burst;
-    using Unity.Entities;
-
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsDragTrackSystem : ISystem
     {
         private TrackBlendDriver<PhysicsDragData, PhysicsDragAnimated, ActiveDrag, PhysicsDragMixer> _driver;
-        [BurstCompile] public void OnCreate(ref SystemState state) => _driver.OnCreate(ref state);
-        [BurstCompile] public void OnDestroy(ref SystemState state) => _driver.OnDestroy(ref state);
+
+        [BurstCompile]
+        public void OnCreate(ref SystemState state)
+        {
+            _driver.OnCreate(ref state);
+        }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            _driver.OnDestroy(ref state);
+        }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)

@@ -1,30 +1,31 @@
+using BovineLabs.Core;
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.EntityCommands;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Core.Jobs;
+using BovineLabs.Core.ObjectManagement;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Core.Utility;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-
-    using BovineLabs.Core;
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.EntityCommands;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Core.ObjectManagement;
-    using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Core.Utility;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-    using EntityCache = BovineLabs.Core.Extensions.EntityCache;
+    using EntityCache = EntityCache;
 
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
@@ -168,7 +169,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
                                 !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
-                            if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets, LinkSources, Links)) continue;
+                            if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
+                                    LinkSources, Links)) continue;
 
                             var selfPos = LocalToWorldLookup[self].Position;
                             var otherPos = LocalToWorldLookup[evt.EntityB].Position;
@@ -184,7 +186,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
                             !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
-                        if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets, LinkSources, Links)) continue;
+                        if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
+                                LinkSources, Links)) continue;
 
                         var selfPos = LocalToWorldLookup[self].Position;
                         var otherPos = LocalToWorldLookup[evt.EntityB].Position;

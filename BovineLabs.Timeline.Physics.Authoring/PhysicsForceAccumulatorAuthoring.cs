@@ -1,8 +1,8 @@
+using Unity.Entities;
+using UnityEngine;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using Unity.Entities;
-    using UnityEngine;
-
     [DisallowMultipleComponent]
     [AddComponentMenu("BovineLabs/Physics/Physics Force Accumulator")]
     public class PhysicsForceAccumulatorAuthoring : MonoBehaviour

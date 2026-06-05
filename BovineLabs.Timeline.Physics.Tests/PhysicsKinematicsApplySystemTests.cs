@@ -1,14 +1,15 @@
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Testing;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Kinematics;
+using NUnit.Framework;
+using Unity.Core;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Tests
 {
-    using Unity.Entities;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Testing;
-    using BovineLabs.Timeline.Physics.Data;
-    using NUnit.Framework;
-    using Unity.Core;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-
     public class PhysicsKinematicsApplySystemTests : ECSTestsFixture
     {
         [Test]
@@ -19,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
             Manager.AddComponentData(target, new PhysicsVelocityState { Fired = false });
             Manager.AddBuffer<PendingVelocity>(target);
-            
+
             Manager.AddComponentData(target, new ActiveVelocity
             {
                 Config = new PhysicsVelocityData
@@ -33,7 +34,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -43,11 +44,11 @@ namespace BovineLabs.Timeline.Physics.Tests
             var dt = WorldUnmanaged.Time.DeltaTime;
             Assert.AreEqual(5f * dt, pendings[0].Linear.y, 0.001f);
             Assert.AreEqual(1f * dt, pendings[0].Angular.z, 0.001f);
-            
+
             var state = Manager.GetComponentData<PhysicsVelocityState>(target);
             Assert.IsFalse(state.Fired, "AddContinuous should not set Fired to true");
         }
-        
+
         [Test]
         public void AddInstant_AppendsPendingForceOnce()
         {
@@ -56,7 +57,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
             Manager.AddComponentData(target, new PhysicsForceState { Fired = false });
             Manager.AddBuffer<PendingForce>(target);
-            
+
             Manager.AddComponentData(target, new ActiveForce
             {
                 Config = new PhysicsForceData
@@ -70,7 +71,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -78,7 +79,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(1, pendings.Length, "Should have appended exactly one PendingForce on first frame");
             Assert.AreEqual(10f, pendings[0].Linear.x, 0.001f);
             Assert.AreEqual(2f, pendings[0].Angular.y, 0.001f);
-            
+
             var state = Manager.GetComponentData<PhysicsForceState>(target);
             Assert.IsTrue(state.Fired, "Impulse should set Fired to true");
 
@@ -86,7 +87,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
-            
+
             pendings = Manager.GetBuffer<PendingForce>(target);
             Assert.AreEqual(0, pendings.Length, "Should not append again because it was fired");
         }
@@ -103,10 +104,11 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddBuffer<PendingForce>(body);
 
             Manager.AddComponentData(targetEntity, LocalTransform.FromPosition(new float3(5, 0, 0)));
-            Manager.AddComponentData(targetEntity, new LocalToWorld { Value = float4x4.Translate(new float3(5, 0, 0)) });
+            Manager.AddComponentData(targetEntity,
+                new LocalToWorld { Value = float4x4.Translate(new float3(5, 0, 0)) });
 
             Manager.AddComponentData(body, new Targets { Target = targetEntity });
-            
+
             Manager.AddComponentData(body, new ActiveForce
             {
                 Config = new PhysicsForceData
@@ -120,7 +122,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

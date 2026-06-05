@@ -1,18 +1,18 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.PIDs
 {
-
-    using BovineLabs.Core.Jobs;
-    using BovineLabs.Timeline.Data;
-    using EntityLinks;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsLinearPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsLinearPIDData, PhysicsLinearPIDAnimated> _blendImpl;
@@ -27,8 +27,8 @@ namespace BovineLabs.Timeline.Physics.PIDs
         public void OnCreate(ref SystemState state)
         {
             _blendImpl.OnCreate(ref state);
-            _activePidLookup = state.GetComponentLookup<ActiveLinearPid>(false);
-            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>(false);
+            _activePidLookup = state.GetComponentLookup<ActiveLinearPid>();
+            _stateLookup = state.GetComponentLookup<PhysicsLinearPIDState>();
 
             _resetQuery = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsLinearPIDAnimated, ClipActive>()

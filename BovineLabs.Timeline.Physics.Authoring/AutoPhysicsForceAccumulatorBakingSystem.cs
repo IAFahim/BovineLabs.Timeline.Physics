@@ -1,11 +1,11 @@
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Physics;
+using UnityEngine;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using Unity.Burst;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Physics;
-    using UnityEngine;
-
     [DisallowMultipleComponent]
     [AddComponentMenu("BovineLabs/Physics/Physics Force Accumulator Opt-Out")]
     public class PhysicsForceAccumulatorOptOutAuthoring : MonoBehaviour
@@ -20,7 +20,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         }
     }
 
-    public struct PhysicsForceAccumulatorOptOut : IComponentData { }
+    public struct PhysicsForceAccumulatorOptOut : IComponentData
+    {
+    }
 
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     public partial struct AutoPhysicsForceAccumulatorBakingSystem : ISystem

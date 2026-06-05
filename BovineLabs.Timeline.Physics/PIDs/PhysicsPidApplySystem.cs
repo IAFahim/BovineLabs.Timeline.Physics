@@ -1,25 +1,26 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.Extensions;
+using BovineLabs.Core.Iterators;
+using BovineLabs.Essence.Data;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Kinematics;
+using BovineLabs.Timeline.Physics.Stats;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.PIDs
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using BovineLabs.Core.Extensions;
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Essence.Data;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Infrastructure;
-    using Stats;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [UpdateAfter(typeof(Kinematics.PhysicsKinematicsApplySystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsPidApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -153,7 +154,8 @@ namespace BovineLabs.Timeline.Physics.PIDs
                     var config = actives[i].Config;
                     var state = states[i];
 
-                    var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                    var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup,
+                        in ParentLookup);
 
                     PhysicsMath.ResolveLinearPidTarget(config, body,
                         in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup,
@@ -237,7 +239,8 @@ namespace BovineLabs.Timeline.Physics.PIDs
                     var config = actives[i].Config;
                     var state = states[i];
 
-                    var selfRot = PhysicsMath.ResolveRotation(body, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup);
+                    var selfRot = PhysicsMath.ResolveRotation(body, in LocalTransformLookup, in LocalToWorldLookup,
+                        in ParentLookup);
 
                     PhysicsMath.ResolveAngularPidTarget(config, body,
                         in TargetsLookup, in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup,

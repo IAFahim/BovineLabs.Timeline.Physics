@@ -1,14 +1,14 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.PIDs
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public class PhysicsAngularPIDClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Gains")] public bool uniformAxes = true;
@@ -29,7 +29,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]
         public float strength = 1f;
 
-        [Header("Stop Threshold (Optional)")] [Tooltip("Suppress PID output when angular error (degrees) is below this value. 0 = disabled.")] [Min(0f)]
+        [Header("Stop Threshold (Optional)")]
+        [Tooltip("Suppress PID output when angular error (degrees) is below this value. 0 = disabled.")]
+        [Min(0f)]
         public float stopThreshold;
 
         [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;

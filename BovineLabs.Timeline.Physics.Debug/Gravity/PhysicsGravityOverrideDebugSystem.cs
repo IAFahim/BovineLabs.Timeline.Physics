@@ -31,10 +31,21 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct ArrowColor { }
-            public struct ZeroGColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct ArrowColor
+            {
+            }
+
+            public struct ZeroGColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -44,7 +55,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsGravityOverrideGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -59,7 +70,7 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsGravityOverrideGizmoSystem>(
-                  ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             var worldGravity = new float3(0, -9.81f, 0);
@@ -68,11 +79,11 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             state.Dependency = new DrawJob
             {
-                Drawer       = drawer,
+                Drawer = drawer,
                 WorldGravity = worldGravity,
-                ArrowColor   = GravityOverrideDebugSystem.ArrowColor.Data,
-                ZeroGColor   = GravityOverrideDebugSystem.ZeroGColor.Data,
-                TextColor    = GravityOverrideDebugSystem.TextColor.Data,
+                ArrowColor = GravityOverrideDebugSystem.ArrowColor.Data,
+                ZeroGColor = GravityOverrideDebugSystem.ZeroGColor.Data,
+                TextColor = GravityOverrideDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true)
@@ -87,7 +98,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color ArrowColor;
             public Color ZeroGColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -95,9 +106,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
@@ -120,13 +129,13 @@ namespace BovineLabs.Timeline.Physics.Debug
                 else
                 {
                     var gVec = WorldGravity * gScale;
-                    var arrowLen = 1f; 
+                    var arrowLen = 1f;
                     if (math.lengthsq(WorldGravity) > 0.01f)
                         arrowLen = math.length(gVec) / math.length(WorldGravity);
 
                     var dir = math.normalize(gVec);
                     Drawer.Arrow(pos, dir * arrowLen, ArrowColor);
-                    
+
                     Drawer.Text32(pos + dir * arrowLen + new float3(0, 0.3f, 0), $"g×{gScale:G2}", TextColor, 10f);
                 }
             }

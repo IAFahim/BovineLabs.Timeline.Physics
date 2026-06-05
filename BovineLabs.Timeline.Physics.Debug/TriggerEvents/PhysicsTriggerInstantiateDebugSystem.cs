@@ -29,9 +29,17 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct GhostColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct GhostColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -41,7 +49,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsTriggerInstantiateGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -56,13 +64,13 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerInstantiateGizmoSystem>(
-                  ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer))
                 return;
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
+                Drawer = drawer,
                 GhostColor = TriggerInstantiateDebugSystem.GhostColor.Data,
-                TextColor  = TriggerInstantiateDebugSystem.TextColor.Data,
+                TextColor = TriggerInstantiateDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
@@ -77,7 +85,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color GhostColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -85,23 +93,22 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerInstantiateData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
+                in PhysicsTriggerInstantiateData config)
             {
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var ltw))
                     return;
 
                 var pos = ltw.Position;
-                
+
                 if (config.PositionMode == PhysicsTriggerPositionMode.MatchSelf)
                 {
                     Drawer.Arrow(pos, new float3(1f, 0f, 0f), new Color(1f, 0f, 0f, GhostColor.a));
@@ -111,12 +118,12 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 Drawer.Text32(pos + new float3(0f, 0.4f, 0f), $"Spawn: {config.ObjectId.ID}", TextColor, 10f);
                 Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"on {config.EventState}", TextColor, 10f);
-                
+
                 if (config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity)
                     Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ other", TextColor, 10f);
                 else if (config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint)
                     Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ contact", TextColor, 10f);
-                    
+
                 // --- Actually Fired Visualizer ---
                 var drawColor = new Color(0f, 1f, 0f, 0.8f);
                 TriggerGizmoUtility.DrawActuallyFired(

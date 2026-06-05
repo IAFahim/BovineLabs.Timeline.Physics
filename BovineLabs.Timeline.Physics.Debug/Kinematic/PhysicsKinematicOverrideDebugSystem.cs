@@ -31,10 +31,21 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct BoxColor { }
-            public struct ZeroGColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct BoxColor
+            {
+            }
+
+            public struct ZeroGColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -44,7 +55,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsKinematicOverrideGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -59,15 +70,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicOverrideGizmoSystem>(
-                  ref state, KinematicOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, KinematicOverrideDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
-                BoxColor   = KinematicOverrideDebugSystem.BoxColor.Data,
+                Drawer = drawer,
+                BoxColor = KinematicOverrideDebugSystem.BoxColor.Data,
                 ZeroGColor = KinematicOverrideDebugSystem.ZeroGColor.Data,
-                TextColor  = KinematicOverrideDebugSystem.TextColor.Data,
+                TextColor = KinematicOverrideDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true)
@@ -81,7 +92,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color BoxColor;
             public Color ZeroGColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -89,9 +100,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 

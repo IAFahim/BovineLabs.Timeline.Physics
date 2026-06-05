@@ -1,11 +1,11 @@
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using BovineLabs.Timeline.Data;
-    using BovineLabs.Timeline.Physics.Data;
-    using Unity.Burst;
-    using Unity.Collections;
-    using Unity.Entities;
-
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     public partial struct PhysicsTimelineBakingSystem : ISystem
     {

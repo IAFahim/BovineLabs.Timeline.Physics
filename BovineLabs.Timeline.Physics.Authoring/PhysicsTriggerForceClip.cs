@@ -1,16 +1,16 @@
+using System;
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Mathematics;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    using System;
-    using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-    using Unity.Mathematics;
-
     public sealed class PhysicsTriggerForceClip : DOTSClip, ITimelineClipAsset
     {
         public StatefulEventState triggerState = StatefulEventState.Enter;
@@ -27,7 +27,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsTriggerPositionMode originMode = PhysicsTriggerPositionMode.MatchSelf;
 
         public PhysicsTriggerFalloffCurve falloffCurve = PhysicsTriggerFalloffCurve.None;
-        [Min(0f)] public float falloffStartRadius = 0f;
+        [Min(0f)] public float falloffStartRadius;
         [Min(0f)] public float falloffEndRadius = 5f;
 
         [Header("Stat Multiplier (Optional)")]
@@ -41,8 +41,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public EntityLinkSchema applyToLink;
 
-        [Header("Filtering")]
-        [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
+        [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
 
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
@@ -63,9 +62,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var bakedState = triggerState;
             if (mode == PhysicsForceMode.Continuous && bakedState != StatefulEventState.Stay)
-            {
                 bakedState = StatefulEventState.Stay;
-            }
 
             context.Baker.AddComponent(clipEntity, new PhysicsTriggerForceData
             {

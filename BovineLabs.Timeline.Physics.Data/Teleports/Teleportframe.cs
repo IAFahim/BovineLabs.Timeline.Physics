@@ -34,17 +34,17 @@ namespace BovineLabs.Timeline.Physics
             quaternion facingRotation,
             quaternion referenceRotation)
         {
-            this.HasTeleportedEntity = hasTeleportedEntity;
-            this.TeleportedEntity = teleportedEntity;
-            this.TeleportedPosition = teleportedPosition;
-            this.TeleportedRotation = teleportedRotation;
-            this.LandingEntity = landingEntity;
-            this.LandingPosition = landingPosition;
-            this.AzimuthPosition = azimuthPosition;
-            this.AzimuthRotation = azimuthRotation;
-            this.FacingPosition = facingPosition;
-            this.FacingRotation = facingRotation;
-            this.ReferenceRotation = referenceRotation;
+            HasTeleportedEntity = hasTeleportedEntity;
+            TeleportedEntity = teleportedEntity;
+            TeleportedPosition = teleportedPosition;
+            TeleportedRotation = teleportedRotation;
+            LandingEntity = landingEntity;
+            LandingPosition = landingPosition;
+            AzimuthPosition = azimuthPosition;
+            AzimuthRotation = azimuthRotation;
+            FacingPosition = facingPosition;
+            FacingRotation = facingRotation;
+            ReferenceRotation = referenceRotation;
         }
     }
 }

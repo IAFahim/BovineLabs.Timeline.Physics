@@ -29,7 +29,6 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsRicochetData AuthoredData;
         [CreateProperty] public PhysicsRicochetData Value { get; set; }
-
     }
 
     public struct ActiveRicochet : IComponentData, IEnableableComponent

@@ -14,8 +14,6 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsGravityOverrideData AuthoredData;
         public PhysicsGravityOverrideData Value { get; set; }
-        
-
     }
 
     public struct ActiveGravityOverride : IComponentData, IEnableableComponent
@@ -32,7 +30,8 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsGravityOverrideMixer : IMixer<PhysicsGravityOverrideData>
     {
-        public PhysicsGravityOverrideData Lerp(in PhysicsGravityOverrideData a, in PhysicsGravityOverrideData b, in float s)
+        public PhysicsGravityOverrideData Lerp(in PhysicsGravityOverrideData a, in PhysicsGravityOverrideData b,
+            in float s)
         {
             return new PhysicsGravityOverrideData
             {

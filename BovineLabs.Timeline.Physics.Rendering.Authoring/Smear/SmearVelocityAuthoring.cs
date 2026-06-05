@@ -1,7 +1,6 @@
 using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Timeline.Physics.Smear;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Authoring

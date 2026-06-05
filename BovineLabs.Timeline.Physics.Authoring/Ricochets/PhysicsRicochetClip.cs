@@ -1,16 +1,16 @@
+using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Authoring.Conditions;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.EntityLinks.Authoring;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics.Authoring;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
 {
-    using BovineLabs.Essence.Authoring;
-    using BovineLabs.Reaction.Authoring.Conditions;
-    using BovineLabs.Reaction.Data.Core;
-    using BovineLabs.Timeline.Authoring;
-    using BovineLabs.Timeline.EntityLinks.Authoring;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics.Authoring;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsRicochetClip : DOTSClip, ITimelineClipAsset
     {
         public int maxBounces = 3;
@@ -19,21 +19,22 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
         public PhysicsCategoryTags ricochetSurfaces = PhysicsCategoryTags.Everything;
         public PhysicsCategoryTags terminalHitSurfaces = PhysicsCategoryTags.Everything;
 
-        [Header("Terminal Hit Event")]
-        public ConditionEventObject hitCondition;
+        [Header("Terminal Hit Event")] public ConditionEventObject hitCondition;
+
         public Target hitRouteTo = Target.Target;
         public EntityLinkSchema hitRouteLink;
 
-        [Header("Ray Origin")]
-        public Target rayOrigin = Target.Self;
+        [Header("Ray Origin")] public Target rayOrigin = Target.Self;
+
         public EntityLinkSchema rayOriginLink;
-        
-        [Header("Ray Direction")]
-        public Target rayDirection = Target.Self;
+
+        [Header("Ray Direction")] public Target rayDirection = Target.Self;
+
         public EntityLinkSchema rayDirectionLink;
 
         [Header("Distance Multiplier (Optional)")]
         public StatSchemaObject strengthStat;
+
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
@@ -45,15 +46,15 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
             ushort hitRouteKey = 0;
             if (hitRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(hitRouteLink, out var k1))
                 hitRouteKey = k1;
-                
+
             ushort rayOriginKey = 0;
             if (rayOriginLink != null && EntityLinkAuthoringUtility.TryGetKey(rayOriginLink, out var k2))
                 rayOriginKey = k2;
-                
+
             ushort rayDirectionKey = 0;
             if (rayDirectionLink != null && EntityLinkAuthoringUtility.TryGetKey(rayDirectionLink, out var k3))
                 rayDirectionKey = k3;
-                
+
             ushort readStatKey = 0;
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k4))
                 readStatKey = k4;
@@ -82,7 +83,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                     }
                 }
             });
-            
+
             base.Bake(clipEntity, context);
         }
     }

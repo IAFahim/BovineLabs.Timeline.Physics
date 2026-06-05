@@ -31,18 +31,35 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         [ConfigVar("clampgizmo.text-color", 1.0f, 1.0f, 1.0f, 0.9f, "Color for text labels")]
         public static readonly SharedStatic<Color> TextColor = SharedStatic<Color>.GetOrCreate<Tags.TextColor>();
-        
+
         [ConfigVar("clampgizmo.segments", 16, "Number of segments for spheres and arcs")]
         public static readonly SharedStatic<int> Segments = SharedStatic<int>.GetOrCreate<Tags.Segments>();
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct SafeColor { }
-            public struct WarnColor { }
-            public struct LimitColor { }
-            public struct TextColor { }
-            public struct Segments { }
+            public struct Enabled
+            {
+            }
+
+            public struct SafeColor
+            {
+            }
+
+            public struct WarnColor
+            {
+            }
+
+            public struct LimitColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
+
+            public struct Segments
+            {
+            }
         }
     }
 
@@ -52,7 +69,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsVelocityClampGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -67,21 +84,21 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsVelocityClampGizmoSystem>(
-                  ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer))
+                    ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
-                Segments   = math.clamp(VelocityClampDebugSystem.Segments.Data, 8, 32),
-                SafeColor  = VelocityClampDebugSystem.SafeColor.Data,
-                WarnColor  = VelocityClampDebugSystem.WarnColor.Data,
+                Drawer = drawer,
+                Segments = math.clamp(VelocityClampDebugSystem.Segments.Data, 8, 32),
+                SafeColor = VelocityClampDebugSystem.SafeColor.Data,
+                WarnColor = VelocityClampDebugSystem.WarnColor.Data,
                 LimitColor = VelocityClampDebugSystem.LimitColor.Data,
-                TextColor  = VelocityClampDebugSystem.TextColor.Data,
+                TextColor = VelocityClampDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
-                VelocityLookup  = SystemAPI.GetComponentLookup<PhysicsVelocity>(true)
+                VelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -94,7 +111,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Color WarnColor;
             public Color LimitColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -102,9 +119,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
@@ -118,7 +133,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
-                
+
                 var hasVel = VelocityLookup.TryGetComponent(target, out var vel);
                 var linSpd = hasVel ? math.length(vel.Linear) : 0f;
                 var angSpd = hasVel ? math.length(vel.Angular) : 0f;
@@ -130,22 +145,23 @@ namespace BovineLabs.Timeline.Physics.Debug
                     {
                         var ratio = math.saturate(linSpd / limit);
                         var col = EvaluateColor(ratio);
-                        
+
                         var visualRadius = limit * 0.1f;
                         visualRadius = math.clamp(visualRadius, 0.5f, 5f);
-                        
+
                         Drawer.Sphere(pos, visualRadius, Segments, col);
-                        
+
                         if (hasVel && linSpd > 0.01f)
                         {
                             var velDir = math.normalize(vel.Linear);
                             Drawer.Arrow(pos, velDir * (visualRadius * ratio), col);
                         }
 
-                        Drawer.Text32(pos + new float3(0, visualRadius + 0.3f, 0), $"max: {limit:G2} m/s", TextColor, 10f);
+                        Drawer.Text32(pos + new float3(0, visualRadius + 0.3f, 0), $"max: {limit:G2} m/s", TextColor,
+                            10f);
                     }
                 }
-                
+
                 if (d.MaxAngularSpeed > 0.001f)
                 {
                     var limit = d.MaxAngularSpeed;
@@ -153,16 +169,17 @@ namespace BovineLabs.Timeline.Physics.Debug
                     {
                         var ratio = math.saturate(angSpd / limit);
                         var col = EvaluateColor(ratio);
-                        
+
                         var visualRadius = limit * 0.2f;
                         visualRadius = math.clamp(visualRadius, 0.5f, 5f);
-                        
+
                         Drawer.Circle(pos, new float3(0f, visualRadius, 0f), col);
-                        Drawer.Text32(pos + new float3(visualRadius + 0.2f, 0, 0), $"amax: {limit:G2} rad/s", TextColor, 10f);
+                        Drawer.Text32(pos + new float3(visualRadius + 0.2f, 0, 0), $"amax: {limit:G2} rad/s", TextColor,
+                            10f);
                     }
                 }
             }
-            
+
             private Color EvaluateColor(float ratio)
             {
                 if (ratio < 0.7f) return SafeColor;

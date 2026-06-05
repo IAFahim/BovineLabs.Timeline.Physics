@@ -1,10 +1,10 @@
+using BovineLabs.Timeline.Authoring;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.Gravities
 {
-    using BovineLabs.Timeline.Authoring;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsGravityOverrideClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("The gravity scale multiplier. 1 is normal gravity, 0 is zero-G, negative reverses gravity.")]
@@ -26,7 +26,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Gravities
                     RestoreOnExit = restoreOnExit
                 }
             });
-            
+
             base.Bake(clipEntity, context);
         }
     }

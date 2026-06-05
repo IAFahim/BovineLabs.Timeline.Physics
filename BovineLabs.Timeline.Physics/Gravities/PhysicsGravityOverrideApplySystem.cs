@@ -1,17 +1,17 @@
+using BovineLabs.Core.ConfigVars;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Physics;
+
 namespace BovineLabs.Timeline.Physics.Gravities
 {
-
-    using BovineLabs.Core.ConfigVars;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Physics;
-
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsGravityOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveGravityOverride> _activeHandle;
@@ -68,10 +68,10 @@ namespace BovineLabs.Timeline.Physics.Gravities
             {
                 var entities = chunk.GetNativeArray(EntityType);
                 var states = chunk.GetNativeArray(ref StateHandle);
-                
+
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
-                
+
                 var hasGravityFactor = chunk.Has(ref GravityFactorHandle);
                 var gravityFactors = hasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
 
@@ -85,12 +85,12 @@ namespace BovineLabs.Timeline.Physics.Gravities
                     if (isActive && !state.Fired)
                     {
                         var config = actives[i].Config;
-                        
+
                         if (hasGravityFactor)
                         {
                             state.OriginalGravityScale = gravityFactors[i].Value;
                             state.AddedComponent = false;
-                            
+
                             var factor = gravityFactors[i];
                             factor.Value = config.GravityScale;
                             gravityFactors[i] = factor;
@@ -99,7 +99,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                         {
                             state.OriginalGravityScale = 1f;
                             state.AddedComponent = true;
-                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
+                            ECB.AddComponent(unfilteredChunkIndex, entity,
+                                new PhysicsGravityFactor { Value = config.GravityScale });
                         }
 
                         state.Fired = true;
@@ -108,7 +109,7 @@ namespace BovineLabs.Timeline.Physics.Gravities
                     else if (isActive && state.Fired)
                     {
                         var config = actives[i].Config;
-                        
+
                         if (hasGravityFactor)
                         {
                             var factor = gravityFactors[i];
@@ -117,7 +118,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                         }
                         else
                         {
-                            ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
+                            ECB.AddComponent(unfilteredChunkIndex, entity,
+                                new PhysicsGravityFactor { Value = config.GravityScale });
                         }
                     }
                     else if (!isActive && state.Fired)
@@ -138,7 +140,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                             }
                             else
                             {
-                                ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                                ECB.AddComponent(unfilteredChunkIndex, entity,
+                                    new PhysicsGravityFactor { Value = state.OriginalGravityScale });
                             }
                         }
 

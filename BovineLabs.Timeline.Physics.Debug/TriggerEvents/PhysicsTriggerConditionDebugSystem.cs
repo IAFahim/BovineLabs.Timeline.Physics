@@ -32,9 +32,17 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct RouteColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct RouteColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -44,7 +52,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsTriggerConditionGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -59,18 +67,18 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerConditionGizmoSystem>(
-                  ref state, TriggerConditionDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerConditionDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
+                Drawer = drawer,
                 RouteColor = TriggerConditionDebugSystem.RouteColor.Data,
-                TextColor  = TriggerConditionDebugSystem.TextColor.Data,
+                TextColor = TriggerConditionDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
-                TargetsLookup   = state.GetUnsafeComponentLookup<Targets>(true),
+                TargetsLookup = state.GetUnsafeComponentLookup<Targets>(true),
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
@@ -82,7 +90,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public Drawer Drawer;
             public Color RouteColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -90,9 +98,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             private float3 GetAntiJitterPosition(Entity e, float3 fallback)
             {
                 if (LocalTransformLookup.HasComponent(e) && !ParentLookup.HasComponent(e))
-                {
                     return LocalTransformLookup[e].Position;
-                }
                 return fallback;
             }
 
@@ -100,18 +106,20 @@ namespace BovineLabs.Timeline.Physics.Debug
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
-            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding, in PhysicsTriggerConditionData config)
+            public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
+                in PhysicsTriggerConditionData config)
             {
                 // We're omitting the accurate isFirstFrame check for the debug visualizer for simplicity since it's just visual.
                 // Or we can query ClipActivePrevious. Let's just pass `true` to isFirstFrame so it draws Enter/Stay.
-                bool isFirstFrame = false; // By default false, StatefulEventMatching will still work for Stay/Exit. Enter requires isFirstFrame.
-                
+                var isFirstFrame =
+                    false; // By default false, StatefulEventMatching will still work for Stay/Exit. Enter requires isFirstFrame.
+
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var triggerLtw))
                     return;
 
                 var pos = triggerLtw.Position;
-                
+
                 Drawer.Text32(pos + new float3(0f, 0.5f, 0f), $"-> {config.Condition}", TextColor, 10f);
 
                 // Draw chevron/marker for State
@@ -130,7 +138,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     Drawer.Line(pos + new float3(-markerSize, 0, 0), pos + new float3(markerSize, 0, 0), RouteColor);
                 }
-                
+
                 // --- Actually Fired Visualizer ---
                 var drawColor = new Color(1f, 0.4f, 0f, 0.8f);
                 TriggerGizmoUtility.DrawActuallyFired(

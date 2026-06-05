@@ -1,14 +1,13 @@
+using BovineLabs.Core.Iterators;
+using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.EntityLinks.Data;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-
-    using BovineLabs.Core.Iterators;
-    using BovineLabs.Reaction.Data.Core;
-    using EntityLinks;
-    using BovineLabs.Timeline.EntityLinks.Data;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Transforms;
-
     public static class PhysicsTriggerResolution
     {
         public static bool TryResolvePosition(
@@ -57,7 +56,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             rotation = mode switch
             {
                 PhysicsTriggerRotationMode.MatchSelf => new quaternion(math.orthonormalize(new float3x3(self.Value))),
-                PhysicsTriggerRotationMode.MatchCollidedEntity => new quaternion(math.orthonormalize(new float3x3(other.Value))),
+                PhysicsTriggerRotationMode.MatchCollidedEntity => new quaternion(
+                    math.orthonormalize(new float3x3(other.Value))),
                 PhysicsTriggerRotationMode.AlignToContactNormal =>
                     quaternion.LookRotationSafe(contactNormal, math.up()),
                 PhysicsTriggerRotationMode.Identity => quaternion.identity,

@@ -1,16 +1,17 @@
+using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Kinematics;
+using BovineLabs.Timeline.Physics.PIDs;
+using Unity.Burst;
+using Unity.Burst.Intrinsics;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
+using Unity.Transforms;
+
 namespace BovineLabs.Timeline.Physics.Forces
 {
-
-    using BovineLabs.Core.Jobs;
-    using Infrastructure;
-    using Unity.Burst;
-    using Unity.Burst.Intrinsics;
-    using Unity.Collections;
-    using Unity.Entities;
-    using Unity.Mathematics;
-    using Unity.Physics;
-    using Unity.Transforms;
-
     public struct PhysicsForceAccumulator
     {
         private EntityQuery _query;
@@ -135,42 +136,56 @@ namespace BovineLabs.Timeline.Physics.Forces
     }
 
     /// <summary>
-    /// Drains <see cref="PendingForce"/> and <see cref="PendingVelocity"/> buffers at the end of
-    /// <see cref="PhysicsProducerGroup"/> (before the physics step). Any system that appends to
-    /// <see cref="PendingForce"/> within <see cref="PhysicsProducerGroup"/> must be ordered before
-    /// this system to ensure forces are applied in the correct frame.
+    ///     Drains <see cref="PendingForce" /> and <see cref="PendingVelocity" /> buffers at the end of
+    ///     <see cref="PhysicsProducerGroup" /> (before the physics step). Any system that appends to
+    ///     <see cref="PendingForce" /> within <see cref="PhysicsProducerGroup" /> must be ordered before
+    ///     this system to ensure forces are applied in the correct frame.
     /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [UpdateAfter(typeof(Kinematics.PhysicsKinematicsApplySystem))]
-    [UpdateAfter(typeof(PIDs.PhysicsPidApplySystem))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
+    [UpdateAfter(typeof(PhysicsPidApplySystem))]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsProducerForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;
-        
+
         [BurstCompile]
-        public void OnCreate(ref SystemState state) => _accumulator.OnCreate(ref state);
-        
+        public void OnCreate(ref SystemState state)
+        {
+            _accumulator.OnCreate(ref state);
+        }
+
         [BurstCompile]
-        public void OnUpdate(ref SystemState state) => _accumulator.OnUpdate(ref state);
+        public void OnUpdate(ref SystemState state)
+        {
+            _accumulator.OnUpdate(ref state);
+        }
     }
 
     /// <summary>
-    /// Drains <see cref="PendingForce"/> and <see cref="PendingVelocity"/> buffers at the end of
-    /// <see cref="PhysicsModifierGroup"/> (after the physics step). Any system that appends to
-    /// <see cref="PendingForce"/> within <see cref="PhysicsModifierGroup"/> must be ordered before
-    /// this system to ensure forces are applied in the correct frame.
+    ///     Drains <see cref="PendingForce" /> and <see cref="PendingVelocity" /> buffers at the end of
+    ///     <see cref="PhysicsModifierGroup" /> (after the physics step). Any system that appends to
+    ///     <see cref="PendingForce" /> within <see cref="PhysicsModifierGroup" /> must be ordered before
+    ///     this system to ensure forces are applied in the correct frame.
     /// </summary>
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
-    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.ServerSimulation)]
+    [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
+                       WorldSystemFilterFlags.ServerSimulation)]
     public partial struct PhysicsModifierForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;
-        
+
         [BurstCompile]
-        public void OnCreate(ref SystemState state) => _accumulator.OnCreate(ref state);
-        
+        public void OnCreate(ref SystemState state)
+        {
+            _accumulator.OnCreate(ref state);
+        }
+
         [BurstCompile]
-        public void OnUpdate(ref SystemState state) => _accumulator.OnUpdate(ref state);
+        public void OnUpdate(ref SystemState state)
+        {
+            _accumulator.OnUpdate(ref state);
+        }
     }
 }

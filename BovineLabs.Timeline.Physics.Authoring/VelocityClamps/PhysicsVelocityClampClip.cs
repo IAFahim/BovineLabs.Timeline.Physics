@@ -1,10 +1,10 @@
+using BovineLabs.Timeline.Authoring;
+using Unity.Entities;
+using UnityEngine;
+using UnityEngine.Timeline;
+
 namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamps
 {
-    using BovineLabs.Timeline.Authoring;
-    using Unity.Entities;
-    using UnityEngine;
-    using UnityEngine.Timeline;
-
     public sealed class PhysicsVelocityClampClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Maximum linear speed. Set to negative to ignore.")]

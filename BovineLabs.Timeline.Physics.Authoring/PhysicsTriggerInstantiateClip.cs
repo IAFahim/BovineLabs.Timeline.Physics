@@ -1,16 +1,16 @@
-using System;
-using BovineLabs.Core.Authoring.ObjectManagement;
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Entities;
-using Unity.Mathematics;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using System;
+    using BovineLabs.Core.Authoring.ObjectManagement;
+    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Authoring;
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
         public ObjectDefinition objectDefinition;

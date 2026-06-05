@@ -1,17 +1,17 @@
-using System;
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Reaction.Authoring.Conditions;
-using BovineLabs.Reaction.Data.Conditions;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Entities;
-using Unity.Physics.Authoring;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using System;
+    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Reaction.Authoring.Conditions;
+    using BovineLabs.Reaction.Data.Conditions;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Authoring;
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Entities;
+    using Unity.Physics.Authoring;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsTriggerConditionClip : DOTSClip, ITimelineClipAsset
     {
         public StatefulEventState triggerState = StatefulEventState.Enter;

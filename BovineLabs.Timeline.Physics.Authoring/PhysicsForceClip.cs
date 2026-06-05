@@ -1,13 +1,13 @@
-using BovineLabs.Essence.Authoring;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Entities;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using BovineLabs.Essence.Authoring;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Authoring;
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Entities;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]

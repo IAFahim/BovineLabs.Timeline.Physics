@@ -1,17 +1,17 @@
-using BovineLabs.Essence.Authoring;
-using BovineLabs.Reaction.Authoring.Conditions;
-using BovineLabs.Reaction.Data.Conditions;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics.Authoring;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
+    using BovineLabs.Essence.Authoring;
+    using BovineLabs.Reaction.Authoring.Conditions;
+    using BovineLabs.Reaction.Data.Conditions;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Authoring;
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Physics.Authoring;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsTeleportClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Teleport Target")]

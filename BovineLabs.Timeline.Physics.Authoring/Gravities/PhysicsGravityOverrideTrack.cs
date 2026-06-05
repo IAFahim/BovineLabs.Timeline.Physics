@@ -1,10 +1,10 @@
-using System.ComponentModel;
-using BovineLabs.Timeline.Authoring;
-using UnityEngine;
-using UnityEngine.Timeline;
-
-namespace BovineLabs.Timeline.Physics.Authoring.Gravity
+namespace BovineLabs.Timeline.Physics.Authoring.Gravities
 {
+    using System.ComponentModel;
+    using BovineLabs.Timeline.Authoring;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     [TrackColor(0.2f, 0.6f, 0.8f)]
     [TrackClipType(typeof(PhysicsGravityOverrideClip))]
     [TrackBindingType(typeof(GameObject))]

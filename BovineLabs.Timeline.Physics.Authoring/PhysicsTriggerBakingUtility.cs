@@ -1,9 +1,9 @@
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Collections;
-using Unity.Entities;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Collections;
+    using Unity.Entities;
+
     public static class PhysicsTriggerBakingUtility
     {
         public static BlobAssetReference<PhysicsTriggerLinkBlob> BakeFilterBlob(IBaker baker, EntityLinkSchema[] requireLinks)

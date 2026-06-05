@@ -1,10 +1,10 @@
-using BovineLabs.Timeline.Authoring;
-using Unity.Entities;
-using UnityEngine;
-using UnityEngine.Timeline;
-
-namespace BovineLabs.Timeline.Physics.Authoring.Kinematic
+namespace BovineLabs.Timeline.Physics.Authoring.Kinematics
 {
+    using BovineLabs.Timeline.Authoring;
+    using Unity.Entities;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsKinematicOverrideClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("If true, treats the dynamic body as an infinite-mass kinematic body during this clip.")]

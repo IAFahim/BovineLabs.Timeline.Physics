@@ -1,9 +1,9 @@
 #if UNITY_EDITOR
-using UnityEditor;
-using UnityEngine;
-
 namespace BovineLabs.Timeline.Physics.Authoring.Editor
 {
+    using UnityEditor;
+    using UnityEngine;
+
     public static class PidEditorUtility
     {
         private static readonly PIDPreset[] Presets =
@@ -15,8 +15,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
             new("Precise", "Slow but kills drift", 8f, 4f, 5f, 80f),
             new("Rigid", "Near-kinematic feel", 60f, 20f, 0f, 1000f)
         };
-
-        // ── Public API ────────────────────────────────────────────────────
 
         public static void DrawStrength(SerializedProperty strengthProp)
         {
@@ -92,8 +90,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Editor
                 if (i % cols == cols - 1 || i == Presets.Length - 1) EditorGUILayout.EndHorizontal();
             }
         }
-
-        // ── Helpers ───────────────────────────────────────────────────────
 
         private static void DrawGain(Object target, SerializedProperty tuning,
             string field, string label, string tooltip, bool uniform)

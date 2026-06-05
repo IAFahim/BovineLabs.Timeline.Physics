@@ -1,10 +1,10 @@
-using BovineLabs.Timeline.Data;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Entities;
-
 namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
+    using BovineLabs.Timeline.Data;
+    using Unity.Burst;
+    using Unity.Collections;
+    using Unity.Entities;
+
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     [UpdateAfter(typeof(PhysicsTimelineBakingSystem))]
     public partial struct PhysicsTeleportBakingSystem : ISystem

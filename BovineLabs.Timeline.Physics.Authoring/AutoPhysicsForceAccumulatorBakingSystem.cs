@@ -1,11 +1,11 @@
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Physics;
-using UnityEngine;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using Unity.Burst;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Physics;
+    using UnityEngine;
+
     [DisallowMultipleComponent]
     [AddComponentMenu("BovineLabs/Physics/Physics Force Accumulator Opt-Out")]
     public class PhysicsForceAccumulatorOptOutAuthoring : MonoBehaviour

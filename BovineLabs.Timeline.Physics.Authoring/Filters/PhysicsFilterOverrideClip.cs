@@ -1,10 +1,10 @@
-using BovineLabs.Timeline.Authoring;
-using Unity.Entities;
-using UnityEngine;
-using UnityEngine.Timeline;
-
 namespace BovineLabs.Timeline.Physics.Authoring.Filters
 {
+    using BovineLabs.Timeline.Authoring;
+    using Unity.Entities;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+
     public sealed class PhysicsFilterOverrideClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("The new BelongsTo collision mask (as an integer bitmask).")]

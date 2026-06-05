@@ -1,16 +1,16 @@
-using System;
-using BovineLabs.Core.PhysicsStates;
-using BovineLabs.Essence.Authoring;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Authoring;
-using BovineLabs.Timeline.EntityLinks.Authoring;
-using Unity.Entities;
-using UnityEngine;
-using UnityEngine.Timeline;
-using Unity.Mathematics;
-
 namespace BovineLabs.Timeline.Physics.Authoring
 {
+    using System;
+    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Essence.Authoring;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Timeline.Authoring;
+    using BovineLabs.Timeline.EntityLinks.Authoring;
+    using Unity.Entities;
+    using UnityEngine;
+    using UnityEngine.Timeline;
+    using Unity.Mathematics;
+
     public sealed class PhysicsTriggerForceClip : DOTSClip, ITimelineClipAsset
     {
         public StatefulEventState triggerState = StatefulEventState.Enter;

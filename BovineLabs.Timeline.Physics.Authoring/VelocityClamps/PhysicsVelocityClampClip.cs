@@ -1,4 +1,4 @@
-namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamp
+namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamps
 {
     using BovineLabs.Timeline.Authoring;
     using Unity.Entities;

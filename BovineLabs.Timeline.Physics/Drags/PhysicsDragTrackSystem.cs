@@ -1,6 +1,6 @@
 namespace BovineLabs.Timeline.Physics.Drags
 {
-
+    using BovineLabs.Timeline.Physics.Data;
     using EntityLinks;
     using Kernels;
     using Unity.Burst;

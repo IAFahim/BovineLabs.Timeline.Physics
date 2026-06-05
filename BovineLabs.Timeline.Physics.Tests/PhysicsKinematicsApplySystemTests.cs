@@ -1,13 +1,14 @@
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics.Data;
-using NUnit.Framework;
-using Unity.Core;
-using Unity.Mathematics;
-using Unity.Transforms;
-
 namespace BovineLabs.Timeline.Physics.Tests
 {
+    using Unity.Entities;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Testing;
+    using BovineLabs.Timeline.Physics.Data;
+    using NUnit.Framework;
+    using Unity.Core;
+    using Unity.Mathematics;
+    using Unity.Transforms;
+
     public class PhysicsKinematicsApplySystemTests : ECSTestsFixture
     {
         [Test]
@@ -32,7 +33,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<Kinematic.PhysicsKinematicsApplySystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -69,7 +70,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<Kinematic.PhysicsKinematicsApplySystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -119,7 +120,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<Kinematic.PhysicsKinematicsApplySystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<Kinematics.PhysicsKinematicsApplySystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

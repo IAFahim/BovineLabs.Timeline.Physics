@@ -1,6 +1,6 @@
 namespace BovineLabs.Timeline.Physics.Drags
 {
-
+    using Data;
     using BovineLabs.Core.ConfigVars;
     using BovineLabs.Core.Extensions;
     using BovineLabs.Core.Iterators;
@@ -8,6 +8,7 @@ namespace BovineLabs.Timeline.Physics.Drags
     using BovineLabs.Essence.Data;
     using BovineLabs.Reaction.Data.Core;
     using BovineLabs.Timeline.EntityLinks.Data;
+    using BovineLabs.Timeline.Physics.Data;
     using Infrastructure;
     using Stats;
     using Unity.Burst;

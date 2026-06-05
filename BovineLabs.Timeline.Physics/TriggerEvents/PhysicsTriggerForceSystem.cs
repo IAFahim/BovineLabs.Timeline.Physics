@@ -232,8 +232,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     
                     if (dist > cfg.FalloffStartRadius)
                     {
-                        // For Step curve, we maintain 100% magnitude until EndRadius, where it is cut off by the check above.
-                        
                         var range = math.max(cfg.FalloffEndRadius - cfg.FalloffStartRadius, 0.001f);
                         var factor = math.clamp(1f - ((dist - cfg.FalloffStartRadius) / range), 0f, 1f);
                         

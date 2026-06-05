@@ -92,7 +92,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 State = StatefulEventState.Stay
             });
 
-            var sys = World.GetOrCreateSystem<PhysicsTriggerForceSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<PhysicsTriggerForceSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -142,7 +142,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 State = StatefulEventState.Stay
             });
 
-            var sys = World.GetOrCreateSystem<PhysicsTriggerForceSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<PhysicsTriggerForceSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

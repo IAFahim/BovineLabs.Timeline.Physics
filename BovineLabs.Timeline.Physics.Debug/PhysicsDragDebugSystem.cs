@@ -1,21 +1,23 @@
 #if UNITY_EDITOR || BL_DEBUG
 
-using BovineLabs.Core;
-using BovineLabs.Core.ConfigVars;
-using BovineLabs.Quill;
-using BovineLabs.Timeline.Core.Debug;
-using BovineLabs.Timeline.Data;
-using Unity.Burst;
-using Unity.Collections;
-using Unity.Entities;
-using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Physics.Systems;
-using Unity.Transforms;
-using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Debug
 {
+    using BovineLabs.Core;
+    using BovineLabs.Core.ConfigVars;
+    using BovineLabs.Quill;
+    using BovineLabs.Timeline.Core.Debug;
+    using BovineLabs.Timeline.Data;
+    using BovineLabs.Timeline.Physics.Data;
+    using Unity.Burst;
+    using Unity.Collections;
+    using Unity.Entities;
+    using Unity.Mathematics;
+    using Unity.Physics;
+    using Unity.Physics.Systems;
+    using Unity.Transforms;
+    using UnityEngine;
+
     [Configurable]
     public static class DragDebugSystem
     {
@@ -27,16 +29,27 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         [ConfigVar("draggizmo.text-color", 1.0f, 1.0f, 1.0f, 0.9f, "Color for text labels")]
         public static readonly SharedStatic<Color> TextColor = SharedStatic<Color>.GetOrCreate<Tags.TextColor>();
-        
+
         [ConfigVar("draggizmo.segments", 16, "Number of segments for spheres and arcs")]
         public static readonly SharedStatic<int> Segments = SharedStatic<int>.GetOrCreate<Tags.Segments>();
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct TrailColor { }
-            public struct TextColor { }
-            public struct Segments { }
+            public struct Enabled
+            {
+            }
+
+            public struct TrailColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
+
+            public struct Segments
+            {
+            }
         }
     }
 
@@ -47,7 +60,7 @@ namespace BovineLabs.Timeline.Physics.Debug
     public partial struct PhysicsDragGizmoSystem : ISystem
     {
         private EntityQuery _query;
-        
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -62,19 +75,19 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsDragGizmoSystem>(
-                  ref state, DragDebugSystem.Enabled.Data, out var drawer))
+                    ref state, DragDebugSystem.Enabled.Data, out var drawer))
                 return;
 
             state.Dependency = new DrawJob
             {
-                Drawer     = drawer,
-                Segments   = math.clamp(DragDebugSystem.Segments.Data, 8, 32),
+                Drawer = drawer,
+                Segments = math.clamp(DragDebugSystem.Segments.Data, 8, 32),
                 TrailColor = DragDebugSystem.TrailColor.Data,
-                TextColor  = DragDebugSystem.TextColor.Data,
+                TextColor = DragDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
-                VelocityLookup  = SystemAPI.GetComponentLookup<PhysicsVelocity>(true)
+                VelocityLookup = SystemAPI.GetComponentLookup<PhysicsVelocity>(true)
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -85,7 +98,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public int Segments;
             public Color TrailColor;
             public Color TextColor;
-            
+
             [ReadOnly] public ComponentLookup<LocalToWorld> TransformLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -96,6 +109,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     return LocalTransformLookup[e].Position;
                 }
+
                 return fallback;
             }
 
@@ -109,7 +123,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
-                
+
                 var hasVel = VelocityLookup.TryGetComponent(target, out var vel);
                 var linVel = hasVel ? vel.Linear : float3.zero;
 
@@ -128,11 +142,11 @@ namespace BovineLabs.Timeline.Physics.Debug
                     {
                         currentVel *= math.exp(-d.Linear * dt);
                         var nextPos = currentPos + currentVel * dt;
-                        
+
                         var segmentColor = TrailColor;
                         segmentColor.a = alpha;
                         Drawer.Line(currentPos, nextPos, segmentColor);
-                        
+
                         currentPos = nextPos;
                         alpha *= 0.95f;
 

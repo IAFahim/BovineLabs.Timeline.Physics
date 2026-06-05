@@ -1,18 +1,19 @@
-using BovineLabs.Core.EntityCommands;
-using BovineLabs.Essence.Data;
-using BovineLabs.Essence.Data.Builders;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Testing;
-using BovineLabs.Timeline.Physics.Data;
-using NUnit.Framework;
-using Unity.Collections;
-using Unity.Core;
-using Unity.Mathematics;
-using Unity.Physics;
-using Unity.Transforms;
-
 namespace BovineLabs.Timeline.Physics.Tests
 {
+    using Unity.Entities;
+    using BovineLabs.Core.EntityCommands;
+    using BovineLabs.Essence.Data;
+    using BovineLabs.Essence.Data.Builders;
+    using BovineLabs.Reaction.Data.Core;
+    using BovineLabs.Testing;
+    using BovineLabs.Timeline.Physics.Data;
+    using NUnit.Framework;
+    using Unity.Collections;
+    using Unity.Core;
+    using Unity.Mathematics;
+    using Unity.Physics;
+    using Unity.Transforms;
+
     public class PhysicsVelocityOverrideSystemTests : ECSTestsFixture
     {
         [Test]
@@ -38,7 +39,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<VelocityOverrides.PhysicsVelocityOverrideSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -73,7 +74,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<VelocityOverrides.PhysicsVelocityOverrideSystem>(World);
 
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
@@ -120,7 +121,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<VelocityOverrides.PhysicsVelocityOverrideSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -168,7 +169,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             });
 
             World.SetTime(new TimeData(0.1, 0.1f));
-            var sys = World.GetOrCreateSystem<VelocityOverride.PhysicsVelocityOverrideSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<VelocityOverrides.PhysicsVelocityOverrideSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

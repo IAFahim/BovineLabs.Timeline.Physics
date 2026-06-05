@@ -97,8 +97,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var hasVelocity = chunk.Has(ref VelocityHandle);
                 var velocities = hasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
 
-                // When a dedicated gravity override clip is also present, skip gravity management
-                // to avoid two systems fighting over the same PhysicsGravityFactor component.
                 var hasGravityOverride = chunk.Has(ref ActiveGravityOverrideHandle);
 
                 var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
@@ -160,7 +158,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     }
                     else if (isActive && state.Fired)
                     {
-                        // Re-apply: the blended config may have changed while the clip remains active.
                         var config = actives[i].Config;
 
                         if (hasMassOverride)

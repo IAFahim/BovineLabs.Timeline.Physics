@@ -23,7 +23,6 @@ namespace BovineLabs.Timeline.Physics.Stats
             if (!config.IsEnabled())
                 return 1f;
 
-            // When LinkKey is 0, resolve directly from the read target without entity link lookup
             var statEntity = config.LinkKey == 0
                 ? targets.Get(config.ReadFrom, self)
                 : EntityLinkResolver.TryResolve(self, targets, config.ReadFrom, config.LinkKey,

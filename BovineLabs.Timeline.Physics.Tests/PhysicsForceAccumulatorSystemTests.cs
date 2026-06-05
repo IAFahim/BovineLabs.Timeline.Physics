@@ -25,7 +25,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddBuffer<PendingVelocity>(target);
 
-            var sys = World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
@@ -55,7 +55,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             velBuffer.Add(new PendingVelocity { Linear = new float3(0, 10, 0), Angular = new float3(0, 0, 0) });
             velBuffer.Add(new PendingVelocity { Linear = new float3(5, 0, 0), Angular = new float3(0, 2, 0) });
 
-            var sys = World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>();
+            var sys = WorldExtensions.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>(World);
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 

@@ -3,7 +3,7 @@ namespace BovineLabs.Timeline.Physics.Kernels
 
     using BovineLabs.Core.Jobs;
     using BovineLabs.Timeline.Data;
-    using Data.Kernel;
+    using BovineLabs.Timeline.Physics.Data.Kernels;
     using Infrastructure;
     using Unity.Collections;
     using Unity.Entities;

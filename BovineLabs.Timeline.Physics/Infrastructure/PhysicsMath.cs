@@ -1,7 +1,7 @@
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
-
     using BovineLabs.Core.Iterators;
+    using Data;
     using Quill;
     using BovineLabs.Reaction.Data.Core;
     using Unity.Entities;
@@ -80,12 +80,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
 
             return result;
         }
-
-        /// <summary>
-        /// Resolves position for an entity using the Rule 1.1 LocalTransform-first strategy.
-        /// For unparented physics bodies, LocalTransform is up-to-date after the physics step.
-        /// Falls back to LocalToWorld for parented entities.
-        /// </summary>
+        
         public static float3 ResolvePosition(
             Entity target,
             in ComponentLookup<LocalTransform> localTransformLookup,
@@ -95,13 +90,11 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             if (target == Entity.Null)
                 return float3.zero;
 
-            // Rule 1.1: Prefer LocalTransform for unparented physics bodies
             if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
             {
                 return lt.Position;
             }
 
-            // Fallback to LocalToWorld for parented entities or when LocalTransform unavailable
             if (localToWorldLookup.TryGetComponent(target, out var ltw))
             {
                 return ltw.Position;
@@ -110,9 +103,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             return float3.zero;
         }
 
-        /// <summary>
-        /// Resolves rotation for an entity using the Rule 1.1 LocalTransform-first strategy.
-        /// </summary>
+
         public static quaternion ResolveRotation(
             Entity target,
             in ComponentLookup<LocalTransform> localTransformLookup,
@@ -135,9 +126,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             return quaternion.identity;
         }
 
-        /// <summary>
-        /// Resolves both position and rotation for an entity using the Rule 1.1 LocalTransform-first strategy.
-        /// </summary>
         public static void ResolveTransform(
             Entity target,
             in ComponentLookup<LocalTransform> localTransformLookup,
@@ -192,7 +180,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 targetEntity = targets.Get(space, entity);
 
             var rotation = ResolveRotation(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup);
-            // Check if we got a meaningful rotation (non-identity)
             if (math.lengthsq(rotation.value.xyz) > 1e-6f || math.abs(rotation.value.w - 1f) > 1e-6f)
             {
                 resolvedVector = math.rotate(rotation, vector);
@@ -295,7 +282,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             ResolveTransform(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
                 out var targetPos, out var targetRot);
 
-            // Fall back to self transform if target not found
             if (targetEntity == Entity.Null || math.lengthsq(targetPos) < 1e-6f)
             {
                 targetPos = selfPos;

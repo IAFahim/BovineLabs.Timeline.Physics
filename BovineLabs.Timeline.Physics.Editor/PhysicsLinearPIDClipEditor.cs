@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-namespace BovineLabs.Timeline.Physics.Authoring.Editor
+namespace BovineLabs.Timeline.Physics.Editor
 {
     using BovineLabs.Reaction.Data.Core;
     using BovineLabs.Timeline.Physics.Authoring.PIDs;

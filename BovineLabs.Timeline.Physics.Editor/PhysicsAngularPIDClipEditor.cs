@@ -1,9 +1,9 @@
 #if UNITY_EDITOR
-namespace BovineLabs.Timeline.Physics.Authoring.Editor
+namespace BovineLabs.Timeline.Physics.Editor
 {
     using BovineLabs.Timeline.Physics.Authoring.PIDs;
     using UnityEditor;
-
+    
     [CustomEditor(typeof(PhysicsAngularPIDClip))]
     public class PhysicsAngularPIDClipEditor : UnityEditor.Editor
     {

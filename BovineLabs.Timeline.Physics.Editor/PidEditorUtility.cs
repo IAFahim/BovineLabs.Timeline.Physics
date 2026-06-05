@@ -1,5 +1,5 @@
 #if UNITY_EDITOR
-namespace BovineLabs.Timeline.Physics.Authoring.Editor
+namespace BovineLabs.Timeline.Physics.Editor
 {
     using UnityEditor;
     using UnityEngine;

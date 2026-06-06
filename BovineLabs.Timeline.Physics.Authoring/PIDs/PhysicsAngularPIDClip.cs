@@ -35,6 +35,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         [Tooltip("Suppress PID output when angular error (degrees) is below this value. 0 = disabled.")]
         [Min(0f)]
         public float stopThreshold;
+
         [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;

@@ -1,6 +1,4 @@
 using BovineLabs.Core.EntityCommands;
-using BovineLabs.Reaction.Data.Core;
-using BovineLabs.Timeline.Physics.Data;
 
 namespace BovineLabs.Timeline.Physics.Data.Builders
 {

@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using UnityEngine;
@@ -21,7 +22,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Filters
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            context.Baker.AddComponent(clipEntity, new PhysicsFilterOverrideAnimated
+            var commands = new BakerCommands(context.Baker, clipEntity);
+            commands.AddComponent(new PhysicsFilterOverrideAnimated
             {
                 AuthoredData = new PhysicsFilterOverrideData
                 {

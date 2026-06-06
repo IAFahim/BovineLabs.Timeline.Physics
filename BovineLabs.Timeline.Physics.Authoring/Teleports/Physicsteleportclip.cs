@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
@@ -100,6 +101,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            var commands = new BakerCommands(context.Baker, clipEntity);
             ushort teleportTargetLinkKey = 0;
             if (entityToTeleportLink != null && EntityLinkAuthoringUtility.TryGetKey(entityToTeleportLink, out var k00))
                 teleportTargetLinkKey = k00;
@@ -125,7 +127,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             if (facingTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(facingTargetLink, out var k3))
                 facingTargetLinkKey = k3;
 
-            context.Baker.AddComponent(clipEntity, new PhysicsTeleportAnimated
+            commands.AddComponent(new PhysicsTeleportAnimated
             {
                 AuthoredData = new PhysicsTeleportData
                 {

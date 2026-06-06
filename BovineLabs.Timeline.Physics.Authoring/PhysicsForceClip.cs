@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
@@ -35,6 +36,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            var commands = new BakerCommands(context.Baker, clipEntity);
             ushort readStatKey = 0;
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
@@ -43,7 +45,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (directionTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(directionTargetLink, out var k2))
                 dirLinkKey = k2;
 
-            context.Baker.AddComponent(clipEntity, new PhysicsForceAnimated
+            commands.AddComponent(new PhysicsForceAnimated
             {
                 AuthoredData = new PhysicsForceData
                 {

@@ -1,4 +1,5 @@
 using System;
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Core.Authoring.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
@@ -41,6 +42,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            var commands = new BakerCommands(context.Baker, clipEntity);
             if (objectDefinition == null)
             {
                 Debug.LogError($"{nameof(PhysicsTriggerInstantiateClip)} '{name}' needs {nameof(objectDefinition)}.");
@@ -54,7 +56,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (targetLinkOverride == null ||
                 !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
-            context.Baker.AddComponent(clipEntity, new PhysicsTriggerInstantiateData
+            commands.AddComponent(new PhysicsTriggerInstantiateData
             {
                 ObjectId = objectDefinition,
                 EventState = triggerState,
@@ -70,7 +72,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
-            context.Baker.AddComponent(clipEntity, new PhysicsTriggerFilterData
+            commands.AddComponent(new PhysicsTriggerFilterData
             {
                 IgnoreTarget = ignoreTarget,
                 LinkFilterBlob = filterBlob

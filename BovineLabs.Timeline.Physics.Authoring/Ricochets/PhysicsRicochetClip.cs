@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Core;
@@ -43,6 +44,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
+            var commands = new BakerCommands(context.Baker, clipEntity);
             ushort hitRouteKey = 0;
             if (hitRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(hitRouteLink, out var k1))
                 hitRouteKey = k1;
@@ -59,7 +61,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k4))
                 readStatKey = k4;
 
-            context.Baker.AddComponent(clipEntity, new PhysicsRicochetAnimated
+            commands.AddComponent(new PhysicsRicochetAnimated
             {
                 AuthoredData = new PhysicsRicochetData
                 {

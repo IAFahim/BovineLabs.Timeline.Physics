@@ -1,3 +1,4 @@
+using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Timeline.Authoring;
 using Unity.Entities;
 using UnityEngine;
@@ -18,7 +19,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.VelocityClamps
 
         public override void Bake(Entity clipEntity, BakingContext context)
         {
-            context.Baker.AddComponent(clipEntity, new PhysicsVelocityClampAnimated
+            var commands = new BakerCommands(context.Baker, clipEntity);
+            commands.AddComponent(new PhysicsVelocityClampAnimated
             {
                 AuthoredData = new PhysicsVelocityClampData
                 {

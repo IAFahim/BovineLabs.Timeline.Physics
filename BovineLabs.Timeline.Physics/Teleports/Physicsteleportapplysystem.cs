@@ -86,9 +86,11 @@ namespace BovineLabs.Timeline.Physics.Teleports
             _conditionWriters.Update(ref state);
 
             var collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
+            var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>().CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             state.Dependency = new TeleportJob
             {
+                ECB = ecb,
                 CollisionWorld = collisionWorld,
                 EntityHandle = _entityHandle,
                 ActiveTeleportHandle = _activeTeleportHandle,
@@ -116,8 +118,9 @@ namespace BovineLabs.Timeline.Physics.Teleports
             [ReadOnly] public ComponentTypeHandle<ActiveTeleport> ActiveTeleportHandle;
             public ComponentTypeHandle<PhysicsTeleportState> TeleportStateHandle;
 
-            [NativeDisableParallelForRestriction] public ComponentLookup<LocalTransform> LocalTransformLookup;
-            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
+            public EntityCommandBuffer.ParallelWriter ECB;
+            [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
+            [ReadOnly] public ComponentLookup<PhysicsVelocity> PhysicsVelocityLookup;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -172,21 +175,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
                     var transform = TeleportPlacement.ComputeLocalTransform(
                         in frame, in config, landing, LocalToWorldLookup, ParentLookup);
 
-                    Commit(frame.TeleportedEntity, transform, config.ResetVelocity);
+                    Commit(unfilteredChunkIndex, frame.TeleportedEntity, transform, config.ResetVelocity);
                 }
             }
 
-            private void Commit(Entity target, LocalTransform transform, bool resetVelocity)
+            private void Commit(int sortKey, Entity target, LocalTransform transform, bool resetVelocity)
             {
                 if (LocalTransformLookup.HasComponent(target))
-                    LocalTransformLookup[target] = transform;
+                    ECB.SetComponent(sortKey, target, transform);
 
                 if (resetVelocity && PhysicsVelocityLookup.HasComponent(target))
                 {
                     var velocity = PhysicsVelocityLookup[target];
                     velocity.Linear = float3.zero;
                     velocity.Angular = float3.zero;
-                    PhysicsVelocityLookup[target] = velocity;
+                    ECB.SetComponent(sortKey, target, velocity);
                 }
             }
 

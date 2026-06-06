@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -33,7 +34,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         [Tooltip("Suppress PID output when distance to target is below this value. 0 = disabled.")]
         [Min(0f)]
         public float stopThreshold;
-
         [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
@@ -49,7 +49,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
-            commands.AddComponent(new PhysicsLinearPIDAnimated
+            var builder = new PhysicsLinearPIDBuilder
             {
                 AuthoredData = new PhysicsLinearPIDData
                 {
@@ -66,7 +66,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
                     },
                     StopThreshold = stopThreshold
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

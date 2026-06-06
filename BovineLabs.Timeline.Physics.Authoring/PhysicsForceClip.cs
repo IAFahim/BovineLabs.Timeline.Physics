@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -25,7 +26,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target directionTarget = Target.Target;
         public EntityLinkSchema directionTargetLink;
 
-        [Header("Angular & Multipliers")] public Vector3 angularForce;
+        [Header("Angular& Multipliers")] public Vector3 angularForce;
 
         public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
@@ -45,7 +46,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (directionTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(directionTargetLink, out var k2))
                 dirLinkKey = k2;
 
-            commands.AddComponent(new PhysicsForceAnimated
+            var builder = new PhysicsForceBuilder
             {
                 AuthoredData = new PhysicsForceData
                 {
@@ -64,7 +65,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                         LinkKey = readStatKey
                     }
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

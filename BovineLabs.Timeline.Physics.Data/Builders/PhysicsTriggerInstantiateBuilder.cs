@@ -1,0 +1,19 @@
+using BovineLabs.Core.EntityCommands;
+using BovineLabs.Timeline.Physics;
+using Unity.Entities;
+
+namespace BovineLabs.Timeline.Physics.Data.Builders
+{
+    public struct PhysicsTriggerInstantiateBuilder
+    {
+        public PhysicsTriggerInstantiateData InstantiateData;
+        public PhysicsTriggerFilterData FilterData;
+
+        public void ApplyTo<T>(ref T builder)
+            where T : struct, IEntityCommands
+        {
+            builder.AddComponent(InstantiateData);
+            builder.AddComponent(FilterData);
+        }
+    }
+}

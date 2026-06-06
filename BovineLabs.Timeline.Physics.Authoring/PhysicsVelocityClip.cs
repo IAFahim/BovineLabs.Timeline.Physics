@@ -4,6 +4,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -34,7 +35,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
 
-            commands.AddComponent(new PhysicsVelocityAnimated
+            var builder = new PhysicsVelocityBuilder
             {
                 AuthoredData = new PhysicsVelocityData
                 {
@@ -49,7 +50,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                         LinkKey = readStatKey
                     }
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

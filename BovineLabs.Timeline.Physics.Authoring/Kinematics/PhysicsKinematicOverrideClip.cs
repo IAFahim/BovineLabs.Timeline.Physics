@@ -1,5 +1,6 @@
 using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Timeline.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
 using UnityEngine.Timeline;
@@ -23,7 +24,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Kinematics
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            commands.AddComponent(new PhysicsKinematicOverrideAnimated
+            var builder = new PhysicsKinematicOverrideBuilder
             {
                 AuthoredData = new PhysicsKinematicOverrideData
                 {
@@ -31,7 +32,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Kinematics
                     ZeroVelocityOnEnter = zeroVelocityOnEnter,
                     ZeroGravity = zeroGravity
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

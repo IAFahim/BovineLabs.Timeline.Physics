@@ -5,6 +5,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -66,34 +67,37 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (mode == PhysicsForceMode.Continuous && bakedState != StatefulEventState.Stay)
                 bakedState = StatefulEventState.Stay;
 
-            commands.AddComponent(new PhysicsTriggerForceData
-            {
-                EventState = bakedState,
-                ForceType = forceType,
-                Mode = mode,
-                Magnitude = magnitude,
-                Direction = math.normalizesafe(direction, new float3(0, 0, 1)),
-                OriginMode = originMode,
-                FalloffCurve = falloffCurve,
-                FalloffStartRadius = falloffStartRadius,
-                FalloffEndRadius = falloffEndRadius,
-                Strength = new StatStrengthConfig
-                {
-                    Stat = strengthStat != null ? strengthStat.Key : default,
-                    ReadFrom = readStatFrom,
-                    LinkKey = readStatKey
-                },
-                ApplyTo = applyTo,
-                ApplyToLinkKey = applyToKey
-            });
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
-            commands.AddComponent(new PhysicsTriggerFilterData
+            var builder = new PhysicsTriggerForceBuilder
             {
-                IgnoreTarget = ignoreTarget,
-                LinkFilterBlob = filterBlob
-            });
+                ForceData = new PhysicsTriggerForceData
+                {
+                    EventState = bakedState,
+                    ForceType = forceType,
+                    Mode = mode,
+                    Magnitude = magnitude,
+                    Direction = math.normalizesafe(direction, new float3(0, 0, 1)),
+                    OriginMode = originMode,
+                    FalloffCurve = falloffCurve,
+                    FalloffStartRadius = falloffStartRadius,
+                    FalloffEndRadius = falloffEndRadius,
+                    Strength = new StatStrengthConfig
+                    {
+                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        ReadFrom = readStatFrom,
+                        LinkKey = readStatKey
+                    },
+                    ApplyTo = applyTo,
+                    ApplyToLinkKey = applyToKey
+                },
+                FilterData = new PhysicsTriggerFilterData
+                {
+                    IgnoreTarget = ignoreTarget,
+                    LinkFilterBlob = filterBlob
+                }
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

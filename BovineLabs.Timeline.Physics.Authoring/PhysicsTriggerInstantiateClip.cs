@@ -5,6 +5,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -56,27 +57,30 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (targetLinkOverride == null ||
                 !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
-            commands.AddComponent(new PhysicsTriggerInstantiateData
-            {
-                ObjectId = objectDefinition,
-                EventState = triggerState,
-                PositionMode = positionMode,
-                PositionOffset = positionOffset,
-                PositionOffsetSpace = positionOffsetSpace,
-                RotationMode = rotationMode,
-                RotationOffsetEuler = math.radians(rotationOffset),
-                AssignParent = assignParent,
-                AssignParentLinkKey = parentKey,
-                TargetLinkKey = targetKey
-            });
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
-            commands.AddComponent(new PhysicsTriggerFilterData
+            var builder = new PhysicsTriggerInstantiateBuilder
             {
-                IgnoreTarget = ignoreTarget,
-                LinkFilterBlob = filterBlob
-            });
+                InstantiateData = new PhysicsTriggerInstantiateData
+                {
+                    ObjectId = objectDefinition,
+                    EventState = triggerState,
+                    PositionMode = positionMode,
+                    PositionOffset = positionOffset,
+                    PositionOffsetSpace = positionOffsetSpace,
+                    RotationMode = rotationMode,
+                    RotationOffsetEuler = math.radians(rotationOffset),
+                    AssignParent = assignParent,
+                    AssignParentLinkKey = parentKey,
+                    TargetLinkKey = targetKey
+                },
+                FilterData = new PhysicsTriggerFilterData
+                {
+                    IgnoreTarget = ignoreTarget,
+                    LinkFilterBlob = filterBlob
+                }
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

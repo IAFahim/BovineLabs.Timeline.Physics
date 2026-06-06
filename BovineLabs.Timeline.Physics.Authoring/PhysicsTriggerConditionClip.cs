@@ -6,6 +6,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Physics.Authoring;
 using UnityEngine;
@@ -36,23 +37,26 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var commands = new BakerCommands(context.Baker, clipEntity);
             if (routeLink == null || !EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
 
-            commands.AddComponent(new PhysicsTriggerConditionData
-            {
-                EventState = triggerState,
-                CollidesWithMask = collidesWith.Value,
-                Condition = condition ? condition.Key : ConditionKey.Null,
-                Value = value,
-                RouteTo = routeTo,
-                RouteLinkKey = linkKey
-            });
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
-            commands.AddComponent(new PhysicsTriggerFilterData
+            var builder = new PhysicsTriggerConditionBuilder
             {
-                IgnoreTarget = ignoreTarget,
-                LinkFilterBlob = filterBlob
-            });
+                ConditionData = new PhysicsTriggerConditionData
+                {
+                    EventState = triggerState,
+                    CollidesWithMask = collidesWith.Value,
+                    Condition = condition ? condition.Key : ConditionKey.Null,
+                    Value = value,
+                    RouteTo = routeTo,
+                    RouteLinkKey = linkKey
+                },
+                FilterData = new PhysicsTriggerFilterData
+                {
+                    IgnoreTarget = ignoreTarget,
+                    LinkFilterBlob = filterBlob
+                }
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

@@ -5,6 +5,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics.Authoring;
@@ -127,7 +128,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             if (facingTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(facingTargetLink, out var k3))
                 facingTargetLinkKey = k3;
 
-            commands.AddComponent(new PhysicsTeleportAnimated
+            var builder = new PhysicsTeleportBuilder
             {
                 AuthoredData = new PhysicsTeleportData
                 {
@@ -171,7 +172,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                         LinkKey = readStatKey
                     }
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

@@ -4,6 +4,7 @@ using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics.Authoring;
@@ -61,7 +62,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k4))
                 readStatKey = k4;
 
-            commands.AddComponent(new PhysicsRicochetAnimated
+            var builder = new PhysicsRicochetBuilder
             {
                 AuthoredData = new PhysicsRicochetData
                 {
@@ -84,7 +85,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                         LinkKey = readStatKey
                     }
                 }
-            });
+            };
+            builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
         }

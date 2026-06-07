@@ -36,7 +36,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private ComponentTypeHandle<ClipActivePrevious> _activePrevHandle;
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
-        private ComponentLookup<Targets> _targetsLookup;
+        private UnsafeComponentLookup<Targets> _targetsLookup;
         private UnsafeBufferLookup<StatefulTriggerEvent> _triggerEventsLookup;
         private UnsafeBufferLookup<StatefulCollisionEvent> _collisionEventsLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
@@ -60,7 +60,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _activePrevHandle = state.GetComponentTypeHandle<ClipActivePrevious>(true);
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
-            _targetsLookup = state.GetComponentLookup<Targets>(true);
+            _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
             _triggerEventsLookup = state.GetUnsafeBufferLookup<StatefulTriggerEvent>(true);
             _collisionEventsLookup = state.GetUnsafeBufferLookup<StatefulCollisionEvent>(true);
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
@@ -127,7 +127,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
-            [ReadOnly] public ComponentLookup<Targets> TargetsLookup;
+            [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public UnsafeBufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -158,8 +158,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         continue;
                     }
 
-                    var selfCache = EntityCache.Create(TargetsLookup, self);
-                    var targets = TargetsLookup.TryGetComponent(ref selfCache, out var selfTargets)
+                    var targets = TargetsLookup.TryGetComponent(self, out var selfTargets)
                         ? selfTargets
                         : default;
 
@@ -202,7 +201,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }
 
             private void Spawn(int chunkIndex, Entity prefab, Entity self, Entity other,
-                in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets)
+                in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets
+                )
             {
                 var spawnTarget = other;
                 if (cfg.TargetLinkKey != 0)
@@ -240,9 +240,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 ECB.SetComponent(chunkIndex, instance, new Targets
                 {
-                    Owner = targets.Owner,
-                    Source = targets.Source,
-                    Target = spawnTarget
+                    Owner = targets.Owner == Entity.Null ? self : targets.Owner,
+                    Source = targets.Source == Entity.Null? self : targets.Source,
+                    Target = spawnTarget,
+                    Custom = targets.Custom
                 });
 
                 if (parent != Entity.Null && LocalToWorldLookup.TryGetComponent(parent, out var parentLtw))

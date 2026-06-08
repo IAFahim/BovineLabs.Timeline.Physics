@@ -43,5 +43,24 @@ namespace BovineLabs.Timeline.Physics
                 MaxOutput = a.MaxOutput + b.MaxOutput
             };
         }
+
+        public static quaternion AddRotation(in quaternion a, in quaternion b)
+        {
+            return Exp(Log(a) + Log(b));
+        }
+
+        private static float3 Log(in quaternion q)
+        {
+            var v = math.select(q.value, -q.value, q.value.w < 0f);
+            var n = math.length(v.xyz);
+            var angle = 2f * math.atan2(n, v.w);
+            return math.select(float3.zero, v.xyz / n * angle, n > 1e-6f);
+        }
+
+        private static quaternion Exp(in float3 r)
+        {
+            var angle = math.length(r);
+            return angle < 1e-6f ? quaternion.identity : quaternion.AxisAngle(r / angle, angle);
+        }
     }
 }

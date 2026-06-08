@@ -18,17 +18,17 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
 
         public PhysicsVelocityData Add(in PhysicsVelocityData a, in PhysicsVelocityData b)
         {
-            // Note: If spaces differ, we still add the vectors but use the dominant 'a' space.
-            // This is mathematically incorrect for different coordinate spaces (e.g. World + Local)
-            // but preferable to completely dropping 'b' (lossy). A proper fix would require
-            // access to LocalToWorld to convert 'b' into 'a's space during Add.
+            var aWins = (byte)a.Mode < (byte)b.Mode ||
+                        ((byte)a.Mode == (byte)b.Mode && (byte)a.Space <= (byte)b.Space);
+            var dominant = aWins ? a : b;
+
             return new PhysicsVelocityData
             {
-                Mode = a.Mode,
+                Mode = dominant.Mode,
                 Linear = a.Linear + b.Linear,
                 Angular = a.Angular + b.Angular,
-                Space = a.Space,
-                Strength = a.Strength
+                Space = dominant.Space,
+                Strength = dominant.Strength
             };
         }
     }

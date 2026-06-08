@@ -19,7 +19,6 @@ namespace BovineLabs.Timeline.Physics
 
         public float Strength; // NEW: output force multiplier, default 1
         public StatStrengthConfig StrengthStat;
-        public float StopThreshold; // Optional: suppress output when error magnitude < this value (0 = disabled)
     }
 
     public struct PhysicsLinearPIDAnimated : IAnimatedComponent<PhysicsLinearPIDData>
@@ -49,22 +48,24 @@ namespace BovineLabs.Timeline.Physics
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
                 TargetOffset = math.lerp(a.TargetOffset, b.TargetOffset, s),
                 Strength = math.lerp(a.Strength, b.Strength, s),
-                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat,
-                StopThreshold = math.lerp(a.StopThreshold, b.StopThreshold, s)
+                StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
             };
         }
 
         public PhysicsLinearPIDData Add(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b)
         {
+            var aWins = a.Strength > b.Strength ||
+                        (a.Strength == b.Strength && (byte)a.TargetMode <= (byte)b.TargetMode);
+            var dominant = aWins ? a : b;
+
             return new PhysicsLinearPIDData
             {
                 Tuning = PidMixer.Add(a.Tuning, b.Tuning),
-                TrackingTarget = a.TrackingTarget,
-                TargetMode = a.TargetMode,
+                TrackingTarget = dominant.TrackingTarget,
+                TargetMode = dominant.TargetMode,
                 TargetOffset = a.TargetOffset + b.TargetOffset,
                 Strength = a.Strength + b.Strength,
-                StrengthStat = a.StrengthStat,
-                StopThreshold = a.StopThreshold // Keep original; blending would be ambiguous
+                StrengthStat = dominant.StrengthStat
             };
         }
     }

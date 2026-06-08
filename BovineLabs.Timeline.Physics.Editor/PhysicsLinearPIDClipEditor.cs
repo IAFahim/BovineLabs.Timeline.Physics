@@ -41,12 +41,6 @@ namespace BovineLabs.Timeline.Physics.Editor
             EditorGUILayout.LabelField("Stat Multiplier", EditorStyles.boldLabel);
             PidEditorUtility.DrawStatSection(serializedObject);
 
-            EditorGUILayout.Space(6);
-
-            EditorGUILayout.LabelField("Stop Threshold (Optional)", EditorStyles.boldLabel);
-            PidEditorUtility.DrawStopThreshold(
-                serializedObject.FindProperty(nameof(PhysicsLinearPIDClip.stopThreshold)));
-
             if (clip.trackingTarget == Target.Self && clip.targetMode == PidLinearTargetMode.TargetLocal)
             {
                 EditorGUILayout.Space(4);

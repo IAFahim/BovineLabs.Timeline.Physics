@@ -1,3 +1,4 @@
+using System;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.EntityCommands;
@@ -86,9 +87,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
                 .CreateCommandBuffer(state.WorldUnmanaged);
 
+            var spawned = new NativeParallelHashSet<SpawnKey>(64, state.WorldUpdateAllocator);
+
             state.Dependency = new InstantiateGatherJob
             {
                 ECB = ecb.AsParallelWriter(),
+                Spawned = spawned.AsParallelWriter(),
                 Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
                 TrackBindingHandle = _trackBindingHandle,
@@ -115,9 +119,27 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public float3 ContactNormal;
         }
 
+        private struct SpawnKey : IEquatable<SpawnKey>
+        {
+            public Entity Self;
+            public Entity Other;
+            public ObjectId ObjectId;
+
+            public bool Equals(SpawnKey other)
+            {
+                return Self == other.Self && Other == other.Other && ObjectId.Equals(other.ObjectId);
+            }
+
+            public override int GetHashCode()
+            {
+                return (int)math.hash(new int3(Self.Index, Other.Index, ObjectId.GetHashCode()));
+            }
+        }
+
         private struct InstantiateGatherJob : IJobChunkWorkerBeginEnd
         {
             public EntityCommandBuffer.ParallelWriter ECB;
+            public NativeParallelHashSet<SpawnKey>.ParallelWriter Spawned;
             public BLLogger Logger;
             [ReadOnly] public ObjectDefinitionRegistry Registry;
 
@@ -204,6 +226,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets
                 )
             {
+                if (!Spawned.Add(new SpawnKey { Self = self, Other = other, ObjectId = cfg.ObjectId }))
+                    return;
+
                 var spawnTarget = other;
                 if (cfg.TargetLinkKey != 0)
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(

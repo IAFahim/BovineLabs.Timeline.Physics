@@ -31,13 +31,6 @@ namespace BovineLabs.Timeline.Physics.Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("readStatLink"));
         }
 
-        public static void DrawStopThreshold(SerializedProperty prop)
-        {
-            EditorGUILayout.PropertyField(prop,
-                new GUIContent("Threshold",
-                    "Suppress PID output when the error is below this distancetostatdebugsystem. 0 = disabled."));
-        }
-
         public static void DrawGains(Object target, SerializedProperty tuning, SerializedProperty uniform)
         {
             uniform.boolValue = EditorGUILayout.Toggle(

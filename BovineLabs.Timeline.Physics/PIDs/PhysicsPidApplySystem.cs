@@ -181,13 +181,6 @@ namespace BovineLabs.Timeline.Physics.PIDs
 
                     nextState.CapturedTargetPosition = capturedPos;
 
-                    if (config.StopThreshold > 0f && math.length(error) < config.StopThreshold)
-                    {
-                        state.State = nextState;
-                        states[i] = state;
-                        continue;
-                    }
-
                     var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,
                         LinkSources, Links, StatLookup);
@@ -250,13 +243,6 @@ namespace BovineLabs.Timeline.Physics.PIDs
 
                     PhysicsMath.ComputePidForce(error, config.Tuning, state.State, DeltaTime,
                         out var torque, out var nextState);
-
-                    if (config.StopThreshold > 0f && math.degrees(math.length(error)) < config.StopThreshold)
-                    {
-                        state.State = nextState;
-                        states[i] = state;
-                        continue;
-                    }
 
                     var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.StrengthStat, body, targets,

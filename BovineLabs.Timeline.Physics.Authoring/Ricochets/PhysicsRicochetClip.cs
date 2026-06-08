@@ -71,7 +71,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                     MinGrazingAngle = math.radians(minGrazingAngle),
                     RicochetMask = ricochetSurfaces.Value,
                     TerminalHitMask = terminalHitSurfaces.Value,
-                    HitConditionKey = hitCondition != null ? hitCondition.Key : (ushort)0,
+                    HitConditionKey = hitCondition != null ? (ushort)hitCondition.Key : (ushort)0,
                     HitRouteTo = hitRouteTo,
                     HitRouteLinkKey = hitRouteKey,
                     RayOrigin = rayOrigin,
@@ -80,7 +80,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                     RayDirectionLinkKey = rayDirectionKey,
                     Strength = new StatStrengthConfig
                     {
-                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        Stat = strengthStat != null ? (ushort)strengthStat.Key : default,
                         ReadFrom = readStatFrom,
                         LinkKey = readStatKey
                     }

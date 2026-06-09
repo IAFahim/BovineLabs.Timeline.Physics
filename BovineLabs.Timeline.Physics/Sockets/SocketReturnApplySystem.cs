@@ -159,7 +159,8 @@ namespace BovineLabs.Timeline.Physics.Sockets
                     states[i] = spring;
 
                     var arrived = math.distance(currentPosition, goalPosition) <= config.AttachDistance &&
-                                  math.length(SpringMath.Log(math.mul(currentRotation, math.conjugate(goalRotation)))) <=
+                                  math.length(SpringMath.Log(math.mul(currentRotation,
+                                      math.conjugate(goalRotation)))) <=
                                   config.AttachAngle;
 
                     if (arrived && hasSocket)

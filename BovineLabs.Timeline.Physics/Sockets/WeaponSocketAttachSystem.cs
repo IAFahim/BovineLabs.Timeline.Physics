@@ -1,3 +1,4 @@
+using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
@@ -70,7 +71,7 @@ namespace BovineLabs.Timeline.Physics.Sockets
         }
     }
 
-    [UpdateInGroup(typeof(Infrastructure.PhysicsProducerGroup))]
+    [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [BurstCompile]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]

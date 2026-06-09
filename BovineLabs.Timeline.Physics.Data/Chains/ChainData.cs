@@ -42,6 +42,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     public struct ActiveChainFollow : IActive<ChainFollowData>
     {
         public ChainFollowData Value;
+
         public ChainFollowData Config
         {
             get => Value;

@@ -9,10 +9,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Chains
 {
     public class ChainFollowClip : DOTSClip, ITimelineClipAsset
     {
-        [Header("Physics Blend Weight"), Range(0f, 1f)] public float positionStrength = 1f;
+        [Header("Physics Blend Weight")] [Range(0f, 1f)]
+        public float positionStrength = 1f;
+
         [Range(0f, 1f)] public float orientationStrength = 1f;
 
-        [Header("Crispness (seconds to halve the gap)"), Min(0.001f)]
+        [Header("Crispness (seconds to halve the gap)")] [Min(0.001f)]
         public float positionHalflife = 0.05f;
 
         [Min(0.001f)] public float orientationHalflife = 0.05f;

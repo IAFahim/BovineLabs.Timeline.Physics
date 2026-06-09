@@ -1,3 +1,4 @@
+using BovineLabs.Timeline.Physics.Sockets;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
@@ -16,7 +17,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Sockets
             {
                 var entity = GetEntity(TransformUsageFlags.Dynamic);
 
-                AddComponent(entity, new Physics.Sockets.WeaponSocket
+                AddComponent(entity, new WeaponSocket
                 {
                     Bone = authoring.restBone != null
                         ? GetEntity(authoring.restBone, TransformUsageFlags.Dynamic)
@@ -24,11 +25,11 @@ namespace BovineLabs.Timeline.Physics.Authoring.Sockets
                     LocalPosition = authoring.restLocalPosition,
                     LocalRotation = quaternion.Euler(math.radians(authoring.restLocalRotationEuler))
                 });
-                SetComponentEnabled<Physics.Sockets.WeaponSocket>(entity, false);
+                SetComponentEnabled<WeaponSocket>(entity, false);
 
-                AddComponent<Physics.Sockets.ActiveSocketReturn>(entity);
-                SetComponentEnabled<Physics.Sockets.ActiveSocketReturn>(entity, false);
-                AddComponent<Physics.Sockets.SocketReturnState>(entity);
+                AddComponent<ActiveSocketReturn>(entity);
+                SetComponentEnabled<ActiveSocketReturn>(entity, false);
+                AddComponent<SocketReturnState>(entity);
             }
         }
     }

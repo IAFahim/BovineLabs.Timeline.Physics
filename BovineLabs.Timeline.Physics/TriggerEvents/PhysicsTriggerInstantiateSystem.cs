@@ -224,7 +224,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             private void Spawn(int chunkIndex, Entity prefab, Entity self, Entity other,
                 in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets
-                )
+            )
             {
                 if (!Spawned.Add(new SpawnKey { Self = self, Other = other, ObjectId = cfg.ObjectId }))
                     return;
@@ -266,7 +266,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 ECB.SetComponent(chunkIndex, instance, new Targets
                 {
                     Owner = targets.Owner == Entity.Null ? self : targets.Owner,
-                    Source = targets.Source == Entity.Null? self : targets.Source,
+                    Source = targets.Source == Entity.Null ? self : targets.Source,
                     Target = spawnTarget,
                     Custom = targets.Custom
                 });

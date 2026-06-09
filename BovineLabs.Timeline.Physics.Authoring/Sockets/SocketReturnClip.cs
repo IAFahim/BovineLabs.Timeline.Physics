@@ -20,7 +20,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Sockets
 
         [Min(0.001f)] public float rotationHalflife = 0.08f;
 
-        [Header("Hand-off Tolerance")] [Min(0f)] public float attachDistance = 0.02f;
+        [Header("Hand-off Tolerance")] [Min(0f)]
+        public float attachDistance = 0.02f;
+
         [Min(0f)] public float attachAngleDegrees = 3f;
 
         public override double duration => 1;

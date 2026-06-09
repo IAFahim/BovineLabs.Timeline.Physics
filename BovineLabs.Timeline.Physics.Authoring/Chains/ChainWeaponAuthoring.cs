@@ -9,9 +9,14 @@ namespace BovineLabs.Timeline.Physics.Authoring.Chains
 {
     public class ChainWeaponAuthoring : MonoBehaviour
     {
-        [Header("Ordered link bodies (root to tip)")] public Transform[] links;
-        [Header("Swing-animation bones (parallel to links)")] public Transform[] animationBones;
-        [Header("Wielder attachment (link 0 fixes here)")] public Transform attachBone;
+        [Header("Ordered link bodies (root to tip)")]
+        public Transform[] links;
+
+        [Header("Swing-animation bones (parallel to links)")]
+        public Transform[] animationBones;
+
+        [Header("Wielder attachment (link 0 fixes here)")]
+        public Transform attachBone;
 
         [Header("On Hit")] public ChainGrabMode grabMode = ChainGrabMode.Wrap;
         public uint hitMask = ~0u;

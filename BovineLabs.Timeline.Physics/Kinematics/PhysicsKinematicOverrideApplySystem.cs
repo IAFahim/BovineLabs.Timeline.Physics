@@ -103,6 +103,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);
+                    var hasActiveGravityOverride = hasGravityOverride &&
+                                                   chunk.IsComponentEnabled(ref ActiveGravityOverrideHandle, i);
                     var state = states[i];
                     var entity = entities[i];
 
@@ -135,7 +137,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                                 new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
                         }
 
-                        if (config.ZeroGravity && !hasGravityOverride)
+                        if (config.ZeroGravity && !hasActiveGravityOverride)
                         {
                             if (hasGravityFactor)
                             {
@@ -168,7 +170,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                             massOverrides[i] = mo;
                         }
 
-                        if (config.ZeroGravity && hasGravityFactor && !hasGravityOverride)
+                        if (config.ZeroGravity && hasGravityFactor && !hasActiveGravityOverride)
                         {
                             var factor = gravityFactors[i];
                             factor.Value = 0f;
@@ -193,7 +195,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                                 new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
                         }
 
-                        if (!hasGravityOverride)
+                        if (!hasActiveGravityOverride)
                         {
                             if (state.AddedGravityComponent)
                             {

@@ -131,7 +131,11 @@ namespace BovineLabs.Timeline.Physics.Chains
 
                     if (joint == Entity.Null) continue;
 
-                    ECB.AppendToBuffer(unfilteredChunkIndex, link.Root, new ChainAnchor { Joint = joint });
+                    ECB.AppendToBuffer(unfilteredChunkIndex, link.Root, new ChainAnchor
+                    {
+                        Joint = joint,
+                        Link = linkEntity
+                    });
                     ECB.SetComponentEnabled<ChainLinkGrabbed>(unfilteredChunkIndex, linkEntity, true);
                     ECB.SetComponentEnabled<ChainGrabArmed>(unfilteredChunkIndex, linkEntity, false);
                 }
@@ -247,8 +251,16 @@ namespace BovineLabs.Timeline.Physics.Chains
                          .WithEntityAccess())
             {
                 for (var i = 0; i < anchors.Length; i++)
+                {
                     if (anchors[i].Joint != Entity.Null)
                         ecb.DestroyEntity(anchors[i].Joint);
+
+                    if (anchors[i].Link != Entity.Null)
+                    {
+                        ecb.SetComponentEnabled<ChainLinkGrabbed>(anchors[i].Link, false);
+                        ecb.SetComponentEnabled<ChainGrabArmed>(anchors[i].Link, true);
+                    }
+                }
 
                 anchors.Clear();
                 ecb.SetComponentEnabled<ChainReleaseRequest>(releaseEntity, false);

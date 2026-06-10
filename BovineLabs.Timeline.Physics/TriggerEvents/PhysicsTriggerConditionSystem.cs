@@ -6,6 +6,7 @@ using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
@@ -58,6 +59,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerConditionData>(true);
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
+            var timerDataType = SystemAPI.GetComponentTypeHandle<TimerData>(true);
+            var timeTransformType = SystemAPI.GetComponentTypeHandle<TimeTransform>(true);
 
             state.Dependency = new InvokeJob
             {
@@ -65,6 +68,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 PhysicsTriggerConditionDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
                 ClipActivePreviousTypeHandle = activePrevType,
+                TimerDataTypeHandle = timerDataType,
+                TimeTransformTypeHandle = timeTransformType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -82,6 +87,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerConditionData> PhysicsTriggerConditionDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -100,6 +107,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
 
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
+                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
+                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
+                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -111,21 +121,31 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var config = configs[i];
                     var filter = filters[i];
                     var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
+                    var isLastFrame = false;
+                    if (hasTiming)
+                    {
+                        var timer = timers[i];
+                        var timeTransform = timeTransforms[i];
+                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
+                    }
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
-                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame);
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame,
+                                isLastFrame);
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                         foreach (var evt in collisions)
-                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame);
+                            ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame,
+                                isLastFrame);
                 }
             }
 
             private void ProcessEvent(Entity self, Entity other, StatefulEventState state,
-                in PhysicsTriggerConditionData config, in PhysicsTriggerFilterData filter, bool isFirstFrame)
+                in PhysicsTriggerConditionData config, in PhysicsTriggerFilterData filter, bool isFirstFrame,
+                bool isLastFrame)
             {
-                if (!StatefulEventMatching.Matches(state, config.EventState, isFirstFrame, false)) return;
+                if (!StatefulEventMatching.Matches(state, config.EventState, isFirstFrame, isLastFrame)) return;
 
                 if (config.CollidesWithMask != 0)
                 {

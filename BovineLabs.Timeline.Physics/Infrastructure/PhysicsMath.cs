@@ -107,29 +107,42 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             out float3 position,
             out quaternion rotation)
         {
+            TryResolveTransform(target, in localTransformLookup, in localToWorldLookup, in parentLookup,
+                out position, out rotation);
+        }
+
+        public static bool TryResolveTransform(
+            Entity target,
+            in ComponentLookup<LocalTransform> localTransformLookup,
+            in UnsafeComponentLookup<LocalToWorld> localToWorldLookup,
+            in ComponentLookup<Parent> parentLookup,
+            out float3 position,
+            out quaternion rotation)
+        {
             if (target == Entity.Null)
             {
                 position = float3.zero;
                 rotation = quaternion.identity;
-                return;
+                return false;
             }
 
             if (localTransformLookup.TryGetComponent(target, out var lt) && !parentLookup.HasComponent(target))
             {
                 position = lt.Position;
                 rotation = lt.Rotation;
-                return;
+                return true;
             }
 
             if (localToWorldLookup.TryGetComponent(target, out var ltw))
             {
                 position = ltw.Position;
                 rotation = new quaternion(math.orthonormalize(new float3x3(ltw.Value)));
-                return;
+                return true;
             }
 
             position = float3.zero;
             rotation = quaternion.identity;
+            return false;
         }
 
         public static void ResolveSpaceVector(
@@ -289,10 +302,11 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(config.TrackingTarget, entity);
 
-            ResolveTransform(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+            var hasTargetTransform = TryResolveTransform(
+                targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
                 out var targetPos, out var targetRot);
 
-            if (targetEntity == Entity.Null || math.lengthsq(targetPos) < 1e-6f)
+            if (!hasTargetTransform)
             {
                 targetPos = selfPos;
                 targetRot = selfRot;
@@ -332,10 +346,11 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             if (config.TrackingTarget != Target.None && targetsLookup.TryGetComponent(entity, out var targets))
                 targetEntity = targets.Get(config.TrackingTarget, entity);
 
-            ResolveTransform(targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
+            var hasTargetTransform = TryResolveTransform(
+                targetEntity, in localTransformLookup, in localToWorldLookup, in parentLookup,
                 out var targetPos, out var targetRot);
 
-            if (targetEntity == Entity.Null || math.lengthsq(targetPos) < 1e-6f)
+            if (!hasTargetTransform)
             {
                 targetPos = selfPos;
                 targetRot = selfRot;

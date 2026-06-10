@@ -1,4 +1,6 @@
 using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Data.Schedular;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -28,6 +30,16 @@ namespace BovineLabs.Timeline.Physics
             if (isClipFirstFrame && wanted == StatefulEventState.Enter) return true;
             if (isClipLastFrame && wanted == StatefulEventState.Exit) return true;
             return false;
+        }
+
+        public static bool IsClipLastFrame(in TimerData timer, in TimeTransform timeTransform)
+        {
+            if (timer.DeltaTime.Value == 0) return false;
+
+            var previousTime = timer.Time - timer.DeltaTime;
+            return timer.DeltaTime.Value < 0
+                ? timer.Time <= timeTransform.Start && previousTime > timeTransform.Start
+                : timer.Time >= timeTransform.End && previousTime < timeTransform.End;
         }
     }
 }

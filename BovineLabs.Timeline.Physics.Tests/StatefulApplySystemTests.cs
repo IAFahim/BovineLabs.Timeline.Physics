@@ -180,6 +180,38 @@ namespace BovineLabs.Timeline.Physics.Tests
         }
 
         [Test]
+        public void KinematicOverride_DisabledGravityOverride_DoesNotBlockZeroGravity()
+        {
+            World.GetOrCreateSystemManaged<EndFixedStepSimulationEntityCommandBufferSystem>();
+
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, new PhysicsGravityFactor { Value = 0.75f });
+            Manager.AddComponentData(body, new PhysicsKinematicOverrideState());
+            Manager.AddComponentData(body, new ActiveKinematicOverride
+            {
+                Config = new PhysicsKinematicOverrideData
+                {
+                    IsKinematic = true,
+                    ZeroGravity = true
+                }
+            });
+            Manager.AddComponentData(body, new ActiveGravityOverride());
+            Manager.SetComponentEnabled<ActiveGravityOverride>(body, false);
+
+            var sys = World.GetOrCreateSystem<PhysicsKinematicOverrideApplySystem>();
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0f, Manager.GetComponentData<PhysicsGravityFactor>(body).Value, 0.0001f);
+
+            Manager.SetComponentEnabled<ActiveKinematicOverride>(body, false);
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0.75f, Manager.GetComponentData<PhysicsGravityFactor>(body).Value, 0.0001f);
+        }
+
+        [Test]
         public void FilterOverride_UniqueCollider_OverridesThenRestoresOnExit()
         {
             var blob = SphereCollider.Create(

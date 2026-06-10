@@ -173,8 +173,11 @@ namespace BovineLabs.Timeline.Physics.Teleports
                         continue;
                     }
 
+                    var localScale = LocalTransformLookup.TryGetComponent(frame.TeleportedEntity, out var current)
+                        ? current.Scale
+                        : 1f;
                     var transform = TeleportPlacement.ComputeLocalTransform(
-                        in frame, in config, landing, LocalToWorldLookup, ParentLookup);
+                        in frame, in config, landing, localScale, LocalToWorldLookup, ParentLookup);
 
                     Commit(unfilteredChunkIndex, frame.TeleportedEntity, transform, config.ResetVelocity);
                 }

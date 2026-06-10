@@ -30,15 +30,16 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            var em = state.EntityManager;
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
             foreach (var (_, entity) in SystemAPI.Query<RefRO<PhysicsVelocity>>()
-                         .WithNone<PhysicsForceAccumulatorOptOut, PendingForce>()
+                         .WithNone<PhysicsForceAccumulatorOptOut>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab)
                          .WithEntityAccess())
             {
-                ecb.AddBuffer<PendingForce>(entity);
-                ecb.AddBuffer<PendingVelocity>(entity);
+                if (!em.HasBuffer<PendingForce>(entity)) ecb.AddBuffer<PendingForce>(entity);
+                if (!em.HasBuffer<PendingVelocity>(entity)) ecb.AddBuffer<PendingVelocity>(entity);
             }
 
             ecb.Playback(state.EntityManager);

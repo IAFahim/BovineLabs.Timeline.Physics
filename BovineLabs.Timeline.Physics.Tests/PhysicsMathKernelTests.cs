@@ -1,7 +1,13 @@
+using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.Teleports;
 using NUnit.Framework;
+using Unity.Entities;
+using Unity.IntegerTime;
 using Unity.Mathematics;
+using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
@@ -122,6 +128,129 @@ namespace BovineLabs.Timeline.Physics.Tests
             var expected = math.mul(targetRotation, math.forward());
             var actual = math.mul(rotation, math.forward());
             Assert.AreEqual(1f, math.dot(expected, actual), 0.0001f);
+        }
+    }
+
+    public class StatefulEventMatchingTests
+    {
+        [Test]
+        public void Stay_MatchesExit_OnForwardLastFrame()
+        {
+            var timer = new TimerData
+            {
+                Time = DiscreteTime.FromTicks(10),
+                DeltaTime = DiscreteTime.FromTicks(1)
+            };
+            var transform = new TimeTransform
+            {
+                Start = DiscreteTime.Zero,
+                End = DiscreteTime.FromTicks(10),
+                Scale = 1
+            };
+
+            var isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in transform);
+
+            Assert.IsTrue(isLastFrame);
+            Assert.IsTrue(StatefulEventMatching.Matches(
+                StatefulEventState.Stay, StatefulEventState.Exit, false, isLastFrame));
+        }
+
+        [Test]
+        public void Stay_MatchesExit_OnReverseLastFrame()
+        {
+            var timer = new TimerData
+            {
+                Time = DiscreteTime.Zero,
+                DeltaTime = DiscreteTime.FromTicks(-1)
+            };
+            var transform = new TimeTransform
+            {
+                Start = DiscreteTime.Zero,
+                End = DiscreteTime.FromTicks(10),
+                Scale = 1
+            };
+
+            Assert.IsTrue(StatefulEventMatching.IsClipLastFrame(in timer, in transform));
+        }
+
+        [Test]
+        public void Stay_DoesNotMatchExit_BeforeLastFrame()
+        {
+            var timer = new TimerData
+            {
+                Time = DiscreteTime.FromTicks(9),
+                DeltaTime = DiscreteTime.FromTicks(1)
+            };
+            var transform = new TimeTransform
+            {
+                Start = DiscreteTime.Zero,
+                End = DiscreteTime.FromTicks(10),
+                Scale = 1
+            };
+
+            Assert.IsFalse(StatefulEventMatching.IsClipLastFrame(in timer, in transform));
+        }
+
+        [Test]
+        public void PostExtrapolation_DoesNotRepeatLastFrame()
+        {
+            var timer = new TimerData
+            {
+                Time = DiscreteTime.FromTicks(11),
+                DeltaTime = DiscreteTime.FromTicks(1)
+            };
+            var transform = new TimeTransform
+            {
+                Start = DiscreteTime.Zero,
+                End = DiscreteTime.FromTicks(10),
+                Scale = 1
+            };
+
+            Assert.IsFalse(StatefulEventMatching.IsClipLastFrame(in timer, in transform));
+        }
+    }
+
+    public class TeleportPlacementTests
+    {
+        [Test]
+        public void Unparented_PreservesLocalScale()
+        {
+            var frame = CreateFrame();
+            var data = new PhysicsTeleportData { FacingMode = TeleportFacingMode.PreserveCurrent };
+
+            var transform = TeleportPlacement.ComputeLocalTransform(
+                in frame, in data, new float3(3f, 4f, 5f), 2.5f, false, default);
+
+            Assert.AreEqual(2.5f, transform.Scale, 0.0001f);
+        }
+
+        [Test]
+        public void Parented_PreservesLocalScale()
+        {
+            var frame = CreateFrame();
+            var data = new PhysicsTeleportData { FacingMode = TeleportFacingMode.PreserveCurrent };
+            var parent = new LocalToWorld { Value = float4x4.Translate(new float3(1f, 0f, 0f)) };
+
+            var transform = TeleportPlacement.ComputeLocalTransform(
+                in frame, in data, new float3(3f, 4f, 5f), 2.5f, true, in parent);
+
+            Assert.AreEqual(2.5f, transform.Scale, 0.0001f);
+        }
+
+        private static TeleportFrame CreateFrame()
+        {
+            return new TeleportFrame(
+                true,
+                new Entity { Index = 1, Version = 1 },
+                float3.zero,
+                quaternion.identity,
+                Entity.Null,
+                float3.zero,
+                float3.zero,
+                quaternion.identity,
+                float3.zero,
+                quaternion.identity,
+                quaternion.identity);
         }
     }
 }

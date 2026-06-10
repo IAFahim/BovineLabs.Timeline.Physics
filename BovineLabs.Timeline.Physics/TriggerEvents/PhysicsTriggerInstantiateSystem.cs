@@ -10,6 +10,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Core.Utility;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
@@ -35,6 +36,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
         private ComponentTypeHandle<PhysicsTriggerFilterData> _filterHandle;
         private ComponentTypeHandle<ClipActivePrevious> _activePrevHandle;
+        private ComponentTypeHandle<TimerData> _timerDataHandle;
+        private ComponentTypeHandle<TimeTransform> _timeTransformHandle;
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -59,6 +62,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
             _filterHandle = state.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
             _activePrevHandle = state.GetComponentTypeHandle<ClipActivePrevious>(true);
+            _timerDataHandle = state.GetComponentTypeHandle<TimerData>(true);
+            _timeTransformHandle = state.GetComponentTypeHandle<TimeTransform>(true);
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
@@ -76,6 +81,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _dataHandle.Update(ref state);
             _filterHandle.Update(ref state);
             _activePrevHandle.Update(ref state);
+            _timerDataHandle.Update(ref state);
+            _timeTransformHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
@@ -99,6 +106,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 DataHandle = _dataHandle,
                 FilterHandle = _filterHandle,
                 ClipActivePreviousTypeHandle = _activePrevHandle,
+                TimerDataTypeHandle = _timerDataHandle,
+                TimeTransformTypeHandle = _timeTransformHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
@@ -147,6 +156,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
             [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
@@ -164,15 +175,27 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
 
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
+                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
+                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
+                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var self = trackBindings[i].Value;
+                    if (self == Entity.Null || !LocalToWorldLookup.HasComponent(self)) continue;
+
                     var cfg = configs[i];
                     var filter = filters[i];
 
                     var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
+                    var isLastFrame = false;
+                    if (hasTiming)
+                    {
+                        var timer = timers[i];
+                        var timeTransform = timeTransforms[i];
+                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
+                    }
 
                     if (!Registry.TryGetValue(cfg.ObjectId, out var prefab) || prefab == Entity.Null)
                     {
@@ -187,7 +210,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
-                            if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
+                            if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
                                 !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                             if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
@@ -204,7 +227,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
                     foreach (var evt in collisions)
                     {
-                        if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, false) ||
+                        if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
                             !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
                         if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,

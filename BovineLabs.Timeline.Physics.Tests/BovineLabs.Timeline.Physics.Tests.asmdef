@@ -8,6 +8,7 @@
     "BovineLabs.Testing",
     "BovineLabs.Timeline.Physics",
     "BovineLabs.Timeline.Physics.Data",
+    "BovineLabs.Timeline.Physics.Authoring",
     "BovineLabs.Timeline.EntityLinks.Data",
     "BovineLabs.Timeline.Data",
     "BovineLabs.Timeline.Core",

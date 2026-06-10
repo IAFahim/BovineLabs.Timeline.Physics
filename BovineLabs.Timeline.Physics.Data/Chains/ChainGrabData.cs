@@ -32,6 +32,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     public struct ChainAnchor : IBufferElementData
     {
         public Entity Joint;
+        public Entity Link;
     }
 
     public struct ChainReel : IComponentData

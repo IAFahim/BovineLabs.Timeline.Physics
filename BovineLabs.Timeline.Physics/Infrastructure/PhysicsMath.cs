@@ -52,7 +52,8 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 if (col.IsValid) surfaceBelongsTo = col.Value.Value.GetCollisionFilter().BelongsTo;
             }
 
-            var angleFromNormal = math.acos(math.abs(math.dot(currentDir, hit.SurfaceNormal)));
+            var alignment = math.clamp(math.abs(math.dot(currentDir, hit.SurfaceNormal)), 0f, 1f);
+            var angleFromNormal = math.acos(alignment);
             var grazingAngle = math.PI / 2f - angleFromNormal;
 
             if (grazingAngle >= minGrazingAngle || (surfaceBelongsTo & terminalHitMask) != 0)
@@ -160,6 +161,42 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             }
 
             resolvedVector = vector;
+        }
+
+        /// <summary>
+        ///     Distance attenuation in [0, 1]. Total over all inputs and every
+        ///     <see cref="PhysicsTriggerFalloffCurve" /> value: full magnitude inside the start radius,
+        ///     zero outside the end radius, curve-shaped in between.
+        ///     InverseSquare is true 1/r² attenuation normalized to 1 at the start radius.
+        /// </summary>
+        public static float ComputeFalloff(PhysicsTriggerFalloffCurve curve, float distance, float startRadius,
+            float endRadius)
+        {
+            if (curve == PhysicsTriggerFalloffCurve.None) return 1f;
+            if (distance > endRadius) return 0f;
+            if (distance <= startRadius) return 1f;
+
+            switch (curve)
+            {
+                case PhysicsTriggerFalloffCurve.Linear:
+                {
+                    var range = math.max(endRadius - startRadius, 0.001f);
+                    return math.saturate(1f - (distance - startRadius) / range);
+                }
+
+                case PhysicsTriggerFalloffCurve.InverseSquare:
+                {
+                    var reference = math.max(startRadius, 0.001f);
+                    var ratio = reference / math.max(distance, reference);
+                    return ratio * ratio;
+                }
+
+                case PhysicsTriggerFalloffCurve.Step:
+                    return 1f;
+
+                default:
+                    return 1f;
+            }
         }
 
         public static void ComputeExponentialDecay(in PhysicsVelocity velocityIn, in PhysicsDragData drag,

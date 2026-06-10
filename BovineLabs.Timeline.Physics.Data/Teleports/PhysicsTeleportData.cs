@@ -45,6 +45,9 @@ namespace BovineLabs.Timeline.Physics
         public Target AzimuthTarget;
         public ushort AzimuthTargetLinkKey;
 
+        // Frame defining azimuth 0 around the landing patch origin.
+        public TeleportReferenceFrame ReferenceFrame;
+
         // Facing mode and target - where the entity looks after teleport.
         public TeleportFacingMode FacingMode;
         public Target FacingTarget;
@@ -104,6 +107,8 @@ namespace BovineLabs.Timeline.Physics
                 AzimuthTarget = s < 0.5f ? a.AzimuthTarget : b.AzimuthTarget,
                 AzimuthTargetLinkKey = s < 0.5f ? a.AzimuthTargetLinkKey : b.AzimuthTargetLinkKey,
 
+                ReferenceFrame = s < 0.5f ? a.ReferenceFrame : b.ReferenceFrame,
+
                 FacingMode = s < 0.5f ? a.FacingMode : b.FacingMode,
                 FacingTarget = s < 0.5f ? a.FacingTarget : b.FacingTarget,
                 FacingTargetLinkKey = s < 0.5f ? a.FacingTargetLinkKey : b.FacingTargetLinkKey,
@@ -144,6 +149,8 @@ namespace BovineLabs.Timeline.Physics
 
                 AzimuthTarget = a.AzimuthTarget,
                 AzimuthTargetLinkKey = a.AzimuthTargetLinkKey,
+
+                ReferenceFrame = a.ReferenceFrame,
 
                 FacingMode = a.FacingMode,
                 FacingTarget = a.FacingTarget,

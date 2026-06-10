@@ -99,7 +99,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                 var hasGravityOverride = chunk.Has(ref ActiveGravityOverrideHandle);
 
-                var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);

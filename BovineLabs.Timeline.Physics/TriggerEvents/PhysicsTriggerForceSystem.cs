@@ -236,18 +236,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if (cfg.FalloffCurve != PhysicsTriggerFalloffCurve.None && distSq > 1e-5f)
                 {
                     var dist = math.sqrt(distSq);
-                    if (dist > cfg.FalloffEndRadius) return;
+                    var falloff = PhysicsMath.ComputeFalloff(cfg.FalloffCurve, dist, cfg.FalloffStartRadius,
+                        cfg.FalloffEndRadius);
+                    if (falloff <= 0f) return;
 
-                    if (dist > cfg.FalloffStartRadius)
-                    {
-                        var range = math.max(cfg.FalloffEndRadius - cfg.FalloffStartRadius, 0.001f);
-                        var factor = math.clamp(1f - (dist - cfg.FalloffStartRadius) / range, 0f, 1f);
-
-                        if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.Linear)
-                            magnitude *= factor;
-                        else if (cfg.FalloffCurve == PhysicsTriggerFalloffCurve.InverseSquare)
-                            magnitude *= factor * factor;
-                    }
+                    magnitude *= falloff;
                 }
 
                 if (math.abs(magnitude) < 1e-5f) return;

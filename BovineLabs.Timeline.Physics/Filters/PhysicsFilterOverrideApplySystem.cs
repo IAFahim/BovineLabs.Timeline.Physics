@@ -65,13 +65,19 @@ namespace BovineLabs.Timeline.Physics.Filters
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
-                var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);
                     var state = states[i];
                     var collider = colliders[i];
                     if (!collider.IsValid) continue;
+
+                    if (!collider.IsUnique)
+                    {
+                        LogSharedColliderWarning();
+                        continue;
+                    }
 
                     var ptr = (Collider*)collider.Value.GetUnsafePtr();
 
@@ -115,6 +121,14 @@ namespace BovineLabs.Timeline.Physics.Filters
                         states[i] = state;
                     }
                 }
+            }
+
+            [BurstDiscard]
+            private static void LogSharedColliderWarning()
+            {
+                UnityEngine.Debug.LogWarning(
+                    "PhysicsFilterOverride targets a shared collider blob; the override was skipped. " +
+                    "Enable 'Force Unique' on the bound body's collider authoring so the filter can be modified per instance.");
             }
         }
     }

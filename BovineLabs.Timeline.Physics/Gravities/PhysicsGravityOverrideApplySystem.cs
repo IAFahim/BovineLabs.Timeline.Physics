@@ -75,7 +75,7 @@ namespace BovineLabs.Timeline.Physics.Gravities
                 var hasGravityFactor = chunk.Has(ref GravityFactorHandle);
                 var gravityFactors = hasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
 
-                var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);

@@ -118,7 +118,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
-                var enumerator = new ChunkEntityEnumerator(true, chunkEnabledMask, chunk.Count);
+                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var isActive = hasActiveComponent && chunk.IsComponentEnabled(ref ActiveHandle, i);
@@ -149,7 +149,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                         var bounceCount = 0;
 
                         var currentPos = origin;
-                        var currentDir = math.normalize(direction);
+                        var currentDir = math.normalizesafe(direction, math.forward());
 
                         while (bounceCount <= config.MaxBounces && remainingDistance > 0)
                         {

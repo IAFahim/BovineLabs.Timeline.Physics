@@ -36,6 +36,11 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 
         public EntityLinkSchema azimuthTargetLink;
 
+        [Tooltip(
+            "Frame defining azimuth 0° around the landing patch origin. SelfToTarget: 0° points toward the azimuth target. " +
+            "TargetToSelf: 0° points away from it. TargetForward: the azimuth target's own forward. WorldForward: world +Z.")]
+        public TeleportReferenceFrame referenceFrame = TeleportReferenceFrame.SelfToTarget;
+
         [Header("Azimuth / Elevation (degrees)")]
         [Tooltip(
             "Center azimuth. 0 = toward azimuth target, 90 = 90° clockwise from it, 180 = opposite (away from azimuth target).")]
@@ -148,6 +153,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                     AzimuthTarget = azimuthTarget,
                     AzimuthTargetLinkKey = azimuthTargetLinkKey,
 
+                    ReferenceFrame = referenceFrame,
+
+                    FacingMode = facingMode,
                     FacingTarget = facingTarget,
                     FacingTargetLinkKey = facingTargetLinkKey,
 

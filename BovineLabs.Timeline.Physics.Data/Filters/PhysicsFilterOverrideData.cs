@@ -27,18 +27,4 @@ namespace BovineLabs.Timeline.Physics
         public uint OriginalBelongsTo;
         public uint OriginalCollidesWith;
     }
-
-    public struct PhysicsFilterOverrideMixer : IMixer<PhysicsFilterOverrideData>
-    {
-        public PhysicsFilterOverrideData Lerp(in PhysicsFilterOverrideData a, in PhysicsFilterOverrideData b,
-            in float s)
-        {
-            return s >= 0.5f ? b : a;
-        }
-
-        public PhysicsFilterOverrideData Add(in PhysicsFilterOverrideData a, in PhysicsFilterOverrideData b)
-        {
-            return b;
-        }
-    }
 }

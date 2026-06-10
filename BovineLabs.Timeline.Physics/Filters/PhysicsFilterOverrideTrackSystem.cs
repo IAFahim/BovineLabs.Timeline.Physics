@@ -1,6 +1,7 @@
 using BovineLabs.Core.Jobs;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;
@@ -127,7 +128,7 @@ namespace BovineLabs.Timeline.Physics.Filters
                 ECB.SetComponentEnabled<ActiveFilterOverride>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveFilterOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, PhysicsFilterOverrideMixer>(ref mixData,
+                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, DiscreteMixer<PhysicsFilterOverrideData>>(ref mixData,
                         default)
                 });
             }

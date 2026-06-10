@@ -15,12 +15,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
 
         public static void ResolveReferenceRotation(
             float3 selfPos,
-            quaternion selfRot,
             float3 azimuthTargetPos,
             quaternion azimuthTargetRot,
             TeleportReferenceFrame referenceFrame,
             out quaternion referenceRotation)
         {
+            switch (referenceFrame)
+            {
+                case TeleportReferenceFrame.TargetForward:
+                    referenceRotation = azimuthTargetRot;
+                    return;
+                case TeleportReferenceFrame.WorldForward:
+                    referenceRotation = quaternion.identity;
+                    return;
+            }
+
             var toSelf = selfPos - azimuthTargetPos;
             var lenSq = math.lengthsq(toSelf);
 
@@ -31,8 +40,9 @@ namespace BovineLabs.Timeline.Physics.Teleports
             }
 
             var toSelfDir = toSelf * math.rsqrt(lenSq);
+            var forward = referenceFrame == TeleportReferenceFrame.SelfToTarget ? -toSelfDir : toSelfDir;
 
-            referenceRotation = quaternion.LookRotationSafe(toSelfDir, math.up());
+            referenceRotation = quaternion.LookRotationSafe(forward, math.up());
         }
 
         public static void GenerateCandidate(

@@ -53,8 +53,8 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var facingRotation = hasFacing ? Orientation(facingLtw) : azimuthRotation;
 
             TeleportMath.ResolveReferenceRotation(
-                teleportedPosition, teleportedRotation, azimuthPosition, azimuthRotation,
-                TeleportReferenceFrame.TargetToSelf, out var referenceRotation);
+                teleportedPosition, azimuthPosition, azimuthRotation,
+                data.ReferenceFrame, out var referenceRotation);
 
             return new TeleportFrame(
                 hasTeleported, teleportedEntity, teleportedPosition, teleportedRotation,

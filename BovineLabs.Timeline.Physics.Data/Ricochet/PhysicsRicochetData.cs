@@ -40,17 +40,4 @@ namespace BovineLabs.Timeline.Physics
     {
         public bool Fired;
     }
-
-    public struct PhysicsRicochetMixer : IMixer<PhysicsRicochetData>
-    {
-        public PhysicsRicochetData Lerp(in PhysicsRicochetData a, in PhysicsRicochetData b, in float s)
-        {
-            return s >= 0.5f ? b : a;
-        }
-
-        public PhysicsRicochetData Add(in PhysicsRicochetData a, in PhysicsRicochetData b)
-        {
-            return b; // Left-hand side or right-hand side, since ricochet doesn't blend meaningfully
-        }
-    }
 }

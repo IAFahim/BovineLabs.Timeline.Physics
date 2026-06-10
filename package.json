@@ -1,6 +1,6 @@
 {
-  "name": "com.bovinelabs.timeline.physics",
-  "version": "1.0.1",
+  "name": "com.bovinelabs.timeline.physics.fix",
+  "version": "1.0.2",
   "displayName": "BovineLabs Timeline Physics",
   "description": "Physics-oriented Timeline tracks for velocity control and stateful trigger-driven prefab instantiation in DOTS projects.",
   "dependencies": {

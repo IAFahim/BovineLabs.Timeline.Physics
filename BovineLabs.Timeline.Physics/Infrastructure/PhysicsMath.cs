@@ -378,24 +378,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             return math.mul(baseRot, offsetRot);
         }
 
-        public static void ApplyLinearForce(in PhysicsVelocity velocityIn, in PhysicsMass mass, float3 force,
-            float deltaTime, out PhysicsVelocity velocityOut)
-        {
-            velocityOut = velocityIn;
-            var invMass = mass.InverseMass > 0f ? mass.InverseMass : 1f;
-            velocityOut.Linear += force * invMass * deltaTime;
-        }
 
-        public static void ApplyAngularTorque(in PhysicsVelocity velocityIn, in PhysicsMass mass,
-            in LocalToWorld transform, float3 torque, float deltaTime, out PhysicsVelocity velocityOut)
-        {
-            velocityOut = velocityIn;
-            var invInertia = math.any(mass.InverseInertia > 0f) ? mass.InverseInertia : new float3(1f);
-            var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
-            var localTorque = math.rotate(math.inverse(rotation), torque);
-            var localAngularVelocityChange = localTorque * invInertia * deltaTime;
-            velocityOut.Angular += math.rotate(rotation, localAngularVelocityChange);
-        }
 
         public struct RicochetStepResult
         {

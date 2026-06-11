@@ -148,7 +148,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             using var statsBuilder = new StatsBuilder(Allocator.Temp);
             statsBuilder.WithDefault(statModifier);
             statsBuilder.WithCanBeModified(false);
-            statsBuilder.WithWriteEvents(false);
             statsBuilder.ApplyTo(ref commands);
 
             Manager.AddComponentData(target, LocalTransform.Identity);

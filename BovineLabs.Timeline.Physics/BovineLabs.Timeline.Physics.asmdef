@@ -11,7 +11,6 @@
     "BovineLabs.Timeline",
     "BovineLabs.Timeline.Core",
     "BovineLabs.Timeline.Data",
-    "BovineLabs.Timeline.Instantiate",
     "BovineLabs.Timeline.Physics.Data",
     "Unity.Burst",
     "Unity.Collections",
@@ -30,8 +29,14 @@
   "allowUnsafeCode": true,
   "overrideReferences": false,
   "precompiledReferences": [],
-  "autoReferenced": true,
+  "autoReferenced": false,
   "defineConstraints": [],
-  "versionDefines": [],
+  "versionDefines": [
+    {
+      "name": "com.bovinelabs.quill",
+      "expression": "",
+      "define": "BL_QUILL"
+    }
+  ],
   "noEngineReferences": false
 }

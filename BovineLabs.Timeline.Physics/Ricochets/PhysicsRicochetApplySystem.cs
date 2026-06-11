@@ -127,68 +127,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
 
                     if (isActive && !state.Fired)
                     {
-                        var config = actives[i].Config;
-                        var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
-
-                        var origin = float3.zero;
-                        var direction = math.forward();
-
-                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey,
-                                entity, Entity.Null, targets, LinkSources, Links, out var originEntity) &&
-                            LtwLookup.HasComponent(originEntity)) origin = LtwLookup[originEntity].Position;
-
-                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection,
-                                config.RayDirectionLinkKey, entity, Entity.Null, targets, LinkSources, Links,
-                                out var dirEntity) &&
-                            LtwLookup.HasComponent(dirEntity))
-                            direction = math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
-
-                        var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
-                            Links, StatLookup);
-                        var remainingDistance = config.MaxDistance * multiplier;
-                        var bounceCount = 0;
-
-                        var currentPos = origin;
-                        var currentDir = math.normalizesafe(direction, math.forward());
-
-                        while (bounceCount <= config.MaxBounces && remainingDistance > 0)
-                        {
-                            var stepResult = PhysicsMath.StepRicochet(
-                                currentPos, currentDir, remainingDistance,
-                                config.RicochetMask, config.TerminalHitMask, config.MinGrazingAngle,
-                                CollisionWorld, ColliderLookup);
-
-                            if (!stepResult.HitFound)
-                                break;
-
-                            remainingDistance -= stepResult.DistanceTraveled;
-
-                            if (stepResult.IsTerminal)
-                            {
-                                var hitEntity = stepResult.HitEntity;
-                                var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
-                                if (config.HitConditionKey != 0 &&
-                                    PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo,
-                                        config.HitRouteLinkKey, entity, hitEntity, hitTargets, LinkSources, Links,
-                                        out var target))
-                                    if (Writers.TryGet(target, out var writer))
-                                        writer.Trigger(config.HitConditionKey, bounceCount);
-                                break;
-                            }
-
-                            if (stepResult.IsRicochet)
-                            {
-                                currentDir = currentDir - 2f * math.dot(currentDir, stepResult.SurfaceNormal) *
-                                    stepResult.SurfaceNormal;
-                                currentPos = stepResult.HitPosition + currentDir * 0.01f;
-                                bounceCount++;
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
-
+                        FireRicochet(entity, actives[i].Config);
                         state.Fired = true;
                         states[i] = state;
                     }
@@ -197,6 +136,100 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                         state.Fired = false;
                         states[i] = state;
                     }
+                }
+            }
+
+            private void FireRicochet(Entity entity, in PhysicsRicochetData config)
+            {
+                var targets = TargetsLookup.TryGetComponent(entity, out var t) ? t : default;
+
+                var origin = ResolveOrigin(in config, entity, in targets);
+                var direction = ResolveDirection(in config, entity, in targets);
+
+                var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
+                    Links, StatLookup);
+
+                MarchRicochet(in config, entity, in targets, origin, direction, config.MaxDistance * multiplier);
+            }
+
+            private float3 ResolveOrigin(in PhysicsRicochetData config, Entity entity, in Targets targets)
+            {
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey,
+                        entity, Entity.Null, targets, LinkSources, Links, out var originEntity) &&
+                    LtwLookup.HasComponent(originEntity))
+                {
+                    return LtwLookup[originEntity].Position;
+                }
+
+                return float3.zero;
+            }
+
+            private float3 ResolveDirection(in PhysicsRicochetData config, Entity entity, in Targets targets)
+            {
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection, config.RayDirectionLinkKey,
+                        entity, Entity.Null, targets, LinkSources, Links, out var dirEntity) &&
+                    LtwLookup.HasComponent(dirEntity))
+                {
+                    return math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
+                }
+
+                return math.forward();
+            }
+
+            private void MarchRicochet(in PhysicsRicochetData config, Entity entity, in Targets targets, float3 origin,
+                float3 direction, float remainingDistance)
+            {
+                var bounceCount = 0;
+                var currentPos = origin;
+                var currentDir = math.normalizesafe(direction, math.forward());
+
+                while (bounceCount <= config.MaxBounces && remainingDistance > 0)
+                {
+                    var stepResult = PhysicsMath.StepRicochet(
+                        currentPos, currentDir, remainingDistance,
+                        config.RicochetMask, config.TerminalHitMask, config.MinGrazingAngle,
+                        CollisionWorld, ColliderLookup);
+
+                    if (!stepResult.HitFound)
+                    {
+                        break;
+                    }
+
+                    remainingDistance -= stepResult.DistanceTraveled;
+
+                    if (stepResult.IsTerminal)
+                    {
+                        HandleTerminalHit(in config, entity, in stepResult, bounceCount);
+                        break;
+                    }
+
+                    if (!stepResult.IsRicochet)
+                    {
+                        break;
+                    }
+
+                    currentDir = PhysicsMath.Reflect(currentDir, stepResult.SurfaceNormal);
+                    currentPos = stepResult.HitPosition + currentDir * 0.01f;
+                    bounceCount++;
+                }
+            }
+
+            private void HandleTerminalHit(in PhysicsRicochetData config, Entity entity,
+                in PhysicsMath.RicochetStepResult stepResult, int bounceCount)
+            {
+                if (config.HitConditionKey == 0)
+                {
+                    return;
+                }
+
+                var hitEntity = stepResult.HitEntity;
+                var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
+
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity,
+                        hitEntity, hitTargets, LinkSources, Links, out var target) &&
+                    Writers.TryGet(target, out var writer))
+                {
+                    writer.Trigger(config.HitConditionKey, bounceCount);
                 }
             }
         }

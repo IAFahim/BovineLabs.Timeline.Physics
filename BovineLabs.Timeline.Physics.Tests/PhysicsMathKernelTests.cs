@@ -20,6 +20,37 @@ namespace BovineLabs.Timeline.Physics.Tests
         }
 
         [Test]
+        public void Reflect_HeadOnIntoWall_ReversesDirection()
+        {
+            var result = PhysicsMath.Reflect(new float3(1f, 0f, 0f), new float3(-1f, 0f, 0f));
+
+            Assert.AreEqual(-1f, result.x, 1e-5f);
+            Assert.AreEqual(0f, result.y, 1e-5f);
+            Assert.AreEqual(0f, result.z, 1e-5f);
+        }
+
+        [Test]
+        public void Reflect_OffFloor_FlipsVerticalComponentOnly()
+        {
+            var result = PhysicsMath.Reflect(new float3(1f, -1f, 0f), new float3(0f, 1f, 0f));
+
+            Assert.AreEqual(1f, result.x, 1e-5f);
+            Assert.AreEqual(1f, result.y, 1e-5f);
+            Assert.AreEqual(0f, result.z, 1e-5f);
+        }
+
+        [Test]
+        public void Reflect_PreservesMagnitude_ForUnitNormal()
+        {
+            var direction = new float3(0.3f, -0.8f, 0.5f);
+            var normal = math.normalize(new float3(0.2f, 1f, -0.4f));
+
+            var result = PhysicsMath.Reflect(direction, normal);
+
+            Assert.AreEqual(math.length(direction), math.length(result), 1e-5f);
+        }
+
+        [Test]
         public void Falloff_AnyCurve_IsFullInsideStartAndZeroOutsideEnd()
         {
             foreach (var curve in new[]

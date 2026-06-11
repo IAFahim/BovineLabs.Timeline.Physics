@@ -100,12 +100,7 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                     if (hasReset && chunk.IsComponentEnabled(ref ResetHandle, i))
                     {
-                        var flags = resets[i].Flags;
-                        velocity.Linear = math.select(velocity.Linear, float3.zero,
-                            (flags & VelocityResetFlags.Linear) != 0);
-                        velocity.Angular = math.select(velocity.Angular, float3.zero,
-                            (flags & VelocityResetFlags.Angular) != 0);
-
+                        ApplyReset(ref velocity, resets[i].Flags);
                         resets[i] = default;
                         chunk.SetComponentEnabled(ref ResetHandle, i, false);
                         dirty = true;
@@ -113,49 +108,70 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                     if (hasForceBuffer)
                     {
-                        var forces = forceAccessor[i];
-                        if (forces.Length > 0)
-                        {
-                            var totalLinear = float3.zero;
-                            var totalAngular = float3.zero;
-
-                            for (var f = 0; f < forces.Length; f++)
-                            {
-                                totalLinear += forces[f].Linear;
-                                totalAngular += forces[f].Angular;
-                            }
-
-                            var mass = hasMass ? masses[i] : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
-                            velocity.Linear += totalLinear * mass.InverseMass;
-
-                            var rotation =
-                                new quaternion(math.orthonormalize(new float3x3(transforms[i].Value)));
-                            var localAngular = math.rotate(math.inverse(rotation), totalAngular);
-                            velocity.Angular += math.rotate(rotation, localAngular * mass.InverseInertia);
-
-                            forces.Clear();
-                            dirty = true;
-                        }
+                        var mass = hasMass ? masses[i] : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
+                        dirty |= AccumulateForces(ref velocity, forceAccessor[i], mass, transforms[i]);
                     }
 
                     if (hasVelocityBuffer)
                     {
-                        var velocityDeltas = velocityAccessor[i];
-                        if (velocityDeltas.Length > 0)
-                        {
-                            for (var v = 0; v < velocityDeltas.Length; v++)
-                            {
-                                velocity.Linear += velocityDeltas[v].Linear;
-                                velocity.Angular += velocityDeltas[v].Angular;
-                            }
-
-                            velocityDeltas.Clear();
-                            dirty = true;
-                        }
+                        dirty |= AccumulateVelocities(ref velocity, velocityAccessor[i]);
                     }
 
-                    if (dirty) velocities[i] = velocity;
+                    if (dirty)
+                    {
+                        velocities[i] = velocity;
+                    }
                 }
+            }
+
+            private static void ApplyReset(ref PhysicsVelocity velocity, VelocityResetFlags flags)
+            {
+                velocity.Linear = math.select(velocity.Linear, float3.zero, (flags & VelocityResetFlags.Linear) != 0);
+                velocity.Angular = math.select(velocity.Angular, float3.zero, (flags & VelocityResetFlags.Angular) != 0);
+            }
+
+            private static bool AccumulateForces(ref PhysicsVelocity velocity, DynamicBuffer<PendingForce> forces,
+                in PhysicsMass mass, in LocalToWorld transform)
+            {
+                if (forces.Length == 0)
+                {
+                    return false;
+                }
+
+                var totalLinear = float3.zero;
+                var totalAngular = float3.zero;
+
+                for (var f = 0; f < forces.Length; f++)
+                {
+                    totalLinear += forces[f].Linear;
+                    totalAngular += forces[f].Angular;
+                }
+
+                velocity.Linear += totalLinear * mass.InverseMass;
+
+                var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
+                var localAngular = math.rotate(math.inverse(rotation), totalAngular);
+                velocity.Angular += math.rotate(rotation, localAngular * mass.InverseInertia);
+
+                forces.Clear();
+                return true;
+            }
+
+            private static bool AccumulateVelocities(ref PhysicsVelocity velocity, DynamicBuffer<PendingVelocity> deltas)
+            {
+                if (deltas.Length == 0)
+                {
+                    return false;
+                }
+
+                for (var v = 0; v < deltas.Length; v++)
+                {
+                    velocity.Linear += deltas[v].Linear;
+                    velocity.Angular += deltas[v].Angular;
+                }
+
+                deltas.Clear();
+                return true;
             }
         }
     }

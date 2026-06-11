@@ -84,71 +84,85 @@ namespace BovineLabs.Timeline.Physics.Gravities
 
                     if (isActive && !state.Fired)
                     {
-                        var config = actives[i].Config;
-
-                        if (hasGravityFactor)
-                        {
-                            state.OriginalGravityScale = gravityFactors[i].Value;
-                            state.AddedComponent = false;
-
-                            var factor = gravityFactors[i];
-                            factor.Value = config.GravityScale;
-                            gravityFactors[i] = factor;
-                        }
-                        else
-                        {
-                            state.OriginalGravityScale = 1f;
-                            state.AddedComponent = true;
-                            ECB.AddComponent(unfilteredChunkIndex, entity,
-                                new PhysicsGravityFactor { Value = config.GravityScale });
-                        }
-
-                        state.Fired = true;
+                        OnEnter(ref state, actives[i].Config, hasGravityFactor, gravityFactors, entity,
+                            unfilteredChunkIndex, i);
                         states[i] = state;
                     }
                     else if (isActive && state.Fired)
                     {
-                        var config = actives[i].Config;
-
-                        if (hasGravityFactor)
-                        {
-                            var factor = gravityFactors[i];
-                            factor.Value = config.GravityScale;
-                            gravityFactors[i] = factor;
-                        }
-                        else
-                        {
-                            ECB.AddComponent(unfilteredChunkIndex, entity,
-                                new PhysicsGravityFactor { Value = config.GravityScale });
-                        }
+                        OnStay(actives[i].Config, hasGravityFactor, gravityFactors, entity, unfilteredChunkIndex, i);
                     }
                     else if (!isActive && state.Fired)
                     {
-                        var config = actives[i].Config;
-
-                        if (config.RestoreOnExit)
-                        {
-                            if (state.AddedComponent)
-                            {
-                                ECB.RemoveComponent<PhysicsGravityFactor>(unfilteredChunkIndex, entity);
-                            }
-                            else if (hasGravityFactor)
-                            {
-                                var factor = gravityFactors[i];
-                                factor.Value = state.OriginalGravityScale;
-                                gravityFactors[i] = factor;
-                            }
-                            else
-                            {
-                                ECB.AddComponent(unfilteredChunkIndex, entity,
-                                    new PhysicsGravityFactor { Value = state.OriginalGravityScale });
-                            }
-                        }
-
-                        state.Fired = false;
+                        OnExit(ref state, actives[i].Config, hasGravityFactor, gravityFactors, entity,
+                            unfilteredChunkIndex, i);
                         states[i] = state;
                     }
                 }
+            }
+
+            private void OnEnter(ref PhysicsGravityOverrideState state, in PhysicsGravityOverrideData config,
+                bool hasGravityFactor, NativeArray<PhysicsGravityFactor> gravityFactors, Entity entity, int chunkIndex,
+                int i)
+            {
+                if (hasGravityFactor)
+                {
+                    state.OriginalGravityScale = gravityFactors[i].Value;
+                    state.AddedComponent = false;
+
+                    var factor = gravityFactors[i];
+                    factor.Value = config.GravityScale;
+                    gravityFactors[i] = factor;
+                }
+                else
+                {
+                    state.OriginalGravityScale = 1f;
+                    state.AddedComponent = true;
+                    ECB.AddComponent(chunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
+                }
+
+                state.Fired = true;
+            }
+
+            private void OnStay(in PhysicsGravityOverrideData config, bool hasGravityFactor,
+                NativeArray<PhysicsGravityFactor> gravityFactors, Entity entity, int chunkIndex, int i)
+            {
+                if (hasGravityFactor)
+                {
+                    var factor = gravityFactors[i];
+                    factor.Value = config.GravityScale;
+                    gravityFactors[i] = factor;
+                }
+                else
+                {
+                    ECB.AddComponent(chunkIndex, entity, new PhysicsGravityFactor { Value = config.GravityScale });
+                }
+            }
+
+            private void OnExit(ref PhysicsGravityOverrideState state, in PhysicsGravityOverrideData config,
+                bool hasGravityFactor, NativeArray<PhysicsGravityFactor> gravityFactors, Entity entity, int chunkIndex,
+                int i)
+            {
+                if (config.RestoreOnExit)
+                {
+                    if (state.AddedComponent)
+                    {
+                        ECB.RemoveComponent<PhysicsGravityFactor>(chunkIndex, entity);
+                    }
+                    else if (hasGravityFactor)
+                    {
+                        var factor = gravityFactors[i];
+                        factor.Value = state.OriginalGravityScale;
+                        gravityFactors[i] = factor;
+                    }
+                    else
+                    {
+                        ECB.AddComponent(chunkIndex, entity,
+                            new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                    }
+                }
+
+                state.Fired = false;
             }
         }
     }

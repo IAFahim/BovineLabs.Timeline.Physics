@@ -88,14 +88,15 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var hasActiveComponent = chunk.Has(ref ActiveHandle);
                 var actives = hasActiveComponent ? chunk.GetNativeArray(ref ActiveHandle) : default;
 
-                var hasMassOverride = chunk.Has(ref MassOverrideHandle);
-                var massOverrides = hasMassOverride ? chunk.GetNativeArray(ref MassOverrideHandle) : default;
-
-                var hasGravityFactor = chunk.Has(ref GravityFactorHandle);
-                var gravityFactors = hasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
-
-                var hasVelocity = chunk.Has(ref VelocityHandle);
-                var velocities = hasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
+                var lanes = new Lanes
+                {
+                    HasMassOverride = chunk.Has(ref MassOverrideHandle),
+                    HasGravityFactor = chunk.Has(ref GravityFactorHandle),
+                    HasVelocity = chunk.Has(ref VelocityHandle),
+                };
+                lanes.MassOverrides = lanes.HasMassOverride ? chunk.GetNativeArray(ref MassOverrideHandle) : default;
+                lanes.GravityFactors = lanes.HasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
+                lanes.Velocities = lanes.HasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
 
                 var hasGravityOverride = chunk.Has(ref ActiveGravityOverrideHandle);
 
@@ -110,114 +111,140 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                     if (isActive && !state.Fired)
                     {
-                        var config = actives[i].Config;
-
-                        if (config.ZeroVelocityOnEnter && hasVelocity)
-                        {
-                            var vel = velocities[i];
-                            vel.Linear = float3.zero;
-                            vel.Angular = float3.zero;
-                            velocities[i] = vel;
-                        }
-
-                        if (hasMassOverride)
-                        {
-                            state.OriginalIsKinematic = massOverrides[i].IsKinematic;
-                            state.AddedMassOverrideComponent = false;
-
-                            var mo = massOverrides[i];
-                            mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
-                            massOverrides[i] = mo;
-                        }
-                        else
-                        {
-                            state.OriginalIsKinematic = 0;
-                            state.AddedMassOverrideComponent = true;
-                            ECB.AddComponent(unfilteredChunkIndex, entity,
-                                new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
-                        }
-
-                        if (config.ZeroGravity && !hasActiveGravityOverride)
-                        {
-                            if (hasGravityFactor)
-                            {
-                                state.OriginalGravityScale = gravityFactors[i].Value;
-                                state.AddedGravityComponent = false;
-
-                                var factor = gravityFactors[i];
-                                factor.Value = 0f;
-                                gravityFactors[i] = factor;
-                            }
-                            else
-                            {
-                                state.OriginalGravityScale = 1f;
-                                state.AddedGravityComponent = true;
-                                ECB.AddComponent(unfilteredChunkIndex, entity, new PhysicsGravityFactor { Value = 0f });
-                            }
-                        }
-
-                        state.Fired = true;
+                        OnEnter(ref lanes, ref state, actives[i].Config, hasActiveGravityOverride, entity,
+                            unfilteredChunkIndex, i);
                         states[i] = state;
                     }
                     else if (isActive && state.Fired)
                     {
-                        var config = actives[i].Config;
-
-                        if (hasMassOverride)
-                        {
-                            var mo = massOverrides[i];
-                            mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
-                            massOverrides[i] = mo;
-                        }
-
-                        if (config.ZeroGravity && hasGravityFactor && !hasActiveGravityOverride)
-                        {
-                            var factor = gravityFactors[i];
-                            factor.Value = 0f;
-                            gravityFactors[i] = factor;
-                        }
+                        OnStay(ref lanes, actives[i].Config, hasActiveGravityOverride, i);
                     }
                     else if (!isActive && state.Fired)
                     {
-                        if (state.AddedMassOverrideComponent)
-                        {
-                            ECB.RemoveComponent<PhysicsMassOverride>(unfilteredChunkIndex, entity);
-                        }
-                        else if (hasMassOverride)
-                        {
-                            var mo = massOverrides[i];
-                            mo.IsKinematic = state.OriginalIsKinematic;
-                            massOverrides[i] = mo;
-                        }
-                        else
-                        {
-                            ECB.AddComponent(unfilteredChunkIndex, entity,
-                                new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
-                        }
-
-                        if (!hasActiveGravityOverride)
-                        {
-                            if (state.AddedGravityComponent)
-                            {
-                                ECB.RemoveComponent<PhysicsGravityFactor>(unfilteredChunkIndex, entity);
-                            }
-                            else if (hasGravityFactor)
-                            {
-                                var factor = gravityFactors[i];
-                                factor.Value = state.OriginalGravityScale;
-                                gravityFactors[i] = factor;
-                            }
-                            else
-                            {
-                                ECB.AddComponent(unfilteredChunkIndex, entity,
-                                    new PhysicsGravityFactor { Value = state.OriginalGravityScale });
-                            }
-                        }
-
-                        state.Fired = false;
+                        OnExit(ref lanes, ref state, hasActiveGravityOverride, entity, unfilteredChunkIndex, i);
                         states[i] = state;
                     }
                 }
+            }
+
+            private void OnEnter(ref Lanes lanes, ref PhysicsKinematicOverrideState state,
+                in PhysicsKinematicOverrideData config, bool hasActiveGravityOverride, Entity entity, int chunkIndex,
+                int i)
+            {
+                if (config.ZeroVelocityOnEnter && lanes.HasVelocity)
+                {
+                    var vel = lanes.Velocities[i];
+                    vel.Linear = float3.zero;
+                    vel.Angular = float3.zero;
+                    lanes.Velocities[i] = vel;
+                }
+
+                if (lanes.HasMassOverride)
+                {
+                    state.OriginalIsKinematic = lanes.MassOverrides[i].IsKinematic;
+                    state.AddedMassOverrideComponent = false;
+
+                    var mo = lanes.MassOverrides[i];
+                    mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
+                    lanes.MassOverrides[i] = mo;
+                }
+                else
+                {
+                    state.OriginalIsKinematic = 0;
+                    state.AddedMassOverrideComponent = true;
+                    ECB.AddComponent(chunkIndex, entity,
+                        new PhysicsMassOverride { IsKinematic = (byte)(config.IsKinematic ? 1 : 0) });
+                }
+
+                if (config.ZeroGravity && !hasActiveGravityOverride)
+                {
+                    if (lanes.HasGravityFactor)
+                    {
+                        state.OriginalGravityScale = lanes.GravityFactors[i].Value;
+                        state.AddedGravityComponent = false;
+
+                        var factor = lanes.GravityFactors[i];
+                        factor.Value = 0f;
+                        lanes.GravityFactors[i] = factor;
+                    }
+                    else
+                    {
+                        state.OriginalGravityScale = 1f;
+                        state.AddedGravityComponent = true;
+                        ECB.AddComponent(chunkIndex, entity, new PhysicsGravityFactor { Value = 0f });
+                    }
+                }
+
+                state.Fired = true;
+            }
+
+            private void OnStay(ref Lanes lanes, in PhysicsKinematicOverrideData config, bool hasActiveGravityOverride,
+                int i)
+            {
+                if (lanes.HasMassOverride)
+                {
+                    var mo = lanes.MassOverrides[i];
+                    mo.IsKinematic = (byte)(config.IsKinematic ? 1 : 0);
+                    lanes.MassOverrides[i] = mo;
+                }
+
+                if (config.ZeroGravity && lanes.HasGravityFactor && !hasActiveGravityOverride)
+                {
+                    var factor = lanes.GravityFactors[i];
+                    factor.Value = 0f;
+                    lanes.GravityFactors[i] = factor;
+                }
+            }
+
+            private void OnExit(ref Lanes lanes, ref PhysicsKinematicOverrideState state, bool hasActiveGravityOverride,
+                Entity entity, int chunkIndex, int i)
+            {
+                if (state.AddedMassOverrideComponent)
+                {
+                    ECB.RemoveComponent<PhysicsMassOverride>(chunkIndex, entity);
+                }
+                else if (lanes.HasMassOverride)
+                {
+                    var mo = lanes.MassOverrides[i];
+                    mo.IsKinematic = state.OriginalIsKinematic;
+                    lanes.MassOverrides[i] = mo;
+                }
+                else
+                {
+                    ECB.AddComponent(chunkIndex, entity,
+                        new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
+                }
+
+                if (!hasActiveGravityOverride)
+                {
+                    if (state.AddedGravityComponent)
+                    {
+                        ECB.RemoveComponent<PhysicsGravityFactor>(chunkIndex, entity);
+                    }
+                    else if (lanes.HasGravityFactor)
+                    {
+                        var factor = lanes.GravityFactors[i];
+                        factor.Value = state.OriginalGravityScale;
+                        lanes.GravityFactors[i] = factor;
+                    }
+                    else
+                    {
+                        ECB.AddComponent(chunkIndex, entity,
+                            new PhysicsGravityFactor { Value = state.OriginalGravityScale });
+                    }
+                }
+
+                state.Fired = false;
+            }
+
+            private struct Lanes
+            {
+                public NativeArray<PhysicsMassOverride> MassOverrides;
+                public NativeArray<PhysicsGravityFactor> GravityFactors;
+                public NativeArray<PhysicsVelocity> Velocities;
+                public bool HasMassOverride;
+                public bool HasGravityFactor;
+                public bool HasVelocity;
             }
         }
     }

@@ -11,16 +11,40 @@ using NUnit.Framework;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
     public class PhysicsTriggerQuerySystemTests : ECSTestsFixture
     {
+        private PhysicsWorld physicsWorld;
+        private bool physicsWorldCreated;
+
         public override void Setup()
         {
             base.Setup();
             CreateDebugSingletons();
+            CreatePhysicsWorldSingleton();
+        }
+
+        public override void TearDown()
+        {
+            if (this.physicsWorldCreated)
+            {
+                this.physicsWorld.Dispose();
+                this.physicsWorldCreated = false;
+            }
+
+            base.TearDown();
+        }
+
+        private void CreatePhysicsWorldSingleton()
+        {
+            this.physicsWorld = new PhysicsWorld(0, 0, 0);
+            this.physicsWorldCreated = true;
+            var entity = Manager.CreateSingleton<PhysicsWorldSingleton>();
+            Manager.SetComponentData(entity, new PhysicsWorldSingleton { PhysicsWorld = this.physicsWorld });
         }
 
         private void CreateDebugSingletons()

@@ -207,41 +207,64 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         ? selfTargets
                         : default;
 
-                    if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                        foreach (var evt in triggers)
-                        {
-                            if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
-                                !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                    ProcessTriggerEvents(unfilteredChunkIndex, self, prefab, in cfg, in filter, in targets,
+                        isFirstFrame, isLastFrame);
+                    ProcessCollisionEvents(unfilteredChunkIndex, self, prefab, in cfg, in filter, in targets,
+                        isFirstFrame, isLastFrame);
+                }
+            }
 
-                            if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
-                                    LinkSources, Links)) continue;
+            private void ProcessTriggerEvents(int chunkIndex, Entity self, Entity prefab,
+                in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
+                bool isFirstFrame, bool isLastFrame)
+            {
+                if (!TriggerEventsLookup.TryGetBuffer(self, out var triggers))
+                {
+                    return;
+                }
 
-                            var selfPos = LocalToWorldLookup[self].Position;
-                            var otherPos = LocalToWorldLookup[evt.EntityB].Position;
-                            var midpoint = (selfPos + otherPos) * 0.5f;
-                            var dir = math.normalizesafe(selfPos - otherPos);
+                foreach (var evt in triggers)
+                {
+                    if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
+                        !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
-                            Spawn(unfilteredChunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets);
-                        }
+                    if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
+                            LinkSources, Links)) continue;
 
-                    if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) continue;
-                    foreach (var evt in collisions)
-                    {
-                        if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
-                            !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
+                    var selfPos = LocalToWorldLookup[self].Position;
+                    var otherPos = LocalToWorldLookup[evt.EntityB].Position;
+                    var midpoint = (selfPos + otherPos) * 0.5f;
+                    var dir = math.normalizesafe(selfPos - otherPos);
 
-                        if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
-                                LinkSources, Links)) continue;
+                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets);
+                }
+            }
 
-                        var selfPos = LocalToWorldLookup[self].Position;
-                        var otherPos = LocalToWorldLookup[evt.EntityB].Position;
+            private void ProcessCollisionEvents(int chunkIndex, Entity self, Entity prefab,
+                in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
+                bool isFirstFrame, bool isLastFrame)
+            {
+                if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions))
+                {
+                    return;
+                }
 
-                        var hasContact = evt.TryGetDetails(out var details);
-                        var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                        var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
+                foreach (var evt in collisions)
+                {
+                    if (!StatefulEventMatching.Matches(evt.State, cfg.EventState, isFirstFrame, isLastFrame) ||
+                        !LocalToWorldLookup.HasComponent(evt.EntityB)) continue;
 
-                        Spawn(unfilteredChunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets);
-                    }
+                    if (!PhysicsTriggerFiltering.IsValidTarget(self, evt.EntityB, in filter, in targets,
+                            LinkSources, Links)) continue;
+
+                    var selfPos = LocalToWorldLookup[self].Position;
+                    var otherPos = LocalToWorldLookup[evt.EntityB].Position;
+
+                    var hasContact = evt.TryGetDetails(out var details);
+                    var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
+                    var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
+
+                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets);
                 }
             }
 

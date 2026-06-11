@@ -20,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
         public PhysicsVelocityData Add(in PhysicsVelocityData a, in PhysicsVelocityData b)
         {
             var aWins = (byte)a.Mode < (byte)b.Mode ||
-                        ((byte)a.Mode == (byte)b.Mode && (byte)a.Space <= (byte)b.Space);
+                        ((byte)a.Mode == (byte)b.Mode && (byte)a.Space >= (byte)b.Space);
             var dominant = aWins ? a : b;
 
             return new PhysicsVelocityData

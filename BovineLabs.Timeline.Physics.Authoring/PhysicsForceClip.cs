@@ -5,6 +5,7 @@ using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -26,7 +27,30 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target directionTarget = Target.Target;
         public EntityLinkSchema directionTargetLink;
 
-        [Header("Angular& Multipliers")] public Vector3 angularForce;
+        [Header("Random Cone (degrees)")]
+        [Tooltip("Azimuth 0 points along +Z of the Space frame; 180 points behind it.")]
+        public float coneAzimuthCenter;
+
+        [Range(0f, 180f)] public float coneAzimuthHalfRange = 30f;
+
+        public float coneElevationCenter;
+
+        [Range(0f, 89f)] public float coneElevationHalfRange = 15f;
+
+        [Header("Randomness")]
+        [Tooltip("Offsets this body's random stream. 0 is valid; entity identity already decorrelates bodies.")]
+        public uint seed;
+
+        [Tooltip("Sample random/velocity-relative directions once per clip activation and hold them. " +
+                 "Disable to re-evaluate every fire.")]
+        public bool latchDirection = true;
+
+        [Header("Velocity Reset")]
+        [Tooltip("Zeroes the body's velocity once per clip activation, immediately before this force lands. " +
+                 "Use Linear for dashes that must always travel the same distance.")]
+        public VelocityResetFlags resetVelocityOnFire = VelocityResetFlags.None;
+
+        [Header("Angular & Multipliers")] public Vector3 angularForce;
 
         public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
@@ -57,6 +81,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Magnitude = magnitude,
                     DirectionTarget = directionTarget,
                     DirectionTargetLinkKey = dirLinkKey,
+                    ConeAzimuthCenter = math.radians(coneAzimuthCenter),
+                    ConeAzimuthHalfRange = math.radians(coneAzimuthHalfRange),
+                    ConeElevationCenter = math.radians(coneElevationCenter),
+                    ConeElevationHalfRange = math.radians(coneElevationHalfRange),
+                    Seed = seed,
+                    LatchDirection = latchDirection,
+                    ResetVelocityOnFire = resetVelocityOnFire,
                     Angular = angularForce,
                     Strength = new StatStrengthConfig
                     {

@@ -40,6 +40,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 if (!em.HasBuffer<PendingForce>(entity)) ecb.AddBuffer<PendingForce>(entity);
                 if (!em.HasBuffer<PendingVelocity>(entity)) ecb.AddBuffer<PendingVelocity>(entity);
+
+                if (!em.HasComponent<PendingVelocityReset>(entity))
+                {
+                    ecb.AddComponent<PendingVelocityReset>(entity);
+                    ecb.SetComponentEnabled<PendingVelocityReset>(entity, false);
+                }
             }
 
             ecb.Playback(state.EntityManager);

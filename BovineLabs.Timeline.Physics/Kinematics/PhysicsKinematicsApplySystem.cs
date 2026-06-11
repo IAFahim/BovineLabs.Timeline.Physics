@@ -13,6 +13,7 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Kinematics
@@ -34,6 +35,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
         private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<ActiveForce> _activeForceHandle;
         private ComponentTypeHandle<PhysicsForceState> _forceStateHandle;
+        private ComponentTypeHandle<PhysicsForceRandom> _forceRandomHandle;
+        private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
+        private ComponentTypeHandle<PendingVelocityReset> _pendingResetHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
 
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
@@ -57,6 +61,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _entityHandle = state.GetEntityTypeHandle();
             _activeForceHandle = state.GetComponentTypeHandle<ActiveForce>(true);
             _forceStateHandle = state.GetComponentTypeHandle<PhysicsForceState>();
+            _forceRandomHandle = state.GetComponentTypeHandle<PhysicsForceRandom>();
+            _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>(true);
+            _pendingResetHandle = state.GetComponentTypeHandle<PendingVelocityReset>();
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
 
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
@@ -90,6 +97,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _entityHandle.Update(ref state);
             _activeForceHandle.Update(ref state);
             _forceStateHandle.Update(ref state);
+            _forceRandomHandle.Update(ref state);
+            _physicsVelocityHandle.Update(ref state);
+            _pendingResetHandle.Update(ref state);
             _pendingForceHandle.Update(ref state);
 
             _activeVelocityHandle.Update(ref state);
@@ -102,6 +112,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 EntityHandle = _entityHandle,
                 ActiveHandle = _activeForceHandle,
                 StateTypeHandle = _forceStateHandle,
+                RandomHandle = _forceRandomHandle,
+                VelocityHandle = _physicsVelocityHandle,
+                PendingResetHandle = _pendingResetHandle,
                 PendingForceHandle = _pendingForceHandle,
                 TargetsLookup = _targetsLookup,
                 LocalTransformLookup = _localTransformLookup,
@@ -118,6 +131,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 EntityHandle = _entityHandle,
                 ActiveHandle = _activeVelocityHandle,
                 StateTypeHandle = _velocityStateHandle,
+                PendingResetHandle = _pendingResetHandle,
                 PendingVelocityHandle = _pendingVelocityHandle,
                 TargetsLookup = _targetsLookup,
                 LocalTransformLookup = _localTransformLookup,
@@ -129,6 +143,14 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             }.ScheduleParallel(_velocityQuery, state.Dependency);
         }
 
+        internal static void RequestVelocityReset(in ArchetypeChunk chunk,
+            ref ComponentTypeHandle<PendingVelocityReset> resetHandle, NativeArray<PendingVelocityReset> resets,
+            int index, VelocityResetFlags flags)
+        {
+            resets[index] = new PendingVelocityReset { Flags = resets[index].Flags | flags };
+            chunk.SetComponentEnabled(ref resetHandle, index, true);
+        }
+
         [BurstCompile]
         private struct AppendForceJob : IJobChunk
         {
@@ -136,6 +158,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveForce> ActiveHandle;
             public ComponentTypeHandle<PhysicsForceState> StateTypeHandle;
+            public ComponentTypeHandle<PhysicsForceRandom> RandomHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
+            public ComponentTypeHandle<PendingVelocityReset> PendingResetHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
@@ -154,6 +179,15 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
                 var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
 
+                var hasRandom = chunk.Has(ref RandomHandle);
+                var randoms = hasRandom ? chunk.GetNativeArray(ref RandomHandle) : default;
+
+                var hasVelocity = chunk.Has(ref VelocityHandle);
+                var velocities = hasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
+
+                var hasReset = chunk.Has(ref PendingResetHandle);
+                var resets = hasReset ? chunk.GetNativeArray(ref PendingResetHandle) : default;
+
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
                 {
@@ -170,51 +204,19 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                     if (math.abs(multiplier) < 1e-5f) continue;
 
-                    float3 linForce;
-
-                    if (config.DirectionMode == PhysicsForceDirectionMode.FixedVector)
-                    {
-                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out linForce);
-                    }
-                    else
-                    {
-                        linForce = float3.zero;
-                        var targetEntity = body;
-                        if (config.DirectionTarget != Target.None)
-                        {
-                            var baseTarget = targets.Get(config.DirectionTarget, body);
-                            if (baseTarget != Entity.Null)
-                            {
-                                targetEntity = baseTarget;
-                                if (config.DirectionTargetLinkKey != 0 &&
-                                    EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
-                                        LinkSources, Links, out var linked))
-                                    targetEntity = linked;
-                            }
-                        }
-
-                        var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup,
-                            in ParentLookup);
-                        var targetPos = PhysicsMath.ResolvePosition(targetEntity, in LocalTransformLookup,
-                            in LocalToWorldLookup, in ParentLookup);
-                        var diff = targetPos - selfPos;
-                        var distSq = math.lengthsq(diff);
-                        if (distSq > 1e-5f)
-                        {
-                            var dir = diff / math.sqrt(distSq);
-                            linForce = dir * config.Magnitude;
-                            if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget)
-                                linForce = -linForce;
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
+                    if (!TryResolveLinearForce(chunk, i, body, in config, in targets, hasRandom, randoms,
+                            hasVelocity, velocities, ref state, out var linForce))
+                        continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
                         in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angForce);
+
+                    if (hasReset && config.ResetVelocityOnFire != VelocityResetFlags.None && !state.ResetApplied)
+                    {
+                        RequestVelocityReset(in chunk, ref PendingResetHandle, resets, i,
+                            config.ResetVelocityOnFire);
+                        state.ResetApplied = true;
+                    }
 
                     var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
                     pendingForces[i].Add(new PendingForce
@@ -223,12 +225,156 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         Angular = angForce * timeScale * multiplier
                     });
 
-                    if (config.Mode == PhysicsForceMode.Impulse)
+                    if (config.Mode == PhysicsForceMode.Impulse) state.Fired = true;
+
+                    states[i] = state;
+                }
+            }
+
+            private bool TryResolveLinearForce(in ArchetypeChunk chunk, int i, Entity body,
+                in PhysicsForceData config, in Targets targets, bool hasRandom,
+                NativeArray<PhysicsForceRandom> randoms, bool hasVelocity, NativeArray<PhysicsVelocity> velocities,
+                ref PhysicsForceState state, out float3 linForce)
+            {
+                switch (config.DirectionMode)
+                {
+                    case PhysicsForceDirectionMode.FixedVector:
+                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out linForce);
+                        return true;
+
+                    case PhysicsForceDirectionMode.TowardTarget:
+                    case PhysicsForceDirectionMode.AwayFromTarget:
+                        return TryResolveTargetForce(body, in config, in targets, out linForce);
+
+                    default:
+                        if (!TryResolveDynamicDirection(chunk, i, body, in config, hasRandom, randoms, hasVelocity,
+                                velocities, ref state, out var direction))
+                        {
+                            linForce = float3.zero;
+                            return false;
+                        }
+
+                        linForce = direction * config.Magnitude;
+                        return true;
+                }
+            }
+
+            private bool TryResolveTargetForce(Entity body, in PhysicsForceData config, in Targets targets,
+                out float3 linForce)
+            {
+                linForce = float3.zero;
+                var targetEntity = body;
+                if (config.DirectionTarget != Target.None)
+                {
+                    var baseTarget = targets.Get(config.DirectionTarget, body);
+                    if (baseTarget != Entity.Null)
                     {
-                        state.Fired = true;
-                        states[i] = state;
+                        targetEntity = baseTarget;
+                        if (config.DirectionTargetLinkKey != 0 &&
+                            EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
+                                LinkSources, Links, out var linked))
+                            targetEntity = linked;
                     }
                 }
+
+                var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup,
+                    in ParentLookup);
+                var targetPos = PhysicsMath.ResolvePosition(targetEntity, in LocalTransformLookup,
+                    in LocalToWorldLookup, in ParentLookup);
+                var diff = targetPos - selfPos;
+                var distSq = math.lengthsq(diff);
+                if (distSq <= 1e-5f) return false;
+
+                linForce = diff * math.rsqrt(distSq) * config.Magnitude;
+                if (config.DirectionMode == PhysicsForceDirectionMode.AwayFromTarget) linForce = -linForce;
+                return true;
+            }
+
+            /// <summary>
+            ///     Resolves stochastic and velocity-relative directions. With latching enabled the first
+            ///     resolved direction is held for the rest of the clip activation; otherwise each fire
+            ///     re-evaluates (advancing the random stream for the random modes).
+            /// </summary>
+            private bool TryResolveDynamicDirection(in ArchetypeChunk chunk, int i, Entity body,
+                in PhysicsForceData config, bool hasRandom, NativeArray<PhysicsForceRandom> randoms,
+                bool hasVelocity, NativeArray<PhysicsVelocity> velocities, ref PhysicsForceState state,
+                out float3 direction)
+            {
+                if (config.LatchDirection && state.DirectionLatched)
+                {
+                    direction = state.LatchedDirection;
+                    return true;
+                }
+
+                switch (config.DirectionMode)
+                {
+                    case PhysicsForceDirectionMode.RandomSphere:
+                    {
+                        var rng = NextRandom(hasRandom, randoms, i, body, config.Seed);
+                        direction = rng.NextFloat3Direction();
+                        if (hasRandom) randoms[i] = new PhysicsForceRandom { Value = rng };
+                        break;
+                    }
+
+                    case PhysicsForceDirectionMode.RandomCone:
+                    {
+                        var rng = NextRandom(hasRandom, randoms, i, body, config.Seed);
+                        var az = config.ConeAzimuthCenter +
+                                 rng.NextFloat(-config.ConeAzimuthHalfRange, config.ConeAzimuthHalfRange);
+                        var el = config.ConeElevationCenter +
+                                 rng.NextFloat(-config.ConeElevationHalfRange, config.ConeElevationHalfRange);
+                        el = math.clamp(el, -math.PI * 0.5f + 0.01f, math.PI * 0.5f - 0.01f);
+                        if (hasRandom) randoms[i] = new PhysicsForceRandom { Value = rng };
+
+                        var cosEl = math.cos(el);
+                        var localDir = new float3(cosEl * math.sin(az), math.sin(el), cosEl * math.cos(az));
+                        PhysicsMath.ResolveSpaceVector(config.Space, localDir, body, in TargetsLookup,
+                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out direction);
+                        break;
+                    }
+
+                    case PhysicsForceDirectionMode.AlongVelocity:
+                    case PhysicsForceDirectionMode.AgainstVelocity:
+                    {
+                        direction = float3.zero;
+                        if (!hasVelocity) return false;
+
+                        var linear = velocities[i].Linear;
+                        var speedSq = math.lengthsq(linear);
+                        if (speedSq <= 1e-8f) return false;
+
+                        direction = linear * math.rsqrt(speedSq);
+                        if (config.DirectionMode == PhysicsForceDirectionMode.AgainstVelocity)
+                            direction = -direction;
+                        break;
+                    }
+
+                    default:
+                        direction = float3.zero;
+                        return false;
+                }
+
+                if (config.LatchDirection)
+                {
+                    state.DirectionLatched = true;
+                    state.LatchedDirection = direction;
+                }
+
+                return true;
+            }
+
+            private static Random NextRandom(bool hasRandom, NativeArray<PhysicsForceRandom> randoms, int i,
+                Entity body, uint seed)
+            {
+                var rng = hasRandom ? randoms[i].Value : default;
+                if (rng.state == 0)
+                {
+                    rng = Random.CreateFromIndex(math.hash(new uint3(seed, (uint)body.Index, (uint)body.Version)));
+                    if (rng.state == 0) rng.state = 0x6E624EB7;
+                }
+
+                return rng;
             }
         }
 
@@ -239,6 +385,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveHandle;
             public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
+            public ComponentTypeHandle<PendingVelocityReset> PendingResetHandle;
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
@@ -256,6 +403,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
                 var pendingVelocities = chunk.GetBufferAccessor(ref PendingVelocityHandle);
+
+                var hasReset = chunk.Has(ref PendingResetHandle);
+                var resets = hasReset ? chunk.GetNativeArray(ref PendingResetHandle) : default;
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -275,28 +425,30 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
-                    var skip = math.abs(multiplier) < 1e-5f;
+                    if (math.abs(multiplier) < 1e-5f) continue;
 
-                    if (!skip)
+                    PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
+                        in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);
+                    PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
+                        in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angVel);
+
+                    if (hasReset && config.ResetVelocityOnFire != VelocityResetFlags.None && !state.ResetApplied)
                     {
-                        PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
-                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);
-                        PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
-                            in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angVel);
-
-                        var timeScale = isInstant ? 1f : DeltaTime;
-                        pendingVelocities[i].Add(new PendingVelocity
-                        {
-                            Linear = linVel * timeScale * multiplier,
-                            Angular = angVel * timeScale * multiplier
-                        });
-
-                        if (isInstant)
-                        {
-                            state.Fired = true;
-                            states[i] = state;
-                        }
+                        RequestVelocityReset(in chunk, ref PendingResetHandle, resets, i,
+                            config.ResetVelocityOnFire);
+                        state.ResetApplied = true;
                     }
+
+                    var timeScale = isInstant ? 1f : DeltaTime;
+                    pendingVelocities[i].Add(new PendingVelocity
+                    {
+                        Linear = linVel * timeScale * multiplier,
+                        Angular = angVel * timeScale * multiplier
+                    });
+
+                    if (isInstant) state.Fired = true;
+
+                    states[i] = state;
                 }
             }
         }

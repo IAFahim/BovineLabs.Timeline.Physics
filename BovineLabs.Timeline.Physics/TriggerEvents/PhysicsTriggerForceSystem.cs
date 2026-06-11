@@ -179,18 +179,22 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
 
+                    var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup,
+                        in ParentLookup);
+                    var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup,
+                        in ParentLookup);
+
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
                             if (!StatefulEventMatching.Matches(
                                     evt.State, config.EventState, isFirstFrame, isLastFrame) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup,
-                                in ParentLookup);
                             var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup,
                                 in LtwLookup, in ParentLookup);
                             var midpoint = (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets, selfPos,
+                                selfRot);
                         }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
@@ -199,13 +203,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             if (!StatefulEventMatching.Matches(
                                     evt.State, config.EventState, isFirstFrame, isLastFrame) ||
                                 !LtwLookup.HasComponent(evt.EntityB)) continue;
-                            var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup,
-                                in ParentLookup);
                             var otherPos = PhysicsMath.ResolvePosition(evt.EntityB, in LocalTransformLookup,
                                 in LtwLookup, in ParentLookup);
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets, selfPos, selfRot);
                         }
                 }
 
@@ -221,7 +223,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg,
                 in PhysicsTriggerFilterData filter, float3 contactPoint,
-                in Targets targets)
+                in Targets targets, float3 selfPos, quaternion selfRot)
             {
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
                     return;
@@ -241,8 +243,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (math.abs(multiplier) < 1e-5f || math.abs(cfg.Magnitude) < 1e-5f) return;
 
-                var selfPos = PhysicsMath.ResolvePosition(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
-                var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup, in ParentLookup);
                 var targetPos = PhysicsMath.ResolvePosition(targetToApply, in LocalTransformLookup, in LtwLookup,
                     in ParentLookup);
                 var magnitude = cfg.Magnitude * multiplier;
@@ -274,7 +274,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     case PhysicsTriggerForceType.Radial:
                     {
                         if (distSq > 1e-5f)
-                            force = -offset / math.sqrt(distSq) * magnitude;
+                            force = -offset * math.rsqrt(distSq) * magnitude;
                         break;
                     }
                     case PhysicsTriggerForceType.Vortex:

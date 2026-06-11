@@ -12,6 +12,7 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
                 Linear = math.lerp(a.Linear, b.Linear, s),
                 Angular = math.lerp(a.Angular, b.Angular, s),
                 Space = s < 0.5f ? a.Space : b.Space,
+                ResetVelocityOnFire = s < 0.5f ? a.ResetVelocityOnFire : b.ResetVelocityOnFire,
                 Strength = s < 0.5f ? a.Strength : b.Strength
             };
         }
@@ -28,6 +29,7 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
                 Linear = a.Linear + b.Linear,
                 Angular = a.Angular + b.Angular,
                 Space = dominant.Space,
+                ResetVelocityOnFire = dominant.ResetVelocityOnFire,
                 Strength = dominant.Strength
             };
         }

@@ -4,6 +4,7 @@
   "references": [
     "BovineLabs.Core",
     "BovineLabs.Core.Extensions",
+    "BovineLabs.Reaction",
     "BovineLabs.Reaction.Data",
     "BovineLabs.Testing",
     "BovineLabs.Timeline.Physics",

@@ -65,6 +65,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ecb.AddComponent<PhysicsForceState>(target);
                 }
 
+                if (!em.HasComponent<PhysicsForceRandom>(target)) ecb.AddComponent<PhysicsForceRandom>(target);
+
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
@@ -188,6 +190,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
             if (!queued.Add(target)) return;
             if (!em.HasBuffer<PendingForce>(target)) ecb.AddBuffer<PendingForce>(target);
             if (!em.HasBuffer<PendingVelocity>(target)) ecb.AddBuffer<PendingVelocity>(target);
+
+            if (!em.HasComponent<PendingVelocityReset>(target))
+            {
+                ecb.AddComponent<PendingVelocityReset>(target);
+                ecb.SetComponentEnabled<PendingVelocityReset>(target, false);
+            }
         }
     }
 }

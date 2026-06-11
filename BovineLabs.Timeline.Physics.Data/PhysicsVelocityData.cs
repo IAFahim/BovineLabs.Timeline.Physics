@@ -36,12 +36,20 @@ namespace BovineLabs.Timeline.Physics.Data
         public float3 Linear;
         public float3 Angular;
         public Target Space;
+
+        /// <summary>
+        ///     Zeroes the masked velocity axes once per clip activation, on the first fire tick.
+        ///     Applies to the Add modes; Set modes already replace the velocity outright.
+        /// </summary>
+        public VelocityResetFlags ResetVelocityOnFire;
+
         public StatStrengthConfig Strength;
     }
 
     public struct PhysicsVelocityState : IComponentData
     {
         public bool Fired;
+        public bool ResetApplied;
     }
 
     public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>, IPreparable

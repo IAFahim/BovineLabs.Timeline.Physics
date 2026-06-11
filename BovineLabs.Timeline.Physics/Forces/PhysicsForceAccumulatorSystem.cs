@@ -18,6 +18,7 @@ namespace BovineLabs.Timeline.Physics.Forces
         private ComponentTypeHandle<PhysicsVelocity> _velocityHandle;
         private ComponentTypeHandle<LocalToWorld> _transformHandle;
         private ComponentTypeHandle<PhysicsMass> _massHandle;
+        private ComponentTypeHandle<PendingVelocityReset> _resetHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
         private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
 
@@ -26,13 +27,15 @@ namespace BovineLabs.Timeline.Physics.Forces
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<AccumulateJob>();
 
             using var builder = new EntityQueryBuilder(Allocator.Temp)
-                .WithAllRW<PhysicsVelocity, PendingForce>()
-                .WithAll<LocalToWorld>();
+                .WithAllRW<PhysicsVelocity>()
+                .WithAll<LocalToWorld>()
+                .WithAnyRW<PendingForce, PendingVelocity>();
             _query = state.GetEntityQuery(builder);
 
             _velocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
             _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
             _massHandle = state.GetComponentTypeHandle<PhysicsMass>(true);
+            _resetHandle = state.GetComponentTypeHandle<PendingVelocityReset>();
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
 
@@ -44,6 +47,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             _velocityHandle.Update(ref state);
             _transformHandle.Update(ref state);
             _massHandle.Update(ref state);
+            _resetHandle.Update(ref state);
             _pendingForceHandle.Update(ref state);
             _pendingVelocityHandle.Update(ref state);
 
@@ -52,6 +56,7 @@ namespace BovineLabs.Timeline.Physics.Forces
                 VelocityHandle = _velocityHandle,
                 TransformHandle = _transformHandle,
                 MassHandle = _massHandle,
+                ResetHandle = _resetHandle,
                 PendingForceHandle = _pendingForceHandle,
                 PendingVelocityHandle = _pendingVelocityHandle
             }.ScheduleParallel(_query, state.Dependency);
@@ -63,6 +68,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsMass> MassHandle;
+            public ComponentTypeHandle<PendingVelocityReset> ResetHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
@@ -75,7 +81,12 @@ namespace BovineLabs.Timeline.Physics.Forces
                 var hasMass = chunk.Has(ref MassHandle);
                 var masses = hasMass ? chunk.GetNativeArray(ref MassHandle) : default;
 
-                var forceAccessor = chunk.GetBufferAccessor(ref PendingForceHandle);
+                var hasReset = chunk.Has(ref ResetHandle);
+                var resets = hasReset ? chunk.GetNativeArray(ref ResetHandle) : default;
+
+                var hasForceBuffer = chunk.Has(ref PendingForceHandle);
+                var forceAccessor = hasForceBuffer ? chunk.GetBufferAccessor(ref PendingForceHandle) : default;
+
                 var hasVelocityBuffer = chunk.Has(ref PendingVelocityHandle);
                 var velocityAccessor = hasVelocityBuffer
                     ? chunk.GetBufferAccessor(ref PendingVelocityHandle)
@@ -85,33 +96,46 @@ namespace BovineLabs.Timeline.Physics.Forces
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var velocity = velocities[i];
-                    var transform = transforms[i];
-                    var mass = hasMass ? masses[i] : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
+                    var dirty = false;
 
-                    var inverseMass = mass.InverseMass;
-                    var inverseInertia = mass.InverseInertia;
-
-                    var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
-                    var inverseRotation = math.inverse(rotation);
-
-                    var forces = forceAccessor[i];
-                    if (forces.Length > 0)
+                    if (hasReset && chunk.IsComponentEnabled(ref ResetHandle, i))
                     {
-                        var totalLinear = float3.zero;
-                        var totalAngular = float3.zero;
+                        var flags = resets[i].Flags;
+                        velocity.Linear = math.select(velocity.Linear, float3.zero,
+                            (flags & VelocityResetFlags.Linear) != 0);
+                        velocity.Angular = math.select(velocity.Angular, float3.zero,
+                            (flags & VelocityResetFlags.Angular) != 0);
 
-                        for (var f = 0; f < forces.Length; f++)
+                        resets[i] = default;
+                        chunk.SetComponentEnabled(ref ResetHandle, i, false);
+                        dirty = true;
+                    }
+
+                    if (hasForceBuffer)
+                    {
+                        var forces = forceAccessor[i];
+                        if (forces.Length > 0)
                         {
-                            totalLinear += forces[f].Linear;
-                            totalAngular += forces[f].Angular;
+                            var totalLinear = float3.zero;
+                            var totalAngular = float3.zero;
+
+                            for (var f = 0; f < forces.Length; f++)
+                            {
+                                totalLinear += forces[f].Linear;
+                                totalAngular += forces[f].Angular;
+                            }
+
+                            var mass = hasMass ? masses[i] : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
+                            velocity.Linear += totalLinear * mass.InverseMass;
+
+                            var rotation =
+                                new quaternion(math.orthonormalize(new float3x3(transforms[i].Value)));
+                            var localAngular = math.rotate(math.inverse(rotation), totalAngular);
+                            velocity.Angular += math.rotate(rotation, localAngular * mass.InverseInertia);
+
+                            forces.Clear();
+                            dirty = true;
                         }
-
-                        velocity.Linear += totalLinear * inverseMass;
-
-                        var localAngular = math.rotate(inverseRotation, totalAngular);
-                        velocity.Angular += math.rotate(rotation, localAngular * inverseInertia);
-
-                        forces.Clear();
                     }
 
                     if (hasVelocityBuffer)
@@ -126,20 +150,22 @@ namespace BovineLabs.Timeline.Physics.Forces
                             }
 
                             velocityDeltas.Clear();
+                            dirty = true;
                         }
                     }
 
-                    velocities[i] = velocity;
+                    if (dirty) velocities[i] = velocity;
                 }
             }
         }
     }
 
     /// <summary>
-    ///     Drains <see cref="PendingForce" /> and <see cref="PendingVelocity" /> buffers at the end of
-    ///     <see cref="PhysicsProducerGroup" /> (before the physics step). Any system that appends to
-    ///     <see cref="PendingForce" /> within <see cref="PhysicsProducerGroup" /> must be ordered before
-    ///     this system to ensure forces are applied in the correct frame.
+    ///     Drains <see cref="PendingVelocityReset" /> requests, then <see cref="PendingForce" /> and
+    ///     <see cref="PendingVelocity" /> buffers, at the end of <see cref="PhysicsProducerGroup" />
+    ///     (before the physics step). Any system that appends to these within
+    ///     <see cref="PhysicsProducerGroup" /> must be ordered before this system to ensure forces are
+    ///     applied in the correct frame.
     /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
@@ -164,10 +190,11 @@ namespace BovineLabs.Timeline.Physics.Forces
     }
 
     /// <summary>
-    ///     Drains <see cref="PendingForce" /> and <see cref="PendingVelocity" /> buffers at the end of
-    ///     <see cref="PhysicsModifierGroup" /> (after the physics step). Any system that appends to
-    ///     <see cref="PendingForce" /> within <see cref="PhysicsModifierGroup" /> must be ordered before
-    ///     this system to ensure forces are applied in the correct frame.
+    ///     Drains <see cref="PendingVelocityReset" /> requests, then <see cref="PendingForce" /> and
+    ///     <see cref="PendingVelocity" /> buffers, at the end of <see cref="PhysicsModifierGroup" />
+    ///     (after the physics step). Any system that appends to these within
+    ///     <see cref="PhysicsModifierGroup" /> must be ordered before this system to ensure forces are
+    ///     applied in the correct frame.
     /// </summary>
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |

@@ -10,6 +10,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
     [TrackClipType(typeof(PhysicsTriggerInstantiateClip))]
     [TrackClipType(typeof(PhysicsTriggerConditionClip))]
     [TrackClipType(typeof(PhysicsTriggerForceClip))]
+    [TrackClipType(typeof(PhysicsTriggerQueryClip))]
     [TrackColor(0.8f, 0.8f, 0.1f)]
     [DisplayName("BovineLabs/Physics/Stateful Trigger")]
     [TrackBindingType(typeof(StatefulTriggerEventAuthoring))]

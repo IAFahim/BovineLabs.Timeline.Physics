@@ -26,6 +26,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         [Header("Destination")] public Target trackingTarget = Target.Target;
 
         public PidAngularTargetMode targetMode = PidAngularTargetMode.LookAtTarget;
+
+        [Tooltip("In World mode this is the ABSOLUTE world-space rotation (euler). In other modes it is an offset from the tracking target.")]
         public Vector3 targetRotationEuler = Vector3.zero;
 
         [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]

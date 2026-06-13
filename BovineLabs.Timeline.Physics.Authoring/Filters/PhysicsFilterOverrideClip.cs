@@ -2,6 +2,7 @@ using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
+using Unity.Physics.Authoring;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -10,10 +11,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Filters
     public sealed class PhysicsFilterOverrideClip : DOTSClip, ITimelineClipAsset
     {
         [Tooltip("The new BelongsTo collision mask (as an integer bitmask).")]
-        public uint belongsToOverride = 0xFFFFFFFF;
+        public PhysicsCategoryTags belongsToOverride;
 
         [Tooltip("The new CollidesWith collision mask (as an integer bitmask).")]
-        public uint collidesWithOverride = 0xFFFFFFFF;
+        public PhysicsCategoryTags collidesWithOverride;
 
         [Tooltip("If true, restores the original collision mask when the clip ends.")]
         public bool restoreOnExit = true;
@@ -28,8 +29,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Filters
             {
                 AuthoredData = new PhysicsFilterOverrideData
                 {
-                    BelongsToOverride = belongsToOverride,
-                    CollidesWithOverride = collidesWithOverride,
+                    BelongsToOverride = belongsToOverride.Value,
+                    CollidesWithOverride = collidesWithOverride.Value,
                     RestoreOnExit = restoreOnExit
                 }
             };

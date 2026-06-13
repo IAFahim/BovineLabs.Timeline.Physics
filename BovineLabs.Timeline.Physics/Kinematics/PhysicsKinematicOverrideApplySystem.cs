@@ -158,6 +158,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                 if (config.ZeroGravity && !hasActiveGravityOverride)
                 {
+                    state.GravityCaptured = true;
+
                     if (lanes.HasGravityFactor)
                     {
                         state.OriginalGravityScale = lanes.GravityFactors[i].Value;
@@ -173,6 +175,10 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         state.AddedGravityComponent = true;
                         ECB.AddComponent(chunkIndex, entity, new PhysicsGravityFactor { Value = 0f });
                     }
+                }
+                else
+                {
+                    state.GravityCaptured = false;
                 }
 
                 state.Fired = true;
@@ -215,7 +221,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         new PhysicsMassOverride { IsKinematic = state.OriginalIsKinematic });
                 }
 
-                if (!hasActiveGravityOverride)
+                if (state.GravityCaptured && !hasActiveGravityOverride)
                 {
                     if (state.AddedGravityComponent)
                     {

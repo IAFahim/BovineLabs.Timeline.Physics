@@ -25,6 +25,7 @@ namespace BovineLabs.Timeline.Physics
     {
         public bool Fired;
         public float OriginalGravityScale;
+        public bool GravityCaptured;
         public bool AddedGravityComponent;
         public bool AddedMassOverrideComponent;
         public byte OriginalIsKinematic; // PhysicsMassOverride uses byte for IsKinematic

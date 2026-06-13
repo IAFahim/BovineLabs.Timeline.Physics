@@ -71,8 +71,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 ActiveLookup = _activeLookup,
                 ResetValue = new PhysicsKinematicOverrideState
                 {
-                    Fired = false, AddedGravityComponent = false, AddedMassOverrideComponent = false,
-                    OriginalGravityScale = 1f, OriginalIsKinematic = 0
+                    Fired = false, GravityCaptured = false, AddedGravityComponent = false,
+                    AddedMassOverrideComponent = false, OriginalGravityScale = 1f, OriginalIsKinematic = 0
                 }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 

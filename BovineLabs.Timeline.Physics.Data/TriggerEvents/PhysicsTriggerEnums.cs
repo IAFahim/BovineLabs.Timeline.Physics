@@ -19,6 +19,12 @@ namespace BovineLabs.Timeline.Physics
         Identity
     }
 
+    public enum PhysicsTriggerHitMode : byte
+    {
+        AllContacts,
+        FirstPerRoot
+    }
+
 
     public static class StatefulEventMatching
     {

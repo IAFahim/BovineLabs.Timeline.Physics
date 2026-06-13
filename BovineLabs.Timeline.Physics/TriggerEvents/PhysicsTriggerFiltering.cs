@@ -8,6 +8,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
     public static class PhysicsTriggerFiltering
     {
+        public static Entity ResolveRoot(Entity entity, in UnsafeComponentLookup<EntityLinkSource> sources)
+        {
+            EntityLinkResolver.TryResolveRoot(entity, sources, out var root);
+            return root;
+        }
+
         public static bool IsValidTarget(
             Entity self,
             Entity other,

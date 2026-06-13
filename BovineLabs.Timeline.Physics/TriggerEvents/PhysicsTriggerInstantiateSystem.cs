@@ -236,7 +236,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var midpoint = (selfPos + otherPos) * 0.5f;
                     var dir = math.normalizesafe(selfPos - otherPos);
 
-                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets);
+                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets, filter.HitMode);
                 }
             }
 
@@ -264,15 +264,19 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                     var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
 
-                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets);
+                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets, filter.HitMode);
                 }
             }
 
             private void Spawn(int chunkIndex, Entity prefab, Entity self, Entity other,
-                in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets
+                in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets,
+                PhysicsTriggerHitMode hitMode
             )
             {
-                if (!Spawned.Add(new SpawnKey { Self = self, Other = other, ObjectId = cfg.ObjectId }))
+                var dedupKey = hitMode == PhysicsTriggerHitMode.FirstPerRoot
+                    ? PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)
+                    : other;
+                if (!Spawned.Add(new SpawnKey { Self = self, Other = dedupKey, ObjectId = cfg.ObjectId }))
                     return;
 
                 var spawnTarget = other;

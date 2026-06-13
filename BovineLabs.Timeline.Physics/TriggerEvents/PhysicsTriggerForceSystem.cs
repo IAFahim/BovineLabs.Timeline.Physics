@@ -149,6 +149,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             {
                 Events.BeginForEachIndex(unfilteredChunkIndex);
 
+                var seenRoots = new NativeHashSet<Entity>(16, Allocator.Temp);
+
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
                 var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
@@ -184,6 +186,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup,
                         in ParentLookup);
 
+                    seenRoots.Clear();
+
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                         {
@@ -194,7 +198,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 in LtwLookup, in ParentLookup);
                             var midpoint = (selfPos + otherPos) * 0.5f;
                             ProcessEvent(self, evt.EntityB, in config, in filter, midpoint, in targets, selfPos,
-                                selfRot);
+                                selfRot, ref seenRoots);
                         }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
@@ -207,10 +211,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 in LtwLookup, in ParentLookup);
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets, selfPos, selfRot);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets, selfPos, selfRot, ref seenRoots);
                         }
                 }
 
+                seenRoots.Dispose();
                 Events.EndForEachIndex();
             }
 
@@ -223,9 +228,13 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg,
                 in PhysicsTriggerFilterData filter, float3 contactPoint,
-                in Targets targets, float3 selfPos, quaternion selfRot)
+                in Targets targets, float3 selfPos, quaternion selfRot, ref NativeHashSet<Entity> seenRoots)
             {
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
+                    return;
+
+                if (filter.HitMode == PhysicsTriggerHitMode.FirstPerRoot &&
+                    !seenRoots.Add(PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)))
                     return;
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(

@@ -106,6 +106,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerConditionDataTypeHandle);
                 var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
 
+                var seenRoots = new NativeHashSet<Entity>(16, Allocator.Temp);
+
                 var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
                 var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
                 var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
@@ -129,21 +131,25 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
                     }
 
+                    seenRoots.Clear();
+
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
                         foreach (var evt in triggers)
                             ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame,
-                                isLastFrame);
+                                isLastFrame, ref seenRoots);
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
                         foreach (var evt in collisions)
                             ProcessEvent(self, evt.EntityB, evt.State, in config, in filter, isFirstFrame,
-                                isLastFrame);
+                                isLastFrame, ref seenRoots);
                 }
+
+                seenRoots.Dispose();
             }
 
             private void ProcessEvent(Entity self, Entity other, StatefulEventState state,
                 in PhysicsTriggerConditionData config, in PhysicsTriggerFilterData filter, bool isFirstFrame,
-                bool isLastFrame)
+                bool isLastFrame, ref NativeHashSet<Entity> seenRoots)
             {
                 if (!StatefulEventMatching.Matches(state, config.EventState, isFirstFrame, isLastFrame)) return;
 
@@ -155,6 +161,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
+                    return;
+
+                if (filter.HitMode == PhysicsTriggerHitMode.FirstPerRoot &&
+                    !seenRoots.Add(PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)))
                     return;
 
                 if (config.Condition == ConditionKey.Null) return;

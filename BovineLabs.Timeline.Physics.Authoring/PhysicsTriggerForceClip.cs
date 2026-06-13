@@ -49,6 +49,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
         public EntityLinkSchema[] requireLinks = Array.Empty<EntityLinkSchema>();
 
+        [Tooltip("AllContacts applies once per contacting collider; FirstPerRoot applies once per enemy (resolved root).")]
+        public PhysicsTriggerHitMode hitMode = PhysicsTriggerHitMode.AllContacts;
+
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
 
@@ -94,7 +97,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 FilterData = new PhysicsTriggerFilterData
                 {
                     IgnoreTarget = ignoreTarget,
-                    LinkFilterBlob = filterBlob
+                    LinkFilterBlob = filterBlob,
+                    HitMode = hitMode
                 }
             };
             builder.ApplyTo(ref commands);

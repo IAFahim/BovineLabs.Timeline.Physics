@@ -15,5 +15,8 @@ namespace BovineLabs.Timeline.Physics
 
         // Optional blob of allowed link keys
         public BlobAssetReference<PhysicsTriggerLinkBlob> LinkFilterBlob;
+
+        // AllContacts: apply once per contacting collider. FirstPerRoot: apply once per resolved root.
+        public PhysicsTriggerHitMode HitMode;
     }
 }

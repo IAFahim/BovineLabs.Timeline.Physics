@@ -2,7 +2,7 @@
   {
     "id": "unity-track-physics-angular-pid",
     "displayName": "Track Physics Angular Pid",
-    "description": "Master of PhysicsAngularPIDTrack + PhysicsAngularPIDClip (package BovineLabs.Timeline.Physics) — a real physical rotation motor via PendingForce, blended PID configs, target-mode semantics, the stat-strength triple trap; carries the SHARED PID CORE for the linear-pid skill. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"make this body physically turn toward / match a rotation with spring-damper feel\"."
+    "description": "Master of PhysicsAngularPIDTrack + PhysicsAngularPIDClip (package BovineLabs.Timeline.Physics) — a real physical rotation motor via PendingForce, blended PID configs, target-mode semantics, the stat-strength triple trap; carries the SHARED PID CORE for the linear-pid skill. Portable to any project containing the package; worked example from vex-ee."
   },
   {
     "id": "unity-track-physics-drag",
@@ -12,17 +12,17 @@
   {
     "id": "unity-track-physics-filter-override",
     "displayName": "Track Physics Filter Override",
-    "description": "Master of PhysicsFilterOverrideTrack + PhysicsFilterOverrideClip (package BovineLabs.Timeline.Physics) — while-timeline-active collision-filter blob mutation, the ForceUnique requirement, the timeline-end-not-clip-end restore; carries the PHYSICS FAMILY SHARED PATTERNS reference. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"make this phase through walls / stop colliding with X during this clip\"."
+    "description": "Master of PhysicsFilterOverrideTrack + PhysicsFilterOverrideClip (package BovineLabs.Timeline.Physics) — while-timeline-active collision-filter blob mutation, the ForceUnique requirement, the timeline-end-not-clip-end restore; carries the PHYSICS FAMILY SHARED PATTERNS reference. Portable to any project containing the package; worked example from vex-ee."
   },
   {
     "id": "unity-track-physics-force",
     "displayName": "Track Physics Force",
-    "description": "Master of PhysicsForceTrack + PhysicsForceClip (package BovineLabs.Timeline.Physics) — impulse/continuous forces via PendingForce with 7 direction modes, latching, deterministic per-entity randomness, pre-fire velocity reset, the one-impulse-per-activation trap. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"kick / launch / thrust / knock back / scatter this body\"."
+    "description": "Master of PhysicsForceTrack + PhysicsForceClip (package BovineLabs.Timeline.Physics) — impulse/continuous forces via PendingForce with 7 direction modes, latching, deterministic per-entity randomness, pre-fire velocity reset, the one-impulse-per-activation trap. Portable to any project containing the package; worked example from vex-ee."
   },
   {
     "id": "unity-track-physics-gravity-override",
     "displayName": "Track Physics Gravity Override",
-    "description": "Master of PhysicsGravityOverrideTrack + PhysicsGravityOverrideClip (package BovineLabs.Timeline.Physics) — blended while-timeline-active gravity scaling via PhysicsGravityFactor add/mutate, the add-path one-step latency, capture poisoning. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"zero-g / reverse gravity / moon gravity during this clip\"."
+    "description": "Master of PhysicsGravityOverrideTrack + PhysicsGravityOverrideClip (package BovineLabs.Timeline.Physics) — blended while-timeline-active gravity scaling via PhysicsGravityFactor add/mutate, the add-path one-step latency, capture poisoning. Portable to any project containing the package; worked example from vex-ee."
   },
   {
     "id": "unity-track-physics-kinematic-override",

@@ -1,6 +1,6 @@
 ---
 name: unity-track-physics-force
-description: Master of PhysicsForceTrack + PhysicsForceClip (package BovineLabs.Timeline.Physics) — impulse/continuous forces via PendingForce with 7 direction modes, latching, deterministic per-entity randomness, pre-fire velocity reset, the one-impulse-per-activation trap. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks "kick / launch / thrust / knock back / scatter this body".
+description: Master of PhysicsForceTrack + PhysicsForceClip (package BovineLabs.Timeline.Physics) — impulse/continuous forces via PendingForce with 7 direction modes, latching, deterministic per-entity randomness, pre-fire velocity reset, the one-impulse-per-activation trap. Portable to any project containing the package; worked example from vex-ee.
 ---
 
 # PhysicsForceTrack specialist
@@ -10,13 +10,14 @@ You are the specialist for **`PhysicsForceTrack`** ("BovineLabs/Physics/Force") 
 **`PhysicsForceClip`** from the package `BovineLabs.Timeline.Physics`, ns
 `BovineLabs.Timeline.Physics.Authoring` — bound to a **`PhysicsBodyAuthoring` COMPONENT**. Scope:
 authoring track/clips in a `.playable`, wiring a SubScene PlayableDirector, the runtime force
-semantics. Physics bodies, Targets slots, and stat setups are OTHER specialists' domains (protocol
-§6: report a missing prerequisite, never improvise). **Family patterns 1–7 live in
-`unity-track-physics-filter-override`**; **PendingForce/accumulator mechanics + the stat chain
-(`StatStrengthUtility.Resolve`, the triple trap) are banked in `unity-track-physics-angular-pid`**
-— cite both, don't re-derive. This skill owns direction modes, latching, randomness, the velocity
-reset, and the one-impulse-per-activation trap.
-Behave per unity-agent-protocol; operate the editor per unity-cli.
+semantics. Physics bodies, Targets slots, and stat setups are OTHER specialists' domains. **Family
+patterns 1–7 live in `unity-track-physics-filter-override`**; **PendingForce/accumulator mechanics +
+the stat chain (`StatStrengthUtility.Resolve`, the triple trap) are banked in
+`unity-track-physics-angular-pid`** — cite both, don't re-derive. This skill owns direction modes,
+latching, randomness, the velocity reset, and the one-impulse-per-activation trap.
+
+Operate per `unity-timeline-track-authoring`; behave per `unity-agent-protocol`; use the editor
+per `unity-cli`.
 
 ## 2. PORTABLE SEMANTICS
 
@@ -158,193 +159,80 @@ binding, only the FIRST clip's edge sees a reset; later clips inherit the run's 
 - **DO note the silence profile (family rule 7)** — Bake unconditional; unbound track →
   central-baker silent no-op. Clean console proves nothing.
 
-## 3. DISCOVERY RECIPES
+## 3. DISCOVERY
 
-Act only through `unity-cli exec` / `unity-cli console`; never the filesystem; never play mode;
-unity-cli Safe Loop on every mutation. Names below are parameters — discover them in THIS project;
-never assume the worked example (§5).
-
-**3.1 Confirm the package exists (else report a missing prerequisite — protocol §6):**
-```csharp
-var t = System.Type.GetType("BovineLabs.Timeline.Physics.Authoring.PhysicsForceTrack, BovineLabs.Timeline.Physics.Authoring");
-return t == null ? "MISSING_PREREQUISITE|PhysicsForceTrack not found - package BovineLabs.Timeline.Physics absent" : "OK|" + t.AssemblyQualifiedName + "|dataPath=" + UnityEngine.Application.dataPath;
-```
-
-**3.2 Find the active scene + SubScene(s):** run the unity-cli skill's First Command (scene path,
-roots, SubScene components → their `.unity` paths). Record `parentScenePath` + `subScenePath`(s).
-
-**3.3 Find PlayableDirector(s) inside the SubScene** (read-only additive open, restore parent
-after): `FindObjectsByType<UnityEngine.Playables.PlayableDirector>(FindObjectsInactive.Include,
-FindObjectsSortMode.None)` — print per director: hierarchy path, scene.path, playableAsset path or
-null, other components. Selection rule when several exist (STATE it in your memory card): the
-single director in the chosen SubScene; then one carrying the project's timeline-reference
-authoring component; else ask the designer. Zero directors → protocol §6.
-
-**3.4 Find the physics body (bind target) by COMPONENT, never by name:**
-```csharp
-var bodies = UnityEngine.Object.FindObjectsByType<Unity.Physics.Authoring.PhysicsBodyAuthoring>(
-    UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None);
-// print per body: hierarchy path, scene.path, MotionType, Mass, sibling components
-// (TargetsAuthoring? StatAuthoring?) - confirm with the designer if more than one.
-```
-ZERO bodies in the SubScene → a missing prerequisite: a physics-stage specialist must add one; you bind bodies,
-you don't create them. Prerequisites: Toward/AwayFromTarget and any non-None/non-Self `space` need
-the BODY's Targets slot populated (TargetsAuthoring — the stage specialist's job); `strengthStat`
-needs a stat schema asset — discover via `AssetDatabase.FindAssets("t:StatSchemaObject")`, print
-each name + `System.Convert.ToInt64(schema.Key)` (**keys drift between projects — never assume a
-remembered id**), verify the resolved entity carries StatAuthoring + a StatDefaults entry for that
-key (else the silent stat layers in §2 fire). Missing setup = report the gap, don't improvise.
-
-**3.5 Capture the chosen director's existing state — this is pre-state (`PRE|`)**: print
-`PRE|playableAsset=<asset PATH or null>` (via `AssetDatabase.GetAssetPath(director.playableAsset)`)
-and one `PRE|binding|<i>|<track name>|<track type>|<bound object hierarchy path + component type,
-or null>` line per `GetOutputTracks()` of the CURRENT asset, via `GetGenericBinding`. Capture the
-asset PATH and each track's NAME/index even when the table looks empty — they make the undo
-journal replayable (UNDO-1 reloads the old asset by path, re-binds by name/index). Record these in
-the undo journal (§6) before any mutation.
-
-**Name resolution rule**: `GameObject.Find` misses inactive objects and is ambiguous on duplicates.
-Resolve the body/director by the recorded hierarchy path (walk the SubScene roots) or
-`FindObjectsByType` filtered by `scene` — never bare `Find` unless discovery confirmed uniqueness.
+Per `unity-timeline-track-authoring` §1 (D1–D5): D1 confirms the package
+(`PhysicsForceTrack`/asm `BovineLabs.Timeline.Physics.Authoring` → `MISSING_PREREQUISITE` else);
+D4's bind target is `Unity.Physics.Authoring.PhysicsBodyAuthoring` (print MotionType, Mass, sibling
+TargetsAuthoring?/StatAuthoring? per body) — ZERO bodies = a physics-stage specialist's gap, you
+bind one, never create it. Track-specific prerequisites to resolve the same read-only way and
+report (never improvise) if missing:
+- **Toward/AwayFromTarget and any non-None/non-Self `space`** need the BODY's Targets slot
+  populated (TargetsAuthoring — the stage specialist's job).
+- **`strengthStat`** needs a stat schema asset — `AssetDatabase.FindAssets("t:StatSchemaObject")`,
+  print each name + `System.Convert.ToInt64(schema.Key)` (**keys drift between projects — never
+  assume a remembered id**), and verify the resolved entity carries StatAuthoring + a StatDefaults
+  entry for that key (else the silent ×1/dead-force stat layers in §2 fire).
 
 ## 4. CANONICAL RECIPES
 
-One logical change per exec block; print the `PRE|` capture before mutating (protocol §2), save
-inside the block, verify from a fresh load (§7). Clip fields are camelCase serialized — set via
-`SerializedObject` (the YAML names in §2 are the property paths).
+Authored per `unity-timeline-track-authoring` §2 (the SubScene bracket). `<TRACK_TYPE>` =
+`BovineLabs.Timeline.Physics.Authoring.PhysicsForceTrack`, `<CLIP_TYPE>` = `…PhysicsForceClip`,
+`<BIND_TARGET>` = `Unity.Physics.Authoring.PhysicsBodyAuthoring`. Set the 18 fields via
+`SerializedObject` using the §2 camelCase property paths. The track-specific MIDDLE — five proven
+patterns (designer intent → wiring; values are choices, not constants):
 
-```csharp
-// ---- parameters (discovered in §3 / chosen with designer) ----
-var parentScenePath = "<DISCOVERED>"; var subScenePath = "<DISCOVERED>";
-var directorGoName  = "<DISCOVERED>"; var bodyGoPath = "<DISCOVERED>"; // PhysicsBodyAuthoring holder
-var assetFolder = "<CHOSEN>"; var assetPath = assetFolder + "/<Name>.playable"; var trackName = "<CHOSEN>";
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    // CAPTURE (print + journal): PRE|folderExisted=<bool> PRE|assetExisted=<bool>
-    var folderExisted = UnityEditor.AssetDatabase.IsValidFolder(assetFolder);
-    if (!folderExisted) { /* CreateFolder for each missing segment */ }
-    var timeline = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.Timeline.TimelineAsset>();
-    UnityEditor.AssetDatabase.CreateAsset(timeline, assetPath);
-    var track = timeline.CreateTrack<BovineLabs.Timeline.Physics.Authoring.PhysicsForceTrack>(null, trackName);
-    // Pattern IMPULSE KICK / deterministic dash (one per timeline activation - trap in section 2)
-    var clipA = track.CreateClip<BovineLabs.Timeline.Physics.Authoring.PhysicsForceClip>();
-    clipA.start = 0; clipA.duration = 0.5; clipA.displayName = "<clipName>";
-    var soA = new UnityEditor.SerializedObject((UnityEngine.Object)clipA.asset);
-    soA.FindProperty("mode").intValue = 1; soA.FindProperty("directionMode").intValue = 0;  // Impulse, FixedVector
-    soA.FindProperty("linearForce").vector3Value = new UnityEngine.Vector3(0, 8, 0);        // N*s = mass x dv
-    soA.FindProperty("space").intValue = 0;                                                 // Target.None = raw world
-    soA.FindProperty("resetVelocityOnFire").intValue = 1;                                   // Linear: same dash every time
-    soA.ApplyModifiedPropertiesWithoutUndo();
-    UnityEditor.AssetDatabase.SaveAssets();
-    // Wire the director (binding table lives in the SCENE file)
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    // CAPTURE (print + journal) BEFORE mutating: PRE|playableAsset=... PRE|binding|... (section 3.5)
-    var body = UnityEngine.GameObject.Find(bodyGoPath).GetComponent<Unity.Physics.Authoring.PhysicsBodyAuthoring>();
-    director.playableAsset = timeline;
-    director.SetGenericBinding(track, body);   // the COMPONENT (rule 5k); the baker coerces component->entity
-    UnityEditor.EditorUtility.SetDirty(director);
-    UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "OK|" + assetPath;
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene);
-    UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
+- **IMPULSE KICK / deterministic dash** (one per timeline activation — the §2 trap): `mode=Impulse(1)`,
+  `directionMode=FixedVector(0)`, `linearForce=(0,8,0)` (N·s = mass×Δv), `space=None(0)` (raw world),
+  `resetVelocityOnFire=Linear(1)` (same dash distance every time). Clip e.g. start 0, duration 0.5.
+- **SEEK / HOME** = `mode=Continuous(0)` + `directionMode=TowardTarget(1)`, `directionTarget=Target(1)`
+  (the Targets slot must name the target — §3), `magnitude` in N — re-aims every fixed step;
+  `AwayFromTarget(2)` = flee.
+- **ROCKET THRUST** = Continuous + FixedVector + `space=Self(4)` (re-rotates with the body; runs
+  through gaps).
+- **SCATTER** = Impulse + `directionMode=RandomCone(4)` + `space=None`, `coneElevationCenter=45`,
+  `coneElevationHalfRange=15`, `coneAzimuthHalfRange=180`, `seed=7`, `latchDirection=True` = any
+  heading 30–60° up, seeded per (seed, entity): a debris crowd sharing one clip scatters
+  differently per body, reproducibly per session.
+- **BRAKE against motion** = Continuous + `AgainstVelocity(6)` + `latchDirection=false`
+  (constant-magnitude retro-force vs Drag's proportional decay; latch=true locks the brake to the
+  first tick's motion). **SPIN** = set `angularForce` on the same clip (one PendingForce element
+  through inverse mass AND inertia). **Stat-scaled kicks** = `strengthStat` + `readStatFrom`,
+  ×100 (100 = ×1.0).
 
-Other proven patterns (same route; values are choices, not constants): **seek/home** = Continuous +
-TowardTarget, `directionTarget=Target(1)` (Targets slot must name the target, §3.4), `magnitude` =
-N — re-aims every fixed step; `AwayFromTarget` = flee. **Rocket thrust** = Continuous + FixedVector
-+ `space=Self(4)` (re-rotates with the body; runs through gaps). **Scatter** = Impulse + RandomCone
-+ `space=None`, elC=45/elH=15, azH=180 = any heading 30–60° up — seeded per (seed, entity): a
-debris crowd sharing one clip scatters differently per body, reproducibly per session. **Brake
-against motion** = Continuous + AgainstVelocity + `latchDirection=false` (constant-magnitude
-retro-force vs Drag's proportional decay; latch=true locks the brake to the first tick's motion).
-**Spin** = `angularForce` on the same clip (one PendingForce element through inverse mass AND
-inertia). **Stat-scaled kicks** = `strengthStat` + `readStatFrom`, ×100 (100 = ×1.0).
+## 5. WORKED EXAMPLE (delta vs the shared stage — `unity-timeline-track-authoring` §5)
 
-## 5. WORKED EXAMPLE (vex-ee training stage) — example environment; rediscover, never assume
+Rediscover, never assume. Bind target = **`Stage_PhysicsBall`'s PhysicsBodyAuthoring COMPONENT** —
+pos (0,1,5), Dynamic, Mass=1, ForceUnique=True, `Targets.Target=Stage_Target`, **NO StatAuthoring**
+(keeps the silent-×1 stat exhibit live). Asset
+`Assets/Training/21-physics-force-track/ForceMastery.playable` — one track `ForceTrack`, clips
+`A_LaunchUp` 0–0.5 Impulse FixedVector (0,8,0) space=None reset=Linear / `B_ThrustForward` 1–3
+Continuous FixedVector (0,0,5) space=Self / `C_SeekCube` 4–6 Continuous TowardTarget mag=6
+dirTarget=Target / `D_ScatterKick` 7–7.5 Impulse RandomCone space=None mag=10 azH=180 elC=45 elH=15
+seed=7 latch=True. D doubles as the trap exhibit: it never fires in the same activation as A (§2);
+B's thrust runs through the 3–4 s gap, C's seek through 6–7 s. Director wiring: table **19** entries,
+`BIND|18|ForceTrack (PhysicsForceTrack) -> Stage_PhysicsBall (PhysicsBodyAuthoring)`; director
+restored to its PRE value `Assets/Training/01-transform-position-track/PositionMastery.playable` (18
+prior bindings intact). vex-ee stat schema example: SlowMo, `key=94`, stage default Added=25 → ×0.25.
 
-- Project `/home/i/GitHub/vex-ee` (`dataPath=/home/i/GitHub/vex-ee/Assets`); parent scene
-  `Assets/Scenes/Main Scene.unity`; SubScene `Assets/Scenes/Main Sub Scene.unity`. Stage (built by
-  unity-stage-foundations): `Stage_Director` (PlayableDirector + TimelineReferenceAuthoring, the
-  only director); binding target **`Stage_PhysicsBall`'s PhysicsBodyAuthoring COMPONENT** — pos
-  (0,1,5), Dynamic, Mass=1, ForceUnique=True, `Targets.Target=Stage_Target`, **NO StatAuthoring**
-  (keeps the silent-×1 stat exhibit live).
-- Asset built in training: `Assets/Training/21-physics-force-track/ForceMastery.playable` — one
-  track `ForceTrack`, clips `A_LaunchUp` 0–0.5 Impulse FixedVector (0,8,0) space=None reset=Linear /
-  `B_ThrustForward` 1–3 Continuous FixedVector (0,0,5) space=Self / `C_SeekCube` 4–6 Continuous
-  TowardTarget mag=6 dirTarget=Target / `D_ScatterKick` 7–7.5 Impulse RandomCone space=None mag=10
-  azH=180 elC=45 elH=15 seed=7 latch=True. D doubles as the trap exhibit: it never fires in the
-  same activation as A (§2); B's thrust runs through the 3–4 s gap, C's seek through 6–7 s.
-- Director wiring after the lesson: table **19** entries, `BIND|18|ForceTrack (PhysicsForceTrack)
-  -> Stage_PhysicsBall (PhysicsBodyAuthoring)`; director restored to
-  `Assets/Training/01-transform-position-track/PositionMastery.playable` (its PRE value, printed
-  before wiring: PositionMastery + 18 bindings). vex-ee stat schema example: SlowMo, `key=94`,
-  stage default Added=25 → reads ×0.25. Known pre-existing console baseline: UnityCliConnector
-  HTTP start, PerformanceTesting setup/cleanup, TestResults.xml, lessons 08–10 `[Worker2]`
-  EntityLinks bake errors.
+## 6. UNDO
 
-## 6. UNDO APPENDIX
+Per `unity-timeline-track-authoring` §3. Runtime effects (velocity, Fired state) exist only in play
+mode — nothing to undo there; the journal reverses only authoring artifacts (created
+`.playable` + sub-assets, possibly-created folder, mutated `director.playableAsset`, the added
+generic binding). Restore the director FIRST, then delete the asset, then any other captured values
+(none for this family beyond UNDO-1 — the recipe never edits the body or stage objects). Use the
+§3 UNDO-1/2/3/4 templates filled from your `PRE|` captures.
 
-Runtime effects (velocity, fired state) exist only in play mode — nothing to undo there. Artifact
-inventory for one run of §4 (vex-ee instance shown in §5):
-1. Created asset `<assetPath>` (.playable: TimelineAsset + track + clip sub-assets — `DeleteAsset`
-   removes all sub-assets with the file). 2. Possibly-created folder(s) `<assetFolder>` (only if
-   `PRE|folderExisted=false`; vex-ee: `EXPECTED:` the report never printed folder pre-existence).
-3. Mutated `director.playableAsset` (vex-ee: VERIFIED pre value `PositionMastery.playable`, printed
-   before wiring). 4. Added generic binding entry for the new track (table lives in the SubScene
-   file; vex-ee: VERIFIED 18 prior entries intact before/after). 5. No other scene values changed —
-   the recipe never edits the body or stage objects.
+## 7. VERIFICATION
 
-ORDER: restore the director FIRST, THEN delete the asset, THEN other captured scene values —
-deleting the asset while the director still points at it leaves a dangling `{fileID: 0}` reference
-in the scene file instead of the captured pre-state.
-
-```csharp
-// UNDO-1: restore director's captured playableAsset + binding table. Runs inside the same
-// SubScene bracket as the §4 recipe (open <CAPTURED subScenePath> additive, SetActiveScene,
-// try { body below } finally { restore <CAPTURED parentScenePath> Single }).
-var director = UnityEngine.GameObject.Find("<CAPTURED directorGoName>").GetComponent<UnityEngine.Playables.PlayableDirector>();
-var myAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Timeline.TimelineAsset>("<CAPTURED assetPath>");
-foreach (var tr in myAsset.GetOutputTracks()) director.ClearGenericBinding(tr); // entries I added
-// restore each CAPTURED binding (PRE|binding| lines): reload the PREVIOUS asset by captured path,
-// match tracks by name/index, re-find bound objects by captured hierarchy path, SetGenericBinding.
-director.playableAsset = null; // or LoadAssetAtPath<PlayableAsset>("<CAPTURED pre path>") - CAPTURED value, never "default"
-UnityEditor.EditorUtility.SetDirty(director);
-UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-return "UNDONE|director restored";
-```
-
-```csharp
-// UNDO-2: delete the created .playable (+ folder, only if PRE|folderExisted=false and now empty)
-var ok = UnityEditor.AssetDatabase.DeleteAsset("<CAPTURED assetPath>");
-if (!/*CAPTURED folderExisted*/false && UnityEditor.AssetDatabase.FindAssets("", new[]{ "<CAPTURED assetFolder>" }).Length == 0)
-    UnityEditor.AssetDatabase.DeleteAsset("<CAPTURED assetFolder>");
-return "UNDONE|deleted=" + ok;
-```
-
-UNDO-3: restore any other captured scene values — normally none for this family beyond UNDO-1.
-UNDO-4 (fresh-load verification, protocol §7): reload the SubScene additively, print
-`director.playableAsset` (must equal the CAPTURED pre value) and the binding table (must equal the
-captured `PRE|binding|` lines); confirm `LoadAssetAtPath<Object>(assetPath) == null`; restore the
-parent scene; `unity-cli console --filter error` clean against the project baseline.
-
-## 7. VERIFICATION PROTOCOL
-
-1. **Fresh-load asset dump** (separate exec block; in-memory state after a save is not evidence):
-   load the `.playable` at `<assetPath>`, dump every track/clip (name, start/duration, blendIn/Out,
-   caps, and ALL 18 fields per §2's table). Expect `caps=Looping|Blending`.
-2. **Raw YAML check**: cone fields in DEGREES (radians are bake-only), enums as ints (`mode`,
-   `directionMode`, `space`, `resetVelocityOnFire`), `linearForce` blocks,
-   `strengthStat: {fileID: 0}` when null vs an asset→asset ref when assigned.
-3. **Prerequisite checks**: the bound body's MotionType/Mass; its Targets slot if any clip uses
-   Toward/Away or a Targets-resolved `space`; StatAuthoring + key presence if `strengthStat` is set.
-4. **Binding from a RELOADED SubScene**: expect `BIND|<i>|<trackName> (PhysicsForceTrack) ->
-   <bodyGoName> (PhysicsBodyAuthoring)` — `GetGenericBinding` returns the COMPONENT verbatim
-   (rule 5k); all prior entries intact.
-5. **Parent-scene restore** (sceneCount=1, `<parentScenePath>|loaded=True|active=True|dirty=False`)
-   and **console**: `unity-cli console --filter error` shows nothing new beyond the project's known
-   baseline (vex-ee baseline in §5). Silence is expected, not evidence (family pattern 7).
+Per `unity-timeline-track-authoring` §4 (fresh-load asset dump → raw YAML → live prerequisite
+re-check → reloaded-SubScene binding → parent-scene restore → console). Track-specific expectations:
+- §4.1 asset dump: expect `caps=Looping|Blending`; dump ALL 18 §2 fields.
+- §4.2 YAML: cone fields in DEGREES (radians are bake-only); enums as ints (`mode`, `directionMode`,
+  `space`, `resetVelocityOnFire`); `linearForce` blocks; `strengthStat: {fileID: 0}` when null vs an
+  asset→asset ref when assigned.
+- §4.3 prerequisites: bound body MotionType/Mass; its Targets slot if any clip uses Toward/Away or a
+  Targets-resolved `space`; StatAuthoring + key presence if `strengthStat` is set.
+- §4.4 binding: `BIND|<i>|<trackName> (PhysicsForceTrack) -> <bodyGoName> (PhysicsBodyAuthoring)`.
+- Silence is expected, not evidence (family pattern 7).

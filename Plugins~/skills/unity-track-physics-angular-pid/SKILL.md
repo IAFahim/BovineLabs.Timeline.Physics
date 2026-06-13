@@ -1,6 +1,6 @@
 ---
 name: unity-track-physics-angular-pid
-description: Master of PhysicsAngularPIDTrack + PhysicsAngularPIDClip (package BovineLabs.Timeline.Physics) — a real physical rotation motor via PendingForce, blended PID configs, target-mode semantics, the stat-strength triple trap; carries the SHARED PID CORE for the linear-pid skill. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks "make this body physically turn toward / match a rotation with spring-damper feel".
+description: Master of PhysicsAngularPIDTrack + PhysicsAngularPIDClip (package BovineLabs.Timeline.Physics) — a real physical rotation motor via PendingForce, blended PID configs, target-mode semantics, the stat-strength triple trap; carries the SHARED PID CORE for the linear-pid skill. Portable to any project containing the package; worked example from vex-ee.
 ---
 
 # PhysicsAngularPIDTrack specialist
@@ -10,13 +10,19 @@ You are the specialist for **`PhysicsAngularPIDTrack`** and **`PhysicsAngularPID
 package `BovineLabs.Timeline.Physics`, ns `BovineLabs.Timeline.Physics.Authoring.PIDs` — bound to
 a **`PhysicsBodyAuthoring` COMPONENT** (not a GameObject). Scope: authoring track/clips in a
 `.playable`, wiring a SubScene PlayableDirector, the runtime rotation-motor semantics. Physics
-bodies, Targets slots, and stat setups are OTHER specialists' domains (protocol §6: report a missing prerequisite, never improvise). **Family patterns live in `unity-track-physics-filter-override`**
-(two-system split, producer/modifier groups, central `PhysicsTimelineBakingSystem`,
-timeline-activation scope, silence profile) — cite, don't re-derive. **This skill carries the
-SHARED PID CORE** consumed by `unity-track-physics-linear-pid` (which differs ONLY in: error =
-position delta, its own `PidLinearTargetMode` incl. `InitialLocal`/`LineOfSight`, `TargetOffset`
-float3 instead of `TargetRotation`, and `PendingForce.Linear` instead of `.Angular`).
-Behave per unity-agent-protocol; operate the editor per unity-cli.
+bodies, Targets slots, and stat setups are OTHER specialists' domains (report a missing prerequisite,
+never improvise). **Family patterns live in `unity-track-physics-filter-override`** (two-system
+split, producer/modifier groups, central `PhysicsTimelineBakingSystem`, timeline-activation scope,
+silence profile) — cite, don't re-derive. **This skill carries the SHARED PID CORE** consumed by
+`unity-track-physics-linear-pid` (which differs ONLY in: error = position delta, its own
+`PidLinearTargetMode` incl. `InitialLocal`/`LineOfSight`, `TargetOffset` float3 instead of
+`TargetRotation`, and `PendingForce.Linear` instead of `.Angular`).
+
+**Operate per `unity-timeline-track-authoring`; behave per `unity-agent-protocol`; use the editor
+per `unity-cli`.** That shared skill owns the discovery preamble (§1), the SubScene bracket (§2),
+the undo appendix (§3), and the verification protocol (§4); this skill keeps ONLY its track-unique
+facts below. For discovery use §1, the create-and-wire bracket §2, undo §3, verification §4 there —
+with the track-specific deltas noted inline below.
 
 ## 2. PORTABLE SEMANTICS
 
@@ -77,6 +83,7 @@ LinkKey}`, `IsEnabled() => Stat.Value != 0`. No schema authored → 1; entity un
 the PID**. Value ×100-decoded (a stat authored 25 reads ×0.25). `Targets.Get` maps `Self => self`
 even on a default struct — `readStatFrom=Self` always hits the body.
 
+### Type facts
 | Type | Facts |
 |---|---|
 | `PhysicsAngularPIDTrack` | ns `...Physics.Authoring.PIDs`, asm `...Physics.Authoring`, base `DOTSTrack`, EMPTY body. `[TrackClipType(typeof(PhysicsAngularPIDClip))]`, `[TrackColor(0.9,0.4,0.4)]`, **`[TrackBindingType(typeof(Unity.Physics.Authoring.PhysicsBodyAuthoring))]`**, `[DisplayName("BovineLabs/Physics/Angular PID")]`. |
@@ -158,192 +165,69 @@ pairing). `TargetRotation` is absolute ONLY in World mode; elsewhere a post-mult
   no guard or LogError in Bake; null strengthStat harmless via `IsEnabled()==false`; unbound track
   → central-baker continue — clean console proves nothing).
 
-## 3. DISCOVERY RECIPES
+## 3. DISCOVERY (per unity-timeline-track-authoring §1)
 
-Act only through `unity-cli exec` / `unity-cli console`; never the filesystem; never play mode;
-unity-cli Safe Loop on every mutation. Names below are parameters — discover them in THIS project;
-never assume the worked example (§5).
+Run §1 D1–D5. Track-specific deltas:
+- **D1 package check** — `BovineLabs.Timeline.Physics.Authoring.PIDs.PhysicsAngularPIDTrack,
+  BovineLabs.Timeline.Physics.Authoring`.
+- **D4 bind target** — `Unity.Physics.Authoring.PhysicsBodyAuthoring` COMPONENT (not a Transform).
+  Print MotionType/Mass + sibling TargetsAuthoring/StatAuthoring per body. Prerequisites:
+  MatchTarget/LookAtTarget/Flee/MatchTargetOpposite need the BODY's Targets slot populated (a lost
+  slot triggers the §2 silent fallback); World needs nothing. `strengthStat` needs a stat schema
+  asset (`AssetDatabase.FindAssets("t:StatSchemaObject")`, print each name +
+  `System.Convert.ToInt64(schema.Key)` — keys drift; verify StatAuthoring + a StatDefaults entry
+  for that key). Missing setup = report the gap, don't improvise it.
 
-**3.1 Confirm the package exists (else report a missing prerequisite — protocol §6):**
-```csharp
-var t = System.Type.GetType("BovineLabs.Timeline.Physics.Authoring.PIDs.PhysicsAngularPIDTrack, BovineLabs.Timeline.Physics.Authoring");
-return t == null ? "MISSING_PREREQUISITE|PhysicsAngularPIDTrack not found - package BovineLabs.Timeline.Physics absent" : "OK|" + t.AssemblyQualifiedName + "|dataPath=" + UnityEngine.Application.dataPath;
-```
+## 4. CANONICAL RECIPES (per unity-timeline-track-authoring §2)
 
-**3.2 Find the active scene + SubScene(s):** run the unity-cli skill's First Command (scene path,
-roots, SubScene components → their `.unity` paths). Record `parentScenePath` + `subScenePath`(s).
+Use the §2 bracket; track type = `PhysicsAngularPIDTrack`, clip type = `PhysicsAngularPIDClip`,
+bind target = `PhysicsBodyAuthoring` COMPONENT. Clip fields are camelCase serialized — set via
+`SerializedObject` (nested tuning = `tuning.Proportional` etc.). The track-specific MIDDLE replaces
+§2's clip block with one of these designer-intent → wiring patterns:
 
-**3.3 Find PlayableDirector(s) inside the SubScene** (read-only additive open, restore parent
-after): `FindObjectsByType<UnityEngine.Playables.PlayableDirector>(FindObjectsInactive.Include,
-FindObjectsSortMode.None)` — print per director: hierarchy path, scene.path, playableAsset path or
-null, other components. Selection rule when several exist (STATE it in your memory card): the
-single director in the chosen SubScene; then one carrying the project's timeline-reference
-authoring component; else ask the designer. Zero directors → protocol §6.
+- **Settle at an absolute world rotation** (no Targets needed): `targetMode=World(2)`,
+  `trackingTarget=None(0)`, `targetRotationEuler=(0,90,0)` DEGREES.
+- **Face the target**: `targetMode=LookAtTarget(1)`, `trackingTarget=Target(1)` (Targets slot must
+  point at it — TargetsAuthoring, or retarget mid-timeline with EntityLinkTargetPatch ORDERED
+  before this track). Start Balanced (P10 D3 I1 Max100), raise P for urgency then D to kill wobble;
+  `strength=2` doubles output.
+- **Ride alignment / face-off**: `MatchTarget(0)` + `trackingTarget=Target`; `targetRotationEuler`
+  as a deliberate offset if the meshes' forward axes disagree; `MatchTargetOpposite(4)` = 180°-yawed.
+- **Cower**: `FleeFromTarget(3)` — look-at the mirror point `self + (self − target)`; same
+  up-righting caveat as LookAt.
+- **Stat-scaled turning**: `strengthStat=<discovered schema>` + `readStatFrom` at an entity
+  ACTUALLY carrying a Stat buffer WITH that key (×100 — author 200 for double); avoid
+  `readStatFrom=Self` unless the body has stats.
+- **Ending crisp**: a PID clip ending leaves spin — VelocityClamp, or accept the handoff.
 
-**3.4 Find the physics body (bind target) by COMPONENT, never by name:**
-```csharp
-var bodies = UnityEngine.Object.FindObjectsByType<Unity.Physics.Authoring.PhysicsBodyAuthoring>(
-    UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None);
-// print per body: hierarchy path, scene.path, MotionType, Mass, sibling components
-// (TargetsAuthoring? StatAuthoring?) - confirm with the designer if more than one.
-```
-ZERO bodies in the SubScene → a missing prerequisite: a physics-stage specialist must add one; you bind bodies,
-you don't create them. Prerequisites: MatchTarget/LookAtTarget/Flee/MatchTargetOpposite need the
-BODY's Targets slot populated (TargetsAuthoring — the stage specialist's job; a lost slot triggers
-the silent fallback); World needs nothing. `strengthStat` needs a stat schema asset — discover via
-`AssetDatabase.FindAssets("t:StatSchemaObject")`, print each name +
-`System.Convert.ToInt64(schema.Key)` (**keys drift between projects — never assume a remembered
-id**), verify StatAuthoring + a StatDefaults entry for that key. Missing setup = report the gap.
+## 5. WORKED EXAMPLE DELTA (vs unity-timeline-track-authoring §5 — rediscover, never assume)
 
-**3.5 Capture the chosen director's existing state — this is pre-state (`PRE|`)**: print
-`PRE|playableAsset=<asset PATH or null>` (via `AssetDatabase.GetAssetPath(director.playableAsset)`)
-and one `PRE|binding|<i>|<track name>|<track type>|<bound object hierarchy path + component type,
-or null>` line per `GetOutputTracks()` of the CURRENT asset, via `GetGenericBinding`. Capture the
-asset PATH and each track's NAME/index even when the table looks empty — they make the undo
-journal replayable (UNDO-1 reloads the old asset by path, re-binds by name/index). Record these in
-the undo journal (§6) before any mutation.
+Bind target is **`Stage_PhysicsBall`'s PhysicsBodyAuthoring COMPONENT** (the program's first
+non-GameObject physics binding; Dynamic, Mass=1, `Targets.Target=Stage_Target` via TargetsAuthoring,
+**NO StatAuthoring** — the stat-trap layer-1 exhibit). Asset
+`Assets/Training/18-physics-angular-pid-track/AngularPIDMastery.playable`, one track
+`AngularPIDTrack`, clips: `A_World90Yaw` 0–3 World euler=(0,90,0) tracking=None /
+`B_LookAtTarget` 4–7 LookAtTarget tracking=Target strength=2 / `C_StatDriven` 8–10 MatchTarget
+tracking=Target strengthStat=SlowMo readStatFrom=Self (stat-less ball → silently ×1). Director table
+after the lesson: **16** entries, #16 = `AngularPIDTrack (PhysicsAngularPIDTrack) → Stage_PhysicsBall
+(PhysicsBodyAuthoring)`, prior 15 intact; director restored to
+`Assets/Training/01-transform-position-track/PositionMastery.playable`. vex-ee stat schema: SlowMo,
+`key=94`, guid 95a61e8c263e49dbbc6a31729d0815ce, stage default Added=25 → reads ×0.25.
 
-**Name resolution rule**: `GameObject.Find` misses inactive objects and is ambiguous on duplicates.
-Resolve the body/director by the recorded hierarchy path (walk the SubScene roots) or
-`FindObjectsByType` filtered by `scene` — never bare `Find` unless discovery confirmed uniqueness.
+## 6. UNDO + VERIFICATION
 
-## 4. CANONICAL RECIPES
+Undo per **unity-timeline-track-authoring §3** (artifact inventory 1–4, restore-director-FIRST
+order, UNDO-1/2/3/4 templates) — runtime effects (spin, PID state) exist only in play mode, nothing
+to undo there; no extras beyond the standard asset+folder+director+binding artifacts.
 
-One logical change per exec block; print the `PRE|` capture before mutating (protocol §2), save
-inside the block, verify from a fresh load (§7). Clip fields are camelCase serialized — set via
-`SerializedObject` (§2 YAML names = property paths; nested tuning = `tuning.Proportional` etc.).
-
-```csharp
-// ---- parameters (discovered in §3 / chosen with designer) ----
-var parentScenePath = "<DISCOVERED>"; var subScenePath = "<DISCOVERED>";
-var directorGoName  = "<DISCOVERED>"; var bodyGoPath = "<DISCOVERED>"; // PhysicsBodyAuthoring holder
-var assetFolder = "<CHOSEN>"; var assetPath = assetFolder + "/<Name>.playable"; var trackName = "<CHOSEN>";
-var parentScene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
-var subScene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(subScenePath, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(subScene);
-try {
-    // CAPTURE (print + journal): PRE|folderExisted=<bool> PRE|assetExisted=<bool>
-    var folderExisted = UnityEditor.AssetDatabase.IsValidFolder(assetFolder);
-    if (!folderExisted) { /* CreateFolder for each missing segment */ }
-    var timeline = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.Timeline.TimelineAsset>();
-    UnityEditor.AssetDatabase.CreateAsset(timeline, assetPath);
-    var track = timeline.CreateTrack<BovineLabs.Timeline.Physics.Authoring.PIDs.PhysicsAngularPIDTrack>(null, trackName);
-    // Pattern WORLD: settle at an absolute world rotation (no Targets needed at all)
-    var clipA = track.CreateClip<BovineLabs.Timeline.Physics.Authoring.PIDs.PhysicsAngularPIDClip>();
-    clipA.start = 0; clipA.duration = 3; clipA.displayName = "<clipName>";
-    var soA = new UnityEditor.SerializedObject((UnityEngine.Object)clipA.asset);
-    soA.FindProperty("targetMode").intValue = 2;  soA.FindProperty("trackingTarget").intValue = 0; // World, None
-    soA.FindProperty("targetRotationEuler").vector3Value = new UnityEngine.Vector3(0, 90, 0);      // DEGREES
-    soA.ApplyModifiedPropertiesWithoutUndo();
-    UnityEditor.AssetDatabase.SaveAssets();
-    // Wire the director (binding table lives in the SCENE file)
-    var director = UnityEngine.GameObject.Find(directorGoName).GetComponent<UnityEngine.Playables.PlayableDirector>();
-    // CAPTURE (print + journal) BEFORE mutating: PRE|playableAsset=... PRE|binding|... (section 3.5)
-    var body = UnityEngine.GameObject.Find(bodyGoPath).GetComponent<Unity.Physics.Authoring.PhysicsBodyAuthoring>();
-    director.playableAsset = timeline;
-    director.SetGenericBinding(track, body);   // the COMPONENT (rule 5k); the baker coerces component->entity
-    UnityEditor.EditorUtility.SetDirty(director);
-    UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-    return "OK|" + assetPath;
-} finally {
-    UnityEditor.SceneManagement.EditorSceneManager.SetActiveScene(parentScene);
-    UnityEditor.SceneManagement.EditorSceneManager.CloseScene(subScene, false);
-    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(parentScenePath, UnityEditor.SceneManagement.OpenSceneMode.Single);
-}
-```
-
-Other proven patterns (same route; values are choices, not constants): **face the target** =
-`LookAtTarget(1)` + `trackingTarget=Target(1)` (Targets slot must point at it — TargetsAuthoring,
-or retarget mid-timeline with EntityLinkTargetPatch, ordered before this track); start from
-Balanced (P10 D3 I1 Max100), raise P for urgency, then D to kill wobble; `strength=2` doubles
-output. **Ride alignment** = `MatchTarget(0)` + trackingTarget=Target; `targetRotationEuler` as a
-deliberate offset if the meshes' forward axes disagree; `MatchTargetOpposite(4)` = 180°-yawed
-(face-off). **Cower** = `FleeFromTarget(3)` — look-at the mirror point `self + (self − target)`;
-same up-righting caveat as LookAt. **Stat-scaled turning** = `strengthStat=<discovered schema>` +
-readStatFrom at an entity ACTUALLY carrying a Stat buffer WITH that key (×100 — author 200 for
-double); avoid `readStatFrom=Self` unless the body has stats. **Ending crisp**: a PID clip ending
-leaves spin — VelocityClamp, or accept the handoff.
-
-## 5. WORKED EXAMPLE (vex-ee training stage) — example environment; rediscover, never assume
-
-- Project `/home/i/GitHub/vex-ee` (`dataPath=/home/i/GitHub/vex-ee/Assets`); parent scene
-  `Assets/Scenes/Main Scene.unity`; SubScene `Assets/Scenes/Main Sub Scene.unity`. Stage (built by
-  unity-stage-foundations): `Stage_Director` (PlayableDirector + TimelineReferenceAuthoring, the
-  only director); binding target **`Stage_PhysicsBall`'s PhysicsBodyAuthoring COMPONENT** — the
-  program's first non-GameObject physics binding; Dynamic, Mass=1, `Targets.Target=Stage_Target`
-  (TargetsAuthoring), **NO StatAuthoring** (the stat-trap layer-1 exhibit).
-- Asset built: `Assets/Training/18-physics-angular-pid-track/AngularPIDMastery.playable` — one
-  track `AngularPIDTrack` (`resetOnDeactivate: 1` inherited), clips `A_World90Yaw` 0–3 World
-  euler=(0,90,0) tracking=None / `B_LookAtTarget` 4–7 LookAtTarget tracking=Target strength=2 /
-  `C_StatDriven` 8–10 MatchTarget tracking=Target strengthStat=SlowMo readStatFrom=Self — the
-  stat-trap exhibit (stat-less ball → silently ×1). Director wiring after the lesson: table **16**
-  entries, #16 = `AngularPIDTrack (PhysicsAngularPIDTrack) → Stage_PhysicsBall
-  (PhysicsBodyAuthoring)`, prior 15 intact; director restored to
-  `Assets/Training/01-transform-position-track/PositionMastery.playable`. vex-ee stat schema:
-  SlowMo, `key=94`, guid 95a61e8c263e49dbbc6a31729d0815ce, stage default Added=25 → reads ×0.25.
-  Console baseline: UnityCliConnector HTTP start, PerformanceTesting setup/cleanup,
-  TestResults.xml, lessons 08–10 `[Worker2]` EntityLinks bake errors.
-
-## 6. UNDO APPENDIX
-
-Runtime effects (spin, PID state) exist only in play mode — nothing to undo there. Artifact
-inventory for one run of §4 (vex-ee instance shown in §5):
-1. Created asset `<assetPath>` (.playable: TimelineAsset + track + clip sub-assets — `DeleteAsset`
-   removes all sub-assets with the file). 2. Possibly-created folder(s) `<assetFolder>` (only if
-   `PRE|folderExisted=false`; vex-ee: `EXPECTED:` the report never printed folder pre-existence).
-3. Mutated `director.playableAsset` (vex-ee: `EXPECTED:` pre value `PositionMastery.playable` —
-   inferred from the report's restore step; the pre-wiring value was not printed. Capture it
-   yourself per §3.5). 4. Added generic binding entry for the new track (SubScene file; vex-ee:
-   "prior 15 intact" was verified post-wiring, but the 15 entries' contents were not printed
-   pre-wiring — `EXPECTED:` only). 5. No other scene values changed — the recipe never edits the
-   body or stage objects.
-
-ORDER: restore the director FIRST, THEN delete the asset, THEN other captured scene values — an
-asset deleted while the director points at it leaves a dangling `{fileID: 0}` in the scene file.
-
-```csharp
-// UNDO-1: restore director's captured playableAsset + binding table. Runs inside the same
-// SubScene bracket as the §4 recipe (open <CAPTURED subScenePath> additive, SetActiveScene,
-// try { body below } finally { restore <CAPTURED parentScenePath> Single }).
-var director = UnityEngine.GameObject.Find("<CAPTURED directorGoName>").GetComponent<UnityEngine.Playables.PlayableDirector>();
-var myAsset = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEngine.Timeline.TimelineAsset>("<CAPTURED assetPath>");
-foreach (var tr in myAsset.GetOutputTracks()) director.ClearGenericBinding(tr); // entries I added
-// restore each CAPTURED binding (PRE|binding| lines): reload the PREVIOUS asset by captured path,
-// match tracks by name/index, re-find bound objects by captured hierarchy path, SetGenericBinding.
-director.playableAsset = null; // or LoadAssetAtPath<PlayableAsset>("<CAPTURED pre path>") - CAPTURED value, never "default"
-UnityEditor.EditorUtility.SetDirty(director);
-UnityEditor.SceneManagement.EditorSceneManager.SaveScene(subScene);
-return "UNDONE|director restored";
-```
-
-```csharp
-// UNDO-2: delete the created .playable (+ folder, only if PRE|folderExisted=false and now empty)
-var ok = UnityEditor.AssetDatabase.DeleteAsset("<CAPTURED assetPath>");
-if (!/*CAPTURED folderExisted*/false && UnityEditor.AssetDatabase.FindAssets("", new[]{ "<CAPTURED assetFolder>" }).Length == 0)
-    UnityEditor.AssetDatabase.DeleteAsset("<CAPTURED assetFolder>");
-return "UNDONE|deleted=" + ok;
-```
-
-UNDO-3: restore any other captured scene values — normally none for this family beyond UNDO-1.
-UNDO-4 (fresh-load verification, protocol §7): reload the SubScene additively, print
-`director.playableAsset` (must equal the CAPTURED pre value) and the binding table (must equal the
-captured `PRE|binding|` lines); confirm `LoadAssetAtPath<Object>(assetPath) == null`; restore the
-parent scene; `unity-cli console --filter error` clean against the project baseline.
-
-## 7. VERIFICATION PROTOCOL
-
-1. **Fresh-load asset dump** (separate exec block; in-memory state after a save is not evidence):
-   load the `.playable` at `<assetPath>`, dump every track/clip (name, start/duration, caps,
-   targetMode, trackingTarget, targetRotationEuler, strength, tuning, strengthStat, readStatFrom).
-   Expect `caps=Blending|Looping`; default tuning P=(10,10,10) D=(1,1,1) I=(2,2,2) Max=100.
-2. **Raw YAML check**: enums as ints, `targetRotationEuler` in DEGREES (radians are bake-only),
-   tuning as nested float3 blocks, `strengthStat: {fileID: 0}` when null vs asset→asset ref,
-   `m_BlendInDuration: -1` when no overlap authored.
-3. **Prerequisite checks**: bound body's MotionType/Mass; its Targets slot if any clip uses a
-   target-relative mode (the §2 fallback is silent); StatAuthoring + key if `strengthStat` is set.
-4. **Binding from a RELOADED SubScene**: expect `BIND|<i>|<trackName> (PhysicsAngularPIDTrack) ->
-   <bodyGoName> (PhysicsBodyAuthoring)` — `GetGenericBinding` returns the COMPONENT verbatim
-   (rule 5k); all prior entries intact.
-5. **Parent-scene restore** (sceneCount=1, `<parentScenePath>|loaded=True|active=True|dirty=False`)
-   and **console**: `unity-cli console --filter error` shows nothing new beyond the project's known
-   baseline (vex-ee baseline in §5). Silence is expected, not evidence (family pattern 7).
+Verify per **unity-timeline-track-authoring §4**. Track-specific read-back expectations:
+- Asset dump fields: `targetMode`, `trackingTarget`, `targetRotationEuler`, `strength`, `tuning`,
+  `strengthStat`, `readStatFrom`. Expect `caps=Blending|Looping`; default tuning P=(10,10,10)
+  D=(1,1,1) I=(2,2,2) Max=100.
+- YAML: enums as ints, `targetRotationEuler` in DEGREES (radians are bake-only), tuning as nested
+  float3 blocks, `strengthStat: {fileID: 0}` when null vs asset→asset ref, `m_BlendInDuration: -1`
+  when no overlap authored.
+- Prerequisite re-check: bound body's MotionType/Mass; its Targets slot if any clip uses a
+  target-relative mode (the §2 fallback is silent); StatAuthoring + key if `strengthStat` is set.
+- Binding: `BIND|<i>|<trackName> (PhysicsAngularPIDTrack) -> <bodyGoName> (PhysicsBodyAuthoring)`.
+  Silence is expected, not evidence (family pattern 7).

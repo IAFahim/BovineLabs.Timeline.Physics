@@ -1,0 +1,8 @@
+{
+  "name": "bovinelabs-timeline-physics",
+  "description": "Vex Unity agent skills shipped with BovineLabs Timeline Physics.",
+  "version": "1.0.2",
+  "author": {
+    "name": "BovineLabs"
+  }
+}

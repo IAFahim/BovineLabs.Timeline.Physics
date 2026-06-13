@@ -17,7 +17,11 @@
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms",
-    "BovineLabs.Timeline.Essence.Data"
+    "BovineLabs.Timeline.Essence.Data",
+    "UnityCliConnector.Editor",
+    "BovineLabs.Timeline.Core.Editor",
+    "Unity.Physics.Custom",
+    "Unity.Physics.Hybrid"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [

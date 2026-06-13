@@ -33,5 +33,10 @@
     "id": "unity-track-physics-linear-pid",
     "displayName": "Track Physics Linear Pid",
     "description": "Master of PhysicsLinearPIDTrack + PhysicsLinearPIDClip (package BovineLabs.Timeline.Physics) — a physical position motor via PendingForce with five target modes, the InitialLocal per-activation capture trap, offset-dependent fallback self-chase. Portable to any project containing the package; worked example from vex-ee. Use when a designer asks \"make this body physically fly to / hover at / follow / flee a point\"."
+  },
+  {
+    "id": "unity-track-stateful-trigger",
+    "displayName": "Track Stateful Trigger",
+    "description": "Master of StatefulTriggerTrack + PhysicsTriggerInstantiateClip (package BovineLabs.Timeline.Physics, ns BovineLabs.Timeline.Physics.Authoring) — the trigger-spawn track. Bind the track to a trigger SOURCE's StatefulTriggerEventAuthoring; on the chosen Enter/Stay/Exit edge the clip spawns an ObjectDefinition payload at/aimed-at the contacted entity, with a targetLinkOverride (Essence Link) that resolves the contacted thing's Essence as the payload's Target. Owns the Raise-Trigger-Events + overlapping-collision-filter SOURCE setup that silently fails. Portable to any project containing the package; worked example (Cube Damage TRA) from vex-ee. Use when a designer says \"when X enters/touches Y, spawn/do Z to Y\"."
   }
 ]

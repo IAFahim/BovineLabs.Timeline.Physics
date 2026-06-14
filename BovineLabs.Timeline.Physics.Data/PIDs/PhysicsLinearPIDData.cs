@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Physics
         /// </summary>
         public float3 TargetOffset;
 
-        public float Strength; // NEW: output force multiplier, default 1
+        public float Strength;
         public StatStrengthConfig StrengthStat;
     }
 

@@ -50,11 +50,10 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
             _driver.UpdateLookups(ref state);
             _stateLookup.Update(ref state);
 
-            state.Dependency = new ResetStateTrackJob<PhysicsVelocityState, ActiveVelocity>
+            state.Dependency = new ResetStateAlwaysTrackJob<PhysicsVelocityState>
             {
                 TrackBindingTypeHandle = _driver.BindingHandle,
                 StateLookup = _stateLookup,
-                ActiveLookup = _driver.ActiveLookup,
                 ResetValue = new PhysicsVelocityState { Fired = false }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 

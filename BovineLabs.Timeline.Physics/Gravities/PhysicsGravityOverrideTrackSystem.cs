@@ -41,8 +41,8 @@ namespace BovineLabs.Timeline.Physics.Gravities
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsGravityOverrideAnimated>()
-                .WithNone<TimelineActive>()
+                .WithAll<TrackBinding, ClipActivePrevious, PhysicsGravityOverrideAnimated>()
+                .WithNone<ClipActive>()
                 .Build();
         }
 
@@ -78,13 +78,14 @@ namespace BovineLabs.Timeline.Physics.Gravities
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveGravityOverride>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<PhysicsGravityOverrideData, ActiveGravityOverride>
             {
                 TrackBindingTypeHandle = bindingType,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {

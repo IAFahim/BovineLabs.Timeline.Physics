@@ -42,8 +42,8 @@ namespace BovineLabs.Timeline.Physics.Filters
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsFilterOverrideAnimated>()
-                .WithNone<TimelineActive>()
+                .WithAll<TrackBinding, ClipActivePrevious, PhysicsFilterOverrideAnimated>()
+                .WithNone<ClipActive>()
                 .Build();
         }
 
@@ -78,13 +78,14 @@ namespace BovineLabs.Timeline.Physics.Filters
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveFilterOverride>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<PhysicsFilterOverrideData, ActiveFilterOverride>
             {
                 TrackBindingTypeHandle = bindingType,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {

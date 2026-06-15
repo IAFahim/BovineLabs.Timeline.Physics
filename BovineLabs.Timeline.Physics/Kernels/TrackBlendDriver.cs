@@ -39,8 +39,8 @@ namespace BovineLabs.Timeline.Physics.Kernels
             }
 
             using (var stale = new EntityQueryBuilder(Allocator.Temp)
-                       .WithAll<TrackBinding, TimelineActivePrevious, TAnimated>()
-                       .WithNone<TimelineActive>())
+                       .WithAll<TrackBinding, ClipActivePrevious, TAnimated>()
+                       .WithNone<ClipActive>())
             {
                 _disableStaleQuery = state.GetEntityQuery(stale);
             }
@@ -70,13 +70,14 @@ namespace BovineLabs.Timeline.Physics.Kernels
                 AnimatedHandle = _animatedHandle
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<TActive>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<TData, TActive>
             {
                 TrackBindingTypeHandle = _bindingHandle,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob<TData, TActive, TMixer>
             {

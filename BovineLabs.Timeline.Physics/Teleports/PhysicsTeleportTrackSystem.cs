@@ -41,8 +41,8 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsTeleportAnimated>()
-                .WithNone<TimelineActive>()
+                .WithAll<TrackBinding, ClipActivePrevious, PhysicsTeleportAnimated>()
+                .WithNone<ClipActive>()
                 .Build();
         }
 
@@ -63,11 +63,10 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsTeleportState, ActiveTeleport>
+            state.Dependency = new ResetStateAlwaysTrackJob<PhysicsTeleportState>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ActiveLookup = _activeLookup,
                 ResetValue = new PhysicsTeleportState { Fired = false }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
@@ -77,13 +76,14 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveTeleport>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<PhysicsTeleportData, ActiveTeleport>
             {
                 TrackBindingTypeHandle = bindingType,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {

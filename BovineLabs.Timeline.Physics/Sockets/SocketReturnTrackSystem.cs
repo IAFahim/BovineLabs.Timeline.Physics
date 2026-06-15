@@ -41,8 +41,8 @@ namespace BovineLabs.Timeline.Physics.Sockets
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, SocketReturnAnimated>()
-                .WithNone<TimelineActive>()
+                .WithAll<TrackBinding, ClipActivePrevious, SocketReturnAnimated>()
+                .WithNone<ClipActive>()
                 .Build();
         }
 
@@ -62,11 +62,10 @@ namespace BovineLabs.Timeline.Physics.Sockets
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<SocketReturnState, ActiveSocketReturn>
+            state.Dependency = new ResetStateAlwaysTrackJob<SocketReturnState>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ActiveLookup = _activeLookup,
                 ResetValue = default
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
@@ -76,13 +75,14 @@ namespace BovineLabs.Timeline.Physics.Sockets
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveSocketReturn>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<SocketReturnData, ActiveSocketReturn>
             {
                 TrackBindingTypeHandle = bindingType,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {

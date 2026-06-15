@@ -42,8 +42,8 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 .Build();
 
             _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, TimelineActivePrevious, PhysicsRicochetAnimated>()
-                .WithNone<TimelineActive>()
+                .WithAll<TrackBinding, ClipActivePrevious, PhysicsRicochetAnimated>()
+                .WithNone<ClipActive>()
                 .Build();
         }
 
@@ -64,11 +64,10 @@ namespace BovineLabs.Timeline.Physics.Ricochets
             var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsRicochetState, ActiveRicochet>
+            state.Dependency = new ResetStateAlwaysTrackJob<PhysicsRicochetState>
             {
                 TrackBindingTypeHandle = bindingType,
                 StateLookup = _stateLookup,
-                ActiveLookup = _activeLookup,
                 ResetValue = new PhysicsRicochetState { Fired = false }
             }.ScheduleParallel(_resetQuery, state.Dependency);
 
@@ -78,13 +77,14 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 AnimatedTypeHandle = animatedType
             }.ScheduleParallel(_prepareQuery, state.Dependency);
 
-            state.Dependency = new DisableStaleTrackJob<ActiveRicochet>
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentTrackJob<PhysicsRicochetData, ActiveRicochet>
             {
                 TrackBindingTypeHandle = bindingType,
+                BlendData = blendData,
                 ActiveLookup = _activeLookup
             }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
 
             state.Dependency = new WriteActiveJob
             {

@@ -33,6 +33,11 @@
       "displayName": "Physics",
       "description": "Physics timeline sample content for validating velocity and stateful trigger tracks.",
       "path": "Sample~/Physics"
+    },
+    {
+      "displayName": "Physics Timeline Gallery",
+      "description": "Gallery of all 12 DOTS physics timeline tracks (Force, Velocity, Drag, Gravity/Kinematic/Filter/VelocityClamp/Ricochet overrides, Linear/Angular PID, Teleport, Stateful Trigger), each driving a Dynamic body on a static ground with primitive lanes and TextMeshPro labels.",
+      "path": "Sample~/Physics Timeline Gallery"
     }
   ],
   "documentationUrl": "Documentation~/com.bovinelabs.timeline.physics.md",

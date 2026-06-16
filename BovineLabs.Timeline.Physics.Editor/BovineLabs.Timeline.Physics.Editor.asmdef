@@ -21,7 +21,9 @@
     "UnityCliConnector.Editor",
     "BovineLabs.Timeline.Core.Editor",
     "Unity.Physics.Custom",
-    "Unity.Physics.Hybrid"
+    "Unity.Physics.Hybrid",
+    "Unity.Timeline",
+    "Unity.Timeline.Editor"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [

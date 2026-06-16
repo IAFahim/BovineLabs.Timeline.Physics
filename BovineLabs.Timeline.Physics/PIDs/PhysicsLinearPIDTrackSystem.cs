@@ -12,7 +12,7 @@ namespace BovineLabs.Timeline.Physics.PIDs
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
-                       WorldSystemFilterFlags.ServerSimulation)]
+                       WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
     public partial struct PhysicsLinearPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsLinearPIDData, PhysicsLinearPIDAnimated> _blendImpl;

@@ -12,7 +12,7 @@ namespace BovineLabs.Timeline.Physics.Forces
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
-                       WorldSystemFilterFlags.ServerSimulation)]
+                       WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
     public partial struct PhysicsForceTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsForceData, PhysicsForceAnimated> _blendImpl;

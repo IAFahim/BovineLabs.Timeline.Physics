@@ -30,7 +30,7 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
                     if (session.Error != null) return session.Error;
 
                     var bodies = new List<object>();
-                    var all = Object.FindObjectsByType<PhysicsBodyAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+                    var all = Object.FindObjectsByType<PhysicsBodyAuthoring>(FindObjectsInactive.Include);
                     foreach (var body in all)
                     {
                         if (body.gameObject.scene != session.Subscene) continue;

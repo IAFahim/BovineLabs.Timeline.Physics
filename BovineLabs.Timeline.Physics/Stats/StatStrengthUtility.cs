@@ -35,7 +35,7 @@ namespace BovineLabs.Timeline.Physics.Stats
             if (!statLookup.TryGetBuffer(statEntity, out var stats))
                 return 1f;
 
-            return stats.AsMap().GetValueFloat(config.Stat);
+            return stats.AsMap().GetValueFloat(config.Stat, 1f);
         }
     }
 }

@@ -50,6 +50,7 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
                 // outside it (so the per-shape ensure_component sessions don't nest).
                 var shapePaths = new List<string>();
                 var notOk = new List<string>();
+                var compound = new List<string>();
                 using (var session = SubSceneSession.Open(subscene))
                 {
                     if (session.Error != null) return session.Error;
@@ -63,16 +64,35 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
                         return ToolEnvelope.Error("MISSING_PREREQUISITE",
                             $"'{objPath}' has no PhysicsShapeAuthoring collider — a trigger source needs at least one.");
 
+                    var perPath = new Dictionary<string, int>();
                     foreach (var shape in shapes)
                     {
                         string path = Hierarchy.PathOf(shape.gameObject);
-                        shapePaths.Add(path);
+                        perPath[path] = perPath.TryGetValue(path, out var c) ? c + 1 : 1;
+                        if (!shapePaths.Contains(path)) shapePaths.Add(path);
                         var so = new SerializedObject(shape);
                         bool ov = so.FindProperty(OverridePath)?.boolValue ?? false;
                         int val = so.FindProperty(ValuePath)?.intValue ?? -1;
-                        if (!(ov && val == wantValue)) notOk.Add(path);
+                        if (!(ov && val == wantValue) && !notOk.Contains(path)) notOk.Add(path);
                     }
+
+                    // Only a compound node that still NEEDS a fix is ambiguous; an already-correct
+                    // compound node must fall through to the Satisfied return below (stay idempotent).
+                    foreach (var kv in perPath)
+                        if (kv.Value > 1 && notOk.Contains(kv.Key)) compound.Add(kv.Key);
                 }
+
+                // ensure_component resolves a component by hierarchy path and would only fix the FIRST shape
+                // when several resolve to the same path — whether that is a compound node (multiple shapes on
+                // one GameObject) OR duplicate-named sibling objects. Both are unfixable by path delegation,
+                // so fail loudly instead of reporting a half-fix as success.
+                if (compound.Count > 0)
+                    return ToolEnvelope.Error("AMBIGUOUS",
+                        $"Multiple PhysicsShapeAuthoring under '{objPath}' resolve to the same hierarchy path ({string.Join(", ", compound)}) — " +
+                        "either a compound node (several shapes on one GameObject) or duplicate-named sibling objects. This tool resolves " +
+                        "shapes by path and cannot target them individually; give them distinct names / split onto separate objects, or set " +
+                        "Raise Trigger Events on them manually.",
+                        new { ambiguousPaths = compound.ToArray() });
 
                 if (notOk.Count == 0)
                     return EnsureResult.Satisfied($"'{objPath}' already raises trigger events on {shapePaths.Count} shape(s).",

@@ -32,6 +32,17 @@ namespace BovineLabs.Timeline.Physics.Authoring.Chains
                 var count = authoring.links != null ? authoring.links.Length : 0;
                 if (count == 0) return;
 
+                // A null element in links is dereferenced below (InverseTransformPoint/.position) and would
+                // throw an NRE at bake; fail loud and skip so an unassigned slot is a visible authoring error.
+                for (var i = 0; i < count; i++)
+                {
+                    if (authoring.links[i] == null)
+                    {
+                        UnityEngine.Debug.LogError($"ChainWeaponAuthoring on '{authoring.name}': links[{i}] is unassigned; the chain will not bake.", authoring);
+                        return;
+                    }
+                }
+
                 var root = GetEntity(TransformUsageFlags.Dynamic);
                 AddComponent(root, new ChainRoot { LinkCount = count });
                 AddComponent<ActiveChainFollow>(root);

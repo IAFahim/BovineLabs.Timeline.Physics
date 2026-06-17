@@ -14,6 +14,7 @@
     "Unity.Mathematics",
     "Unity.Physics",
     "Unity.Transforms",
+    "Unity.Splines",
     "BovineLabs.Essence.Data"
   ],
   "optionalUnityReferences": [],

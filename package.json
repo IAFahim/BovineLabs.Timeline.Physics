@@ -38,6 +38,11 @@
       "displayName": "Physics Timeline Gallery",
       "description": "Gallery of all 12 DOTS physics timeline tracks (Force, Velocity, Drag, Gravity/Kinematic/Filter/VelocityClamp/Ricochet overrides, Linear/Angular PID, Teleport, Stateful Trigger), each driving a Dynamic body on a static ground with primitive lanes and TextMeshPro labels.",
       "path": "Sample~/Physics Timeline Gallery"
+    },
+    {
+      "displayName": "Physics Custom Showcase (Non-Timeline)",
+      "description": "Raw com.unity.physics.custom playground (NO timeline): an editor builder that fills the active scene's SubScene with labelled stations for every shape, all three motion types, friction/restitution materials, collision-response modes, and joints (ball-and-socket pendulum, edge-hinged door, hanging distance chain). Run Tools > BovineLabs > Samples > Build Physics Custom Showcase.",
+      "path": "Sample~/Physics Custom Showcase"
     }
   ],
   "documentationUrl": "Documentation~/com.bovinelabs.timeline.physics.md",

@@ -235,7 +235,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                     }
                 }
 
-                // --- Actually Fired Visualizer ---
                 var drawColor = new Color(0f, 0.8f, 1f, 0.8f);
                 TriggerGizmoUtility.DrawActuallyFired(
                     triggerEntity, config.EventState, pos, ref Drawer,

@@ -105,10 +105,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
 
-                // Ring at the entity's feet (approximate base, y - 0.5 or just center if not known)
                 var groundPos = pos - new float3(0f, 0.5f, 0f);
                 Drawer.Circle(groundPos, new float3(0f, 0.7f, 0f), RingColor);
-                Drawer.Circle(groundPos, new float3(0f, 0.65f, 0f), RingColor); // double ring to make it bright
+                Drawer.Circle(groundPos, new float3(0f, 0.65f, 0f), RingColor);
 
                 Drawer.Text32(pos + new float3(0f, 0.4f, 0f), $"Belongs: 0x{d.BelongsToOverride:X8}", TextColor, 10f);
                 Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"Collides: 0x{d.CollidesWithOverride:X8}", TextColor,

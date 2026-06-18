@@ -94,7 +94,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             {
                 if (triggers.IsEmpty) return;
 
-                var origin = ltw.Position + new float3(0f, 1f, 0f); // Offset slightly up
+                var origin = ltw.Position + new float3(0f, 1f, 0f);
 
                 FixedString128Bytes label = default;
                 label.Append(Title);

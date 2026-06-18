@@ -194,7 +194,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var currentPos = origin;
                 var currentDir = math.normalize(direction);
 
-                // Draw Origin
                 Drawer.Sphere(origin, 0.15f, Segments, OriginColor);
                 Drawer.Text32(origin + new float3(0f, 0.3f, 0f), "Origin", TextColor, 10f);
 
@@ -209,7 +208,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     if (!stepResult.HitFound)
                     {
-                        // No hit, draw line to end of remaining distance
                         var endPos = currentPos + currentDir * remainingDistance;
                         Drawer.Line(currentPos, endPos, rayColor);
                         Drawer.Text32(endPos + new float3(0f, 0.2f, 0f), "Max Range", new Color(0.6f, 0.6f, 0.6f, 0.8f),
@@ -221,18 +219,15 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     if (stepResult.IsTerminal)
                     {
-                        // Terminal hit
                         Drawer.Line(currentPos, stepResult.HitPosition, rayColor);
                         Drawer.Sphere(stepResult.HitPosition, 0.2f, Segments, TerminalColor);
 
-                        // Draw hit normal
                         Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.5f,
                             new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.5f));
 
                         Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.4f, 0f), "Terminal Hit", TerminalColor,
                             12f);
 
-                        // Optional route visualization
                         if (d.HitConditionKey != 0)
                         {
                             var routeTarget = ResolveTarget(entity, d.HitRouteTo, targets);
@@ -251,15 +246,12 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     if (stepResult.IsRicochet)
                     {
-                        // Ricochet hit
                         Drawer.Line(currentPos, stepResult.HitPosition, rayColor);
                         Drawer.Sphere(stepResult.HitPosition, 0.1f, Segments, rayColor);
 
-                        // Draw bounce index
                         Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), $"Bounce {bounceCount + 1}",
                             rayColor, 10f);
 
-                        // Draw reflection normal faint
                         Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.4f,
                             new Color(0.8f, 0.8f, 0.8f, 0.3f));
 

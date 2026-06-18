@@ -109,10 +109,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
                 in PhysicsTriggerConditionData config)
             {
-                // We're omitting the accurate isFirstFrame check for the debug visualizer for simplicity since it's just visual.
-                // Or we can query ClipActivePrevious. Let's just pass `true` to isFirstFrame so it draws Enter/Stay.
                 var isFirstFrame =
-                    false; // By default false, StatefulEventMatching will still work for Stay/Exit. Enter requires isFirstFrame.
+                    false;
 
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var triggerLtw))
@@ -122,7 +120,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 Drawer.Text32(pos + new float3(0f, 0.5f, 0f), $"-> {config.Condition}", TextColor, 10f);
 
-                // Draw chevron/marker for State
                 var markerSize = 0.5f;
                 if (config.EventState == StatefulEventState.Enter)
                 {
@@ -139,7 +136,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                     Drawer.Line(pos + new float3(-markerSize, 0, 0), pos + new float3(markerSize, 0, 0), RouteColor);
                 }
 
-                // --- Actually Fired Visualizer ---
                 var drawColor = new Color(1f, 0.4f, 0f, 0.8f);
                 TriggerGizmoUtility.DrawActuallyFired(
                     triggerEntity, config.EventState, pos, ref Drawer,

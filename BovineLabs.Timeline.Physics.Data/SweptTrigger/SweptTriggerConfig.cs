@@ -1,6 +1,7 @@
 namespace BovineLabs.Timeline.Physics
 {
     using Unity.Entities;
+    using Unity.Mathematics;
     using Unity.Physics;
 
     /// <summary>
@@ -22,5 +23,11 @@ namespace BovineLabs.Timeline.Physics
         /// better coverage for very fast swings (rotation is interpolated, position is the cast segment).
         /// </summary>
         public int SubSteps;
+
+        // Local-space capsule geometry mirror of <see cref="Collider"/>, kept so debug drawers (and any
+        // gameplay introspection) can render/reason about the swept volume without dereferencing the blob.
+        public float3 Vertex0;
+        public float3 Vertex1;
+        public float Radius;
     }
 }

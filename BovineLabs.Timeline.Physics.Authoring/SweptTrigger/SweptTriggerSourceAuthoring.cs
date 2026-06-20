@@ -89,6 +89,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     Collider = blob,
                     SubSteps = math.max(1, authoring.subSteps),
+                    Vertex0 = geom.Vertex0,
+                    Vertex1 = geom.Vertex1,
+                    Radius = r,
                 });
                 this.AddComponent(entity, default(SweptTriggerState));
                 this.AddBuffer<SweptTriggerHit>(entity);

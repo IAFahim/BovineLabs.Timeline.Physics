@@ -105,7 +105,24 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
 
                 if (active && config.Collider.IsCreated)
                 {
-                    // First active frame sweeps from the current pose (no stale start); otherwise from last frame.
+                    // (1) CURRENT-OVERLAP pass. A zero/near-zero ColliderCast does not report a body the volume is
+                    // already penetrating, so a resting / slow / first-activation overlap would be missed. A
+                    // distance query at the current pose catches those (MaxDistance 0 = touching/penetrating).
+                    var dist = new NativeList<DistanceHit>(16, Allocator.Temp);
+                    var dInput = new ColliderDistanceInput(config.Collider, 0f, new RigidTransform(curRot, curPos));
+                    if (this.CollisionWorld.CalculateDistance(dInput, ref dist))
+                    {
+                        for (var h = 0; h < dist.Length; h++)
+                        {
+                            Accumulate(ref current, dist[h].Entity, entity);
+                        }
+                    }
+
+                    dist.Dispose();
+
+                    // (2) SWEPT pass prev->cur. ColliderCast translates the collider with a FIXED orientation (it
+                    // cannot rotate it mid-cast), so for a rotating blade we sub-step and orient each sub-segment
+                    // at its own midpoint. More sub-steps = finer rotation coverage for very fast swings.
                     var startPos = state.WasActive == 1 ? state.PrevPosition : curPos;
                     var startRot = state.WasActive == 1 ? state.PrevRotation : curRot;
                     var steps = math.max(1, config.SubSteps);
@@ -117,7 +134,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                         var t1 = (float)(s + 1) / steps;
                         var p0 = math.lerp(startPos, curPos, t0);
                         var p1 = math.lerp(startPos, curPos, t1);
-                        var rot = math.slerp(startRot, curRot, t1);
+                        var rot = math.slerp(startRot, curRot, (t0 + t1) * 0.5f);
 
                         castHits.Clear();
                         var input = new ColliderCastInput(config.Collider, p0, p1, rot);
@@ -125,16 +142,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                         {
                             for (var h = 0; h < castHits.Length; h++)
                             {
-                                var e = castHits[h].Entity;
-                                if (e == Entity.Null || e == entity)
-                                {
-                                    continue;
-                                }
-
-                                if (!Contains(in current, e))
-                                {
-                                    current.Add(e);
-                                }
+                                Accumulate(ref current, castHits[h].Entity, entity);
                             }
                         }
                     }
@@ -181,6 +189,19 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                 state.WasActive = (byte)(active ? 1 : 0);
 
                 current.Dispose();
+            }
+
+            private static void Accumulate(ref NativeList<Entity> list, Entity e, Entity self)
+            {
+                if (e == Entity.Null || e == self)
+                {
+                    return;
+                }
+
+                if (!Contains(in list, e))
+                {
+                    list.Add(e);
+                }
             }
 
             private static bool Contains(in NativeList<Entity> list, Entity e)

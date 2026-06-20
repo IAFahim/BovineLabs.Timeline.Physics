@@ -1,5 +1,6 @@
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
+using Unity.Properties;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -13,7 +14,7 @@ namespace BovineLabs.Timeline.Physics
     public struct PhysicsFilterOverrideAnimated : IAnimatedComponent<PhysicsFilterOverrideData>
     {
         public PhysicsFilterOverrideData AuthoredData;
-        public PhysicsFilterOverrideData Value { get; set; }
+        [CreateProperty] public PhysicsFilterOverrideData Value { get; set; }
     }
 
     public struct ActiveFilterOverride : IComponentData, IEnableableComponent

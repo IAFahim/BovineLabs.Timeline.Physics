@@ -1,5 +1,6 @@
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
+using Unity.Properties;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -13,7 +14,7 @@ namespace BovineLabs.Timeline.Physics
     public struct PhysicsKinematicOverrideAnimated : IAnimatedComponent<PhysicsKinematicOverrideData>
     {
         public PhysicsKinematicOverrideData AuthoredData;
-        public PhysicsKinematicOverrideData Value { get; set; }
+        [CreateProperty] public PhysicsKinematicOverrideData Value { get; set; }
     }
 
     public struct ActiveKinematicOverride : IComponentData, IEnableableComponent

@@ -1,6 +1,7 @@
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Properties;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -13,7 +14,7 @@ namespace BovineLabs.Timeline.Physics
     public struct PhysicsGravityOverrideAnimated : IAnimatedComponent<PhysicsGravityOverrideData>
     {
         public PhysicsGravityOverrideData AuthoredData;
-        public PhysicsGravityOverrideData Value { get; set; }
+        [CreateProperty] public PhysicsGravityOverrideData Value { get; set; }
     }
 
     public struct ActiveGravityOverride : IComponentData, IEnableableComponent

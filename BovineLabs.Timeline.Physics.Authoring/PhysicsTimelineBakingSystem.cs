@@ -17,20 +17,14 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
+            // Continuous-force families (PID/Force/Velocity/Drag) also need the shared accumulation buffers.
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsLinearPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveLinearPid>(target))
-                {
-                    ecb.AddComponent<ActiveLinearPid>(target);
-                    ecb.SetComponentEnabled<ActiveLinearPid>(target, false);
-                    ecb.AddComponent<PhysicsLinearPIDState>(target);
-                }
-
+                EnsureActiveState<ActiveLinearPid, PhysicsLinearPIDState>(ref ecb, target, em);
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
@@ -40,14 +34,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveAngularPid>(target))
-                {
-                    ecb.AddComponent<ActiveAngularPid>(target);
-                    ecb.SetComponentEnabled<ActiveAngularPid>(target, false);
-                    ecb.AddComponent<PhysicsAngularPIDState>(target);
-                }
-
+                EnsureActiveState<ActiveAngularPid, PhysicsAngularPIDState>(ref ecb, target, em);
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
@@ -57,16 +44,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveForce>(target))
-                {
-                    ecb.AddComponent<ActiveForce>(target);
-                    ecb.SetComponentEnabled<ActiveForce>(target, false);
-                    ecb.AddComponent<PhysicsForceState>(target);
-                }
-
+                EnsureActiveState<ActiveForce, PhysicsForceState>(ref ecb, target, em);
                 if (!em.HasComponent<PhysicsForceRandom>(target)) ecb.AddComponent<PhysicsForceRandom>(target);
-
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
@@ -76,14 +55,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveVelocity>(target))
-                {
-                    ecb.AddComponent<ActiveVelocity>(target);
-                    ecb.SetComponentEnabled<ActiveVelocity>(target, false);
-                    ecb.AddComponent<PhysicsVelocityState>(target);
-                }
-
+                EnsureActiveState<ActiveVelocity, PhysicsVelocityState>(ref ecb, target, em);
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
@@ -93,29 +65,18 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveDrag>(target))
-                {
-                    ecb.AddComponent<ActiveDrag>(target);
-                    ecb.SetComponentEnabled<ActiveDrag>(target, false);
-                }
-
+                EnsureActive<ActiveDrag>(ref ecb, target, em);
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
+            // Stateful single-component families just need the disabled Active + State pair.
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsRicochetAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveRicochet>(target))
-                {
-                    ecb.AddComponent<ActiveRicochet>(target);
-                    ecb.SetComponentEnabled<ActiveRicochet>(target, false);
-                    ecb.AddComponent<PhysicsRicochetState>(target);
-                }
+                EnsureActiveState<ActiveRicochet, PhysicsRicochetState>(ref ecb, target, em);
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
@@ -124,13 +85,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveFilterOverride>(target))
-                {
-                    ecb.AddComponent<ActiveFilterOverride>(target);
-                    ecb.SetComponentEnabled<ActiveFilterOverride>(target, false);
-                    ecb.AddComponent<PhysicsFilterOverrideState>(target);
-                }
+                EnsureActiveState<ActiveFilterOverride, PhysicsFilterOverrideState>(ref ecb, target, em);
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
@@ -139,13 +94,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveGravityOverride>(target))
-                {
-                    ecb.AddComponent<ActiveGravityOverride>(target);
-                    ecb.SetComponentEnabled<ActiveGravityOverride>(target, false);
-                    ecb.AddComponent<PhysicsGravityOverrideState>(target);
-                }
+                EnsureActiveState<ActiveGravityOverride, PhysicsGravityOverrideState>(ref ecb, target, em);
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
@@ -154,13 +103,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveVelocityClamp>(target))
-                {
-                    ecb.AddComponent<ActiveVelocityClamp>(target);
-                    ecb.SetComponentEnabled<ActiveVelocityClamp>(target, false);
-                    ecb.AddComponent<PhysicsVelocityClampState>(target);
-                }
+                EnsureActiveState<ActiveVelocityClamp, PhysicsVelocityClampState>(ref ecb, target, em);
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
@@ -169,19 +112,34 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 var target = binding.ValueRO.Value;
                 if (target == Entity.Null) continue;
-
-                if (!em.HasComponent<ActiveKinematicOverride>(target))
-                {
-                    ecb.AddComponent<ActiveKinematicOverride>(target);
-                    ecb.SetComponentEnabled<ActiveKinematicOverride>(target, false);
-                    ecb.AddComponent<PhysicsKinematicOverrideState>(target);
-                }
+                EnsureActiveState<ActiveKinematicOverride, PhysicsKinematicOverrideState>(ref ecb, target, em);
             }
 
             ecb.Playback(em);
             ecb.Dispose();
 
             queuedBuffers.Dispose();
+        }
+
+        // Adds a disabled Active enableable component (+ its companion State) so the runtime track
+        // system has somewhere to write, without enabling it at bake time.
+        private static void EnsureActiveState<TActive, TState>(ref EntityCommandBuffer ecb, Entity target, EntityManager em)
+            where TActive : unmanaged, IComponentData, IEnableableComponent
+            where TState : unmanaged, IComponentData
+        {
+            if (em.HasComponent<TActive>(target)) return;
+            ecb.AddComponent<TActive>(target);
+            ecb.SetComponentEnabled<TActive>(target, false);
+            ecb.AddComponent<TState>(target);
+        }
+
+        // Drag has no companion State component — just the disabled Active marker.
+        private static void EnsureActive<TActive>(ref EntityCommandBuffer ecb, Entity target, EntityManager em)
+            where TActive : unmanaged, IComponentData, IEnableableComponent
+        {
+            if (em.HasComponent<TActive>(target)) return;
+            ecb.AddComponent<TActive>(target);
+            ecb.SetComponentEnabled<TActive>(target, false);
         }
 
         private static void EnsureAccumulationBuffers(ref EntityCommandBuffer ecb, Entity target, EntityManager em,

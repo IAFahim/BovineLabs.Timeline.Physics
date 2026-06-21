@@ -19,6 +19,7 @@
     "Unity.Physics",
     "Unity.Transforms",
     "Unity.Entities.Hybrid",
+    "Unity.Splines",
     "BovineLabs.Timeline.EntityLinks",
     "BovineLabs.Timeline.EntityLinks.Data",
     "BovineLabs.Essence.Data",

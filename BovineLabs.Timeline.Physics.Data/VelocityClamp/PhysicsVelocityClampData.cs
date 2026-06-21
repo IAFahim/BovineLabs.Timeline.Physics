@@ -1,6 +1,7 @@
 using BovineLabs.Timeline.Data;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Properties;
 
 namespace BovineLabs.Timeline.Physics
 {
@@ -13,7 +14,7 @@ namespace BovineLabs.Timeline.Physics
     public struct PhysicsVelocityClampAnimated : IAnimatedComponent<PhysicsVelocityClampData>
     {
         public PhysicsVelocityClampData AuthoredData;
-        public PhysicsVelocityClampData Value { get; set; }
+        [CreateProperty] public PhysicsVelocityClampData Value { get; set; }
     }
 
     public struct ActiveVelocityClamp : IComponentData, IEnableableComponent

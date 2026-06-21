@@ -2,6 +2,7 @@
 
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
+using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Quill;
 using BovineLabs.Timeline.Core.Debug;
@@ -60,29 +61,57 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.RequireForUpdate(_query);
         }
 
-        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerInstantiateGizmoSystem>(
-                    ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
+
+            // Resolve each spawned prefab's name (ObjectId -> prefab entity -> GameObject name) on the main thread —
+            // GetName trips the EntityManager safety handle inside a job. Designers read names, not raw ObjectIds.
+            // ponytail: names are editor/dev-only; unresolved ids fall back to "ID:n" in the job.
+            var names = new NativeHashMap<ObjectId, FixedString64Bytes>(16, Allocator.TempJob);
+            if (SystemAPI.TryGetSingleton<ObjectDefinitionRegistry>(out var registry))
+            {
+                foreach (var config in SystemAPI.Query<RefRO<PhysicsTriggerInstantiateData>>().WithAll<TrackBinding, ClipActive>())
+                {
+                    var id = config.ValueRO.ObjectId;
+                    if (names.ContainsKey(id))
+                        continue;
+
+                    if (registry.TryGetValue(id, out var prefab) && state.EntityManager.Exists(prefab))
+                    {
+                        state.EntityManager.GetName(prefab, out FixedString64Bytes name);
+                        names.Add(id, name);
+                    }
+                }
+            }
+
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 GhostColor = TriggerInstantiateDebugSystem.GhostColor.Data,
                 TextColor = TriggerInstantiateDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
                 LocalTransformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true),
                 ParentLookup = SystemAPI.GetComponentLookup<Parent>(true),
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
-                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
+                CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true),
+                Names = names
             }.ScheduleParallel(_query, state.Dependency);
+
+            names.Dispose(state.Dependency);
         }
 
         [BurstCompile]
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color GhostColor;
             public Color TextColor;
 
@@ -99,6 +128,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
+            [ReadOnly] public NativeHashMap<ObjectId, FixedString64Bytes> Names;
 
             public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
                 in PhysicsTriggerInstantiateData config)
@@ -108,27 +138,40 @@ namespace BovineLabs.Timeline.Physics.Debug
                     return;
 
                 var pos = ltw.Position;
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                if (config.PositionMode == PhysicsTriggerPositionMode.MatchSelf)
+                // Far: what the system does — the quiet spawn marker (mirrors the Force gizmo's 0.1 sphere).
+                Drawer.Sphere(pos, 0.1f, 8, GhostColor);
+
+                if (tier == DebugTier.Mid)
+                    Drawer.Text32(pos + new float3(0f, 0.3f, 0f), (FixedString32Bytes)"Spawn", TextColor, 10f);
+
+                if (tier == DebugTier.Close)
                 {
-                    Drawer.Arrow(pos, new float3(1f, 0f, 0f), new Color(1f, 0f, 0f, GhostColor.a));
-                    Drawer.Arrow(pos, new float3(0f, 1f, 0f), new Color(0f, 1f, 0f, GhostColor.a));
-                    Drawer.Arrow(pos, new float3(0f, 0f, 1f), new Color(0f, 0f, 1f, GhostColor.a));
+                    // Close: the prefab name, when it fires, and where it lands.
+                    var spawn = Names.TryGetValue(config.ObjectId, out var nm)
+                        ? nm
+                        : (FixedString64Bytes)config.ObjectId.ToFixedString();
+                    var placement = config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity
+                        ? (FixedString32Bytes)" @ other"
+                        : config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint
+                            ? (FixedString32Bytes)" @ contact"
+                            : default;
+
+                    FixedString128Bytes text = default;
+                    text.Append(spawn);
+                    text.Append((FixedString64Bytes)$"\non {config.EventState}{placement}");
+                    Drawer.Text128(pos + new float3(0f, 0.3f, 0f), text, TextColor, 10f);
                 }
 
-                Drawer.Text32(pos + new float3(0f, 0.4f, 0f), $"Spawn: {config.ObjectId.ID}", TextColor, 10f);
-                Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"on {config.EventState}", TextColor, 10f);
-
-                if (config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity)
-                    Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ other", TextColor, 10f);
-                else if (config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint)
-                    Drawer.Text32(pos + new float3(0f, -0.2f, 0f), "spawn @ contact", TextColor, 10f);
-
-                // --- Actually Fired Visualizer ---
-                var drawColor = new Color(0f, 1f, 0f, 0.8f);
-                TriggerGizmoUtility.DrawActuallyFired(
-                    triggerEntity, config.EventState, pos, ref Drawer,
-                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "INSTANTIATED");
+                if (tier >= DebugTier.Mid)
+                {
+                    // Small green flash only when it actually fires (confirms a real spawn vs just clip-active).
+                    var drawColor = new Color(0f, 1f, 0f, 0.8f);
+                    TriggerGizmoUtility.DrawActuallyFired(
+                        triggerEntity, config.EventState, pos, ref Drawer,
+                        TriggerEventsLookup, CollisionEventsLookup, drawColor, "spawned", 0.25f, 11f);
+                }
             }
         }
     }

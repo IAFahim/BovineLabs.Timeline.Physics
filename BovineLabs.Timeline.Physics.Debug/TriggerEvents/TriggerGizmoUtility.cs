@@ -18,23 +18,38 @@ namespace BovineLabs.Timeline.Physics.Debug
             BufferLookup<StatefulTriggerEvent> triggerEventsLookup,
             BufferLookup<StatefulCollisionEvent> collisionEventsLookup,
             Color drawColor,
-            string label)
+            string label,
+            float radius = 0.75f,
+            float textSize = 14f)
+        {
+            // One brief marker on an ACTUAL state match — not a lingering sphere per event every frame.
+            // Match the exact state (false, false): previously isClipFirstFrame=true made an Enter-config
+            // trigger match every Stay event, so a body resting in a zone spewed a fresh pile of circles
+            // each frame. Exact match = a clean flash on real Enter/Stay/Exit only.
+            if (!HasMatchingEvent(triggerEntity, configEventState, triggerEventsLookup, collisionEventsLookup))
+                return;
+
+            drawer.Sphere(position, radius, 16, drawColor, 0.12f);
+            drawer.Text32(position + new float3(0f, radius + 0.05f, 0f), label, drawColor, textSize, 0.12f);
+        }
+
+        private static bool HasMatchingEvent(
+            Entity triggerEntity,
+            StatefulEventState configEventState,
+            BufferLookup<StatefulTriggerEvent> triggerEventsLookup,
+            BufferLookup<StatefulCollisionEvent> collisionEventsLookup)
         {
             if (triggerEventsLookup.TryGetBuffer(triggerEntity, out var triggers))
                 foreach (var evt in triggers)
-                    if (StatefulEventMatching.Matches(evt.State, configEventState, true, false))
-                    {
-                        drawer.Sphere(position, 0.75f, 16, drawColor, 0.8f);
-                        drawer.Text32(position + new float3(0f, 0.8f, 0f), label, drawColor, 14f, 0.8f);
-                    }
+                    if (StatefulEventMatching.Matches(evt.State, configEventState, false, false))
+                        return true;
 
             if (collisionEventsLookup.TryGetBuffer(triggerEntity, out var collisions))
                 foreach (var evt in collisions)
-                    if (StatefulEventMatching.Matches(evt.State, configEventState, true, false))
-                    {
-                        drawer.Sphere(position, 0.75f, 16, drawColor, 0.8f);
-                        drawer.Text32(position + new float3(0f, 0.8f, 0f), label, drawColor, 14f, 0.8f);
-                    }
+                    if (StatefulEventMatching.Matches(evt.State, configEventState, false, false))
+                        return true;
+
+            return false;
         }
     }
 }

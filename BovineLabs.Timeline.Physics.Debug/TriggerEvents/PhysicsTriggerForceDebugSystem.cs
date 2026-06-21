@@ -64,11 +64,14 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerForceGizmoSystem>(
-                    ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerForceDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 ForceColor = TriggerForceDebugSystem.ForceColor.Data,
                 TextColor = TriggerForceDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
@@ -83,6 +86,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color ForceColor;
             public Color TextColor;
 
@@ -109,8 +114,14 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var pos = ltw.Position;
                 var origin = pos;
+                var tier = TimelineDebugTier.Resolve(origin, Viewer, HasViewer);
 
+                // Far: what the system does — the force source marker.
                 Drawer.Sphere(origin, 0.1f, 8, ForceColor);
+
+                if (tier == DebugTier.Mid)
+                    Drawer.Text32(origin + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"Trigger Force", TextColor,
+                        10f);
 
                 var label = new FixedString32Bytes();
                 if (config.ForceType == PhysicsTriggerForceType.Directional)
@@ -184,16 +195,20 @@ namespace BovineLabs.Timeline.Physics.Debug
                     label.Append(']');
                 }
 
-                Drawer.Text32(origin + new float3(0f, 0.5f, 0f), label, TextColor, 10f);
-
-                if (config.FalloffCurve != PhysicsTriggerFalloffCurve.None)
+                if (tier == DebugTier.Close)
                 {
-                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffStartRadius, 0f)),
-                        ForceColor);
-                    var outerColor = ForceColor;
-                    outerColor.a *= 0.3f;
-                    Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffEndRadius, 0f)),
-                        outerColor);
+                    // Close: the force type/magnitude/falloff/mode readout + falloff radii rings.
+                    Drawer.Text32(origin + new float3(0f, 0.5f, 0f), label, TextColor, 10f);
+
+                    if (config.FalloffCurve != PhysicsTriggerFalloffCurve.None)
+                    {
+                        Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffStartRadius, 0f)),
+                            ForceColor);
+                        var outerColor = ForceColor;
+                        outerColor.a *= 0.3f;
+                        Drawer.Circle(origin, math.rotate(ltw.Rotation, new float3(0f, config.FalloffEndRadius, 0f)),
+                            outerColor);
+                    }
                 }
 
                 if (config.ForceType == PhysicsTriggerForceType.Directional)
@@ -235,11 +250,13 @@ namespace BovineLabs.Timeline.Physics.Debug
                     }
                 }
 
-                // --- Actually Fired Visualizer ---
-                var drawColor = new Color(0f, 0.8f, 1f, 0.8f);
-                TriggerGizmoUtility.DrawActuallyFired(
-                    triggerEntity, config.EventState, pos, ref Drawer,
-                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "FORCE APPLIED");
+                if (tier >= DebugTier.Mid)
+                {
+                    var drawColor = new Color(0f, 0.8f, 1f, 0.8f);
+                    TriggerGizmoUtility.DrawActuallyFired(
+                        triggerEntity, config.EventState, pos, ref Drawer,
+                        TriggerEventsLookup, CollisionEventsLookup, drawColor, "FORCE APPLIED");
+                }
             }
         }
     }

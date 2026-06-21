@@ -1,0 +1,25 @@
+{
+  "name": "BovineLabs.Timeline.Physics.Sample.PhysicsCustom",
+  "rootNamespace": "",
+  "references": [
+    "Unity.Physics",
+    "Unity.Physics.Custom",
+    "Unity.Physics.Hybrid",
+    "Unity.Entities",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.Transforms",
+    "Unity.Scenes"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

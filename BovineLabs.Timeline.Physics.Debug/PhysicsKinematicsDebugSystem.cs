@@ -65,7 +65,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicsDebugSystem>(
-                    ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsKinematicsDebugSystemConfig.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             var gravity = SystemAPI.HasSingleton<PhysicsStep>()
@@ -82,6 +83,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawActiveForceJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Gravity = gravity,
                 LocalToWorldLookup = _localToWorldLookup,
                 LocalTransformLookup = _localTransformLookup,
@@ -94,6 +97,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawActiveVelocityJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Gravity = gravity,
                 LocalToWorldLookup = _localToWorldLookup,
                 LocalTransformLookup = _localTransformLookup,
@@ -108,6 +113,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawActiveForceJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public float3 Gravity;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
@@ -131,28 +138,45 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var massInv = MassLookup.TryGetComponent(entity, out var m) ? m.InverseMass : 1f;
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
 
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
+
+                // Far: what the system does — the applied force arrow.
                 Drawer.Arrow(pos, forceVec * massInv, ColorForce);
 
-                var vel = baseVel;
+                if (tier >= DebugTier.Mid)
+                    Drawer.Text32(pos + new float3(0, 0.4f, 0), (FixedString32Bytes)"Force", ColorForce, 10f);
 
-                if (active.Config.Mode == PhysicsForceMode.Impulse && !state.Fired)
-                    vel += forceVec * massInv;
-
-                const float dt = 0.05f;
-                var steps = (int)(2f / dt);
-                for (var i = 0; i < steps; i++)
+                if (tier == DebugTier.Close)
                 {
-                    var accel = Gravity;
-                    if (active.Config.Mode == PhysicsForceMode.Continuous)
-                        accel += forceVec * massInv;
+                    var vel = baseVel;
 
-                    vel += accel * dt;
-                    var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(ColorForce.r, ColorForce.g, ColorForce.b, 0.5f));
-                    pos = nextPos;
+                    if (active.Config.Mode == PhysicsForceMode.Impulse && !state.Fired)
+                        vel += forceVec * massInv;
+
+                    const float dt = 0.05f;
+                    var steps = (int)(2f / dt);
+                    var startPos = pos;
+                    for (var i = 0; i < steps; i++)
+                    {
+                        var accel = Gravity;
+                        if (active.Config.Mode == PhysicsForceMode.Continuous)
+                            accel += forceVec * massInv;
+
+                        vel += accel * dt;
+                        var nextPos = pos + vel * dt;
+                        Drawer.Line(pos, nextPos, new Color(ColorForce.r, ColorForce.g, ColorForce.b, 0.5f));
+                        pos = nextPos;
+                    }
+
+                    Drawer.Point(pos, 0.2f, Color.red);
+
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"F ");
+                    readout.Append(math.length(forceVec * massInv));
+                    readout.Append((FixedString32Bytes)"  v ");
+                    readout.Append(math.length(baseVel));
+                    Drawer.Text128(startPos + new float3(0, 0.7f, 0), readout, TimelineDebugColors.Label, 10f);
                 }
-
-                Drawer.Point(pos, 0.2f, Color.red);
             }
         }
 
@@ -160,6 +184,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawActiveVelocityJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public float3 Gravity;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
@@ -180,38 +206,56 @@ namespace BovineLabs.Timeline.Physics.Debug
                     out var targetVel);
 
                 var baseVel = VelocityLookup.TryGetComponent(entity, out var v) ? v.Linear : float3.zero;
+
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
+
+                // Far: what the system does — the target velocity arrow.
                 Drawer.Arrow(pos, targetVel, ColorVel);
 
-                var vel = baseVel;
+                if (tier >= DebugTier.Mid)
+                    Drawer.Text32(pos + new float3(0, 0.4f, 0), (FixedString32Bytes)"Velocity", ColorVel, 10f);
 
-                var isInstant = active.Config.Mode == PhysicsVelocityMode.SetInstant ||
-                                active.Config.Mode == PhysicsVelocityMode.AddInstant;
-                var isSet = active.Config.Mode == PhysicsVelocityMode.SetContinuous ||
-                            active.Config.Mode == PhysicsVelocityMode.SetInstant;
-
-                if (isInstant && !state.Fired)
-                    vel = isSet ? targetVel : vel + targetVel;
-
-                const float dt = 0.05f;
-                var steps = (int)(2f / dt);
-
-                for (var i = 0; i < steps; i++)
+                if (tier == DebugTier.Close)
                 {
-                    if (!isInstant)
+                    var vel = baseVel;
+
+                    var isInstant = active.Config.Mode == PhysicsVelocityMode.SetInstant ||
+                                    active.Config.Mode == PhysicsVelocityMode.AddInstant;
+                    var isSet = active.Config.Mode == PhysicsVelocityMode.SetContinuous ||
+                                active.Config.Mode == PhysicsVelocityMode.SetInstant;
+
+                    if (isInstant && !state.Fired)
+                        vel = isSet ? targetVel : vel + targetVel;
+
+                    const float dt = 0.05f;
+                    var steps = (int)(2f / dt);
+                    var startPos = pos;
+
+                    for (var i = 0; i < steps; i++)
                     {
-                        if (isSet) vel = targetVel;
-                        else vel += targetVel * dt;
+                        if (!isInstant)
+                        {
+                            if (isSet) vel = targetVel;
+                            else vel += targetVel * dt;
+                        }
+
+                        if (isInstant || !isSet)
+                            vel += Gravity * dt;
+
+                        var nextPos = pos + vel * dt;
+                        Drawer.Line(pos, nextPos, new Color(ColorVel.r, ColorVel.g, ColorVel.b, 0.5f));
+                        pos = nextPos;
                     }
 
-                    if (isInstant || !isSet)
-                        vel += Gravity * dt;
+                    Drawer.Point(pos, 0.2f, Color.red);
 
-                    var nextPos = pos + vel * dt;
-                    Drawer.Line(pos, nextPos, new Color(ColorVel.r, ColorVel.g, ColorVel.b, 0.5f));
-                    pos = nextPos;
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"target ");
+                    readout.Append(math.length(targetVel));
+                    readout.Append((FixedString32Bytes)"  v ");
+                    readout.Append(math.length(baseVel));
+                    Drawer.Text128(startPos + new float3(0, 0.7f, 0), readout, TimelineDebugColors.Label, 10f);
                 }
-
-                Drawer.Point(pos, 0.2f, Color.red);
             }
         }
     }

@@ -69,7 +69,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<SweptTriggerDebugSystem>(
-                    ref state, SweptTriggerDebugConfig.Enabled.Data, out var drawer))
+                    ref state, SweptTriggerDebugConfig.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
             {
                 return;
             }
@@ -79,6 +80,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 LtwLookup = _ltwLookup,
                 ActiveColor = SweptTriggerDebugConfig.ActiveColor.Data,
                 IdleColor = SweptTriggerDebugConfig.IdleColor.Data,
@@ -92,6 +95,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
 
             [ReadOnly]
             public ComponentLookup<LocalToWorld> LtwLookup;
@@ -122,29 +127,43 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var v1 = math.transform(ltw.Value, config.Vertex1);
                 var center = (v0 + v1) * 0.5f;
                 var height = math.distance(v0, v1) + (2f * config.Radius);
+
+                var tier = TimelineDebugTier.Resolve(center, this.Viewer, this.HasViewer);
+
+                // Far: what the system does — the swept capsule volume.
                 this.Drawer.Capsule(center, ltw.Rotation, height, config.Radius, 12, col);
                 this.Drawer.Sphere(v0, config.Radius, 8, col);
                 this.Drawer.Sphere(v1, config.Radius, 8, col);
 
-                // Sweep path this frame (where it swept from -> to).
-                if (active)
+                if (tier >= DebugTier.Mid)
                 {
-                    this.Drawer.Line(state.PrevPosition, ltw.Position, this.PathColor);
-                }
-
-                // Markers on each currently-overlapped entity.
-                for (var i = 0; i < hits.Length; i++)
-                {
-                    var e = hits[i].Value;
-                    if (this.LtwLookup.HasComponent(e))
+                    // Mid: the sweep path + markers on overlapped entities + a label.
+                    if (active)
                     {
-                        var hp = this.LtwLookup[e].Position;
-                        this.Drawer.Sphere(hp, 0.25f, 10, this.HitColor);
-                        this.Drawer.Line(center, hp, this.HitColor);
+                        this.Drawer.Line(state.PrevPosition, ltw.Position, this.PathColor);
                     }
+
+                    for (var i = 0; i < hits.Length; i++)
+                    {
+                        var e = hits[i].Value;
+                        if (this.LtwLookup.HasComponent(e))
+                        {
+                            var hp = this.LtwLookup[e].Position;
+                            this.Drawer.Sphere(hp, 0.25f, 10, this.HitColor);
+                            this.Drawer.Line(center, hp, this.HitColor);
+                        }
+                    }
+
+                    this.Drawer.Text32(ltw.Position + new float3(0f, 1.2f, 0f), (FixedString32Bytes)"Swept",
+                        this.TextColor, 10f);
                 }
 
-                // Live Enter/Stay/Exit labels.
+                if (tier != DebugTier.Close)
+                {
+                    return;
+                }
+
+                // Close: live Enter/Stay/Exit labels + hit count.
                 FixedString128Bytes label = default;
                 label.Append('S');
                 label.Append('W');
@@ -174,7 +193,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                     }
                 }
 
-                this.Drawer.Text128(ltw.Position + new float3(0f, 1.2f, 0f), label, this.TextColor, 10f);
+                this.Drawer.Text128(ltw.Position + new float3(0f, 1.5f, 0f), label, this.TextColor, 10f);
             }
         }
     }

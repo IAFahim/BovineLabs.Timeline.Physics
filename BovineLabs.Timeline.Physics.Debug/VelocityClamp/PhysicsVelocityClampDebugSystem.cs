@@ -84,12 +84,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsVelocityClampGizmoSystem>(
-                    ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer))
+                    ref state, VelocityClampDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Segments = math.clamp(VelocityClampDebugSystem.Segments.Data, 8, 32),
                 SafeColor = VelocityClampDebugSystem.SafeColor.Data,
                 WarnColor = VelocityClampDebugSystem.WarnColor.Data,
@@ -106,6 +109,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public int Segments;
             public Color SafeColor;
             public Color WarnColor;
@@ -138,44 +143,57 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var linSpd = hasVel ? math.length(vel.Linear) : 0f;
                 var angSpd = hasVel ? math.length(vel.Angular) : 0f;
 
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
+
                 if (d.MaxLinearSpeed > 0.001f)
                 {
                     var limit = d.MaxLinearSpeed;
-                    if (limit > 0.001f)
+                    var ratio = math.saturate(linSpd / limit);
+                    var col = EvaluateColor(ratio);
+
+                    var visualRadius = limit * 0.1f;
+                    visualRadius = math.clamp(visualRadius, 0.5f, 5f);
+
+                    // Far: what the system does — the speed-limit sphere coloured by how close we are.
+                    Drawer.Sphere(pos, visualRadius, Segments, col);
+
+                    if (tier >= DebugTier.Mid && hasVel && linSpd > 0.01f)
                     {
-                        var ratio = math.saturate(linSpd / limit);
-                        var col = EvaluateColor(ratio);
+                        var velDir = math.normalize(vel.Linear);
+                        Drawer.Arrow(pos, velDir * (visualRadius * ratio), col);
+                    }
 
-                        var visualRadius = limit * 0.1f;
-                        visualRadius = math.clamp(visualRadius, 0.5f, 5f);
-
-                        Drawer.Sphere(pos, visualRadius, Segments, col);
-
-                        if (hasVel && linSpd > 0.01f)
-                        {
-                            var velDir = math.normalize(vel.Linear);
-                            Drawer.Arrow(pos, velDir * (visualRadius * ratio), col);
-                        }
-
-                        Drawer.Text32(pos + new float3(0, visualRadius + 0.3f, 0), $"max: {limit:G2} m/s", TextColor,
-                            10f);
+                    if (tier == DebugTier.Close)
+                    {
+                        var readout = new FixedString128Bytes();
+                        readout.Append((FixedString32Bytes)"v ");
+                        readout.Append(linSpd);
+                        readout.Append((FixedString32Bytes)" / max ");
+                        readout.Append(limit);
+                        Drawer.Text128(pos + new float3(0, visualRadius + 0.3f, 0), readout, TextColor, 10f);
                     }
                 }
 
                 if (d.MaxAngularSpeed > 0.001f)
                 {
                     var limit = d.MaxAngularSpeed;
-                    if (limit > 0.001f)
+                    var ratio = math.saturate(angSpd / limit);
+                    var col = EvaluateColor(ratio);
+
+                    var visualRadius = limit * 0.2f;
+                    visualRadius = math.clamp(visualRadius, 0.5f, 5f);
+
+                    // Far: the angular limit ring.
+                    Drawer.Circle(pos, new float3(0f, visualRadius, 0f), col);
+
+                    if (tier == DebugTier.Close)
                     {
-                        var ratio = math.saturate(angSpd / limit);
-                        var col = EvaluateColor(ratio);
-
-                        var visualRadius = limit * 0.2f;
-                        visualRadius = math.clamp(visualRadius, 0.5f, 5f);
-
-                        Drawer.Circle(pos, new float3(0f, visualRadius, 0f), col);
-                        Drawer.Text32(pos + new float3(visualRadius + 0.2f, 0, 0), $"amax: {limit:G2} rad/s", TextColor,
-                            10f);
+                        var readout = new FixedString128Bytes();
+                        readout.Append((FixedString32Bytes)"w ");
+                        readout.Append(angSpd);
+                        readout.Append((FixedString32Bytes)" / amax ");
+                        readout.Append(limit);
+                        Drawer.Text128(pos + new float3(visualRadius + 0.2f, 0, 0), readout, TextColor, 10f);
                     }
                 }
             }

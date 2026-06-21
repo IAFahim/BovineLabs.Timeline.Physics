@@ -121,7 +121,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             _colliderLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsRicochetGizmoSystem>(
-                    ref state, RicochetDebugSystem.Enabled.Data, out var drawer))
+                    ref state, RicochetDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             var collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
@@ -129,6 +130,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawRicochetJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Segments = math.clamp(RicochetDebugSystem.Segments.Data, 4, 32),
                 RayColor1 = RicochetDebugSystem.RayColor1.Data,
                 RayColor2 = RicochetDebugSystem.RayColor2.Data,
@@ -149,6 +152,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawRicochetJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public int Segments;
             public Color RayColor1;
             public Color RayColor2;
@@ -194,8 +199,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var currentPos = origin;
                 var currentDir = math.normalize(direction);
 
+                var tier = TimelineDebugTier.Resolve(origin, Viewer, HasViewer);
+
+                // Far: what the system does — the firing origin.
                 Drawer.Sphere(origin, 0.15f, Segments, OriginColor);
-                Drawer.Text32(origin + new float3(0f, 0.3f, 0f), "Origin", TextColor, 10f);
+                if (tier >= DebugTier.Mid)
+                    Drawer.Text32(origin + new float3(0f, 0.3f, 0f), (FixedString32Bytes)"Ricochet", TextColor, 10f);
 
                 while (bounceCount <= d.MaxBounces && remainingDistance > 0)
                 {
@@ -210,8 +219,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                     {
                         var endPos = currentPos + currentDir * remainingDistance;
                         Drawer.Line(currentPos, endPos, rayColor);
-                        Drawer.Text32(endPos + new float3(0f, 0.2f, 0f), "Max Range", new Color(0.6f, 0.6f, 0.6f, 0.8f),
-                            8f);
+                        if (tier == DebugTier.Close)
+                            Drawer.Text32(endPos + new float3(0f, 0.2f, 0f), (FixedString32Bytes)"Max Range",
+                                new Color(0.6f, 0.6f, 0.6f, 0.8f), 8f);
                         break;
                     }
 
@@ -225,8 +235,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                         Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.5f,
                             new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.5f));
 
-                        Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.4f, 0f), "Terminal Hit", TerminalColor,
-                            12f);
+                        if (tier >= DebugTier.Mid)
+                            Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.4f, 0f),
+                                (FixedString32Bytes)"Terminal Hit", TerminalColor, 12f);
 
                         if (d.HitConditionKey != 0)
                         {
@@ -236,8 +247,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                             {
                                 Drawer.Line(stepResult.HitPosition, routeLtw.Position,
                                     new Color(TerminalColor.r, TerminalColor.g, TerminalColor.b, 0.3f));
-                                Drawer.Text32(routeLtw.Position + new float3(0f, 0.5f, 0f), "Route Target", TextColor,
-                                    8f);
+                                if (tier == DebugTier.Close)
+                                    Drawer.Text32(routeLtw.Position + new float3(0f, 0.5f, 0f),
+                                        (FixedString32Bytes)"Route Target", TextColor, 8f);
                             }
                         }
 
@@ -249,8 +261,13 @@ namespace BovineLabs.Timeline.Physics.Debug
                         Drawer.Line(currentPos, stepResult.HitPosition, rayColor);
                         Drawer.Sphere(stepResult.HitPosition, 0.1f, Segments, rayColor);
 
-                        Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), $"Bounce {bounceCount + 1}",
-                            rayColor, 10f);
+                        if (tier == DebugTier.Close)
+                        {
+                            var bounceLabel = new FixedString32Bytes();
+                            bounceLabel.Append((FixedString32Bytes)"Bounce ");
+                            bounceLabel.Append(bounceCount + 1);
+                            Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), bounceLabel, rayColor, 10f);
+                        }
 
                         Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.4f,
                             new Color(0.8f, 0.8f, 0.8f, 0.3f));
@@ -264,6 +281,18 @@ namespace BovineLabs.Timeline.Physics.Debug
                     {
                         break;
                     }
+                }
+
+                if (tier == DebugTier.Close)
+                {
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"bounces ");
+                    readout.Append(bounceCount);
+                    readout.Append((FixedString32Bytes)" / ");
+                    readout.Append(d.MaxBounces);
+                    readout.Append((FixedString32Bytes)"  rem ");
+                    readout.Append(remainingDistance);
+                    Drawer.Text128(origin + new float3(0f, 0.6f, 0f), readout, TextColor, 10f);
                 }
             }
 

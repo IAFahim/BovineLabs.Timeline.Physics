@@ -64,7 +64,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerInstantiateGizmoSystem>(
-                    ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerInstantiateDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             // Resolve each spawned prefab's name (ObjectId -> prefab entity -> GameObject name) on the main thread —
@@ -90,6 +91,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 GhostColor = TriggerInstantiateDebugSystem.GhostColor.Data,
                 TextColor = TriggerInstantiateDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
@@ -107,6 +110,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color GhostColor;
             public Color TextColor;
 
@@ -133,28 +138,40 @@ namespace BovineLabs.Timeline.Physics.Debug
                     return;
 
                 var pos = ltw.Position;
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Quiet spawn marker (mirrors the Force gizmo's 0.1 sphere) — no more full-size RGB axis arrows.
+                // Far: what the system does — the quiet spawn marker (mirrors the Force gizmo's 0.1 sphere).
                 Drawer.Sphere(pos, 0.1f, 8, GhostColor);
 
-                // One compact label: prefab name, when it fires, and where it lands.
-                var spawn = Names.TryGetValue(config.ObjectId, out var nm) ? nm : (FixedString64Bytes)config.ObjectId.ToFixedString();
-                var placement = config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity
-                    ? (FixedString32Bytes)" @ other"
-                    : config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint
-                        ? (FixedString32Bytes)" @ contact"
-                        : default;
+                if (tier == DebugTier.Mid)
+                    Drawer.Text32(pos + new float3(0f, 0.3f, 0f), (FixedString32Bytes)"Spawn", TextColor, 10f);
 
-                FixedString128Bytes text = default;
-                text.Append(spawn);
-                text.Append((FixedString64Bytes)$"\non {config.EventState}{placement}");
-                Drawer.Text128(pos + new float3(0f, 0.3f, 0f), text, TextColor, 10f);
+                if (tier == DebugTier.Close)
+                {
+                    // Close: the prefab name, when it fires, and where it lands.
+                    var spawn = Names.TryGetValue(config.ObjectId, out var nm)
+                        ? nm
+                        : (FixedString64Bytes)config.ObjectId.ToFixedString();
+                    var placement = config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity
+                        ? (FixedString32Bytes)" @ other"
+                        : config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint
+                            ? (FixedString32Bytes)" @ contact"
+                            : default;
 
-                // Small green flash only when it actually fires (confirms a real spawn vs just clip-active).
-                var drawColor = new Color(0f, 1f, 0f, 0.8f);
-                TriggerGizmoUtility.DrawActuallyFired(
-                    triggerEntity, config.EventState, pos, ref Drawer,
-                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "spawned", 0.25f, 11f);
+                    FixedString128Bytes text = default;
+                    text.Append(spawn);
+                    text.Append((FixedString64Bytes)$"\non {config.EventState}{placement}");
+                    Drawer.Text128(pos + new float3(0f, 0.3f, 0f), text, TextColor, 10f);
+                }
+
+                if (tier >= DebugTier.Mid)
+                {
+                    // Small green flash only when it actually fires (confirms a real spawn vs just clip-active).
+                    var drawColor = new Color(0f, 1f, 0f, 0.8f);
+                    TriggerGizmoUtility.DrawActuallyFired(
+                        triggerEntity, config.EventState, pos, ref Drawer,
+                        TriggerEventsLookup, CollisionEventsLookup, drawColor, "spawned", 0.25f, 11f);
+                }
             }
         }
     }

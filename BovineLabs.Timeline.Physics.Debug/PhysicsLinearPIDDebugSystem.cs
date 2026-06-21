@@ -64,7 +64,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsLinearPIDDebugSystem>(
-                    ref state, PhysicsLinearPIDDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsLinearPIDDebugSystemConfig.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             _localToWorldLookup.Update(ref state);
@@ -76,6 +77,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 LocalToWorldLookup = _localToWorldLookup,
                 LocalTransformLookup = _localTransformLookup,
                 ParentLookup = _parentLookup,
@@ -89,6 +92,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -109,15 +114,38 @@ namespace BovineLabs.Timeline.Physics.Debug
                 PhysicsMath.ResolveLinearPidTarget(animated.AuthoredData, entity, in TargetsLookup,
                     in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var finalPos);
 
+                var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
+
+                // Far: what the system does — the body is being pulled to the goal.
                 Drawer.Line(selfPos, finalPos, ColorLine);
-                Drawer.Point(finalPos, 0.2f, Color.red);
-                Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", ColorLine, 12f);
+                Drawer.Point(finalPos, 0.2f, ColorGoal);
 
-                PhysicsMath.DrawLinearPidPrediction(ref Drawer, selfPos, finalPos,
-                    animated.AuthoredData.Tuning, (float)localTime.Value);
+                if (tier >= DebugTier.Mid)
+                {
+                    // Mid: the live interaction — current velocity + a label.
+                    Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", ColorLine, 12f);
+                    if (VelocityLookup.TryGetComponent(entity, out var velocity))
+                        Drawer.Arrow(selfPos, velocity.Linear, ColorVel);
+                }
 
-                if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(selfPos, velocity.Linear, ColorVel);
+                if (tier == DebugTier.Close)
+                {
+                    // Close: every number — predicted path + error distance + the PID gains.
+                    PhysicsMath.DrawLinearPidPrediction(ref Drawer, selfPos, finalPos,
+                        animated.AuthoredData.Tuning, (float)localTime.Value);
+
+                    var tuning = animated.AuthoredData.Tuning;
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"err ");
+                    readout.Append(math.distance(selfPos, finalPos));
+                    readout.Append((FixedString32Bytes)"m  P");
+                    readout.Append(tuning.Proportional.x);
+                    readout.Append((FixedString32Bytes)" D");
+                    readout.Append(tuning.Derivative.x);
+                    readout.Append((FixedString32Bytes)" I");
+                    readout.Append(tuning.Integral.x);
+                    Drawer.Text128(selfPos + new float3(0, 0.7f, 0), readout, TimelineDebugColors.Label, 11f);
+                }
             }
         }
     }

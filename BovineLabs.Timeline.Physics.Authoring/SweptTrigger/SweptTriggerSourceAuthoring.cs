@@ -40,15 +40,58 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Local-space centre offset of the capsule from this object's origin.")]
         public Vector3 offset = Vector3.zero;
 
-        [Tooltip("Local axis the capsule extends along.")]
+        [Tooltip("Local axis the capsule extends along — match your blade's direction (Y=up, Z=forward, X=side).")]
         public Axis axis = Axis.Y;
 
-        [Tooltip("Which physics categories the sweep is allowed to hit.")]
-        public PhysicsCategoryTags collidesWith;
+        [Tooltip("Physics categories the sweep can hit. EMPTY = hits NOTHING (silent fail). Defaults to Everything; " +
+                 "narrow it to your enemy/target category for clean single-target melee.")]
+        public PhysicsCategoryTags collidesWith = new PhysicsCategoryTags { Value = ~0u };
 
-        [Tooltip("Sub-steps per frame interpolating the prev->cur transform (>= 1). Raise for very fast swings.")]
+        [Tooltip("Sub-steps per frame interpolating the prev->cur transform (>= 1). Raise for very fast swings; " +
+                 "1 is fine for most attacks.")]
         [Min(1)]
         public int subSteps = 1;
+
+#if UNITY_EDITOR
+        // Author-time feedback so designers aren't tuning the swept volume blind.
+        private void OnValidate()
+        {
+            if (this.collidesWith.Value == 0)
+            {
+                Debug.LogWarning(
+                    $"{nameof(SweptTriggerSourceAuthoring)} on '{this.name}': 'Collides With' is empty — the sweep will hit NOTHING. " +
+                    "Set the category your targets belong to (or Everything).", this);
+            }
+        }
+
+        // Draws the swept capsule volume in the Scene view at AUTHOR time (not just play), so designers can size/place it.
+        private void OnDrawGizmosSelected()
+        {
+            var half = Mathf.Max(0f, this.length * 0.5f);
+            var r = Mathf.Max(0.001f, this.radius);
+            var dir = this.axis switch
+            {
+                Axis.X => Vector3.right,
+                Axis.Z => Vector3.forward,
+                _ => Vector3.up,
+            };
+
+            var v0 = this.offset - (dir * half);
+            var v1 = this.offset + (dir * half);
+            var prev = Gizmos.matrix;
+            Gizmos.matrix = this.transform.localToWorldMatrix;
+            Gizmos.color = this.collidesWith.Value == 0 ? new Color(1f, 0.3f, 0.3f, 0.9f) : new Color(0.4f, 0.85f, 1f, 0.9f);
+            Gizmos.DrawWireSphere(v0, r);
+            Gizmos.DrawWireSphere(v1, r);
+            var p1 = this.axis == Axis.Y ? Vector3.right : Vector3.up;
+            var p2 = Vector3.Cross(dir, p1);
+            Gizmos.DrawLine(v0 + (p1 * r), v1 + (p1 * r));
+            Gizmos.DrawLine(v0 - (p1 * r), v1 - (p1 * r));
+            Gizmos.DrawLine(v0 + (p2 * r), v1 + (p2 * r));
+            Gizmos.DrawLine(v0 - (p2 * r), v1 - (p2 * r));
+            Gizmos.matrix = prev;
+        }
+#endif
 
         private class Baker : Baker<SweptTriggerSourceAuthoring>
         {

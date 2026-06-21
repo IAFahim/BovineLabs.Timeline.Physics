@@ -75,12 +75,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsDragGizmoSystem>(
-                    ref state, DragDebugSystem.Enabled.Data, out var drawer))
+                    ref state, DragDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Segments = math.clamp(DragDebugSystem.Segments.Data, 8, 32),
                 TrailColor = DragDebugSystem.TrailColor.Data,
                 TextColor = DragDebugSystem.TextColor.Data,
@@ -95,6 +98,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public int Segments;
             public Color TrailColor;
             public Color TextColor;
@@ -125,10 +130,30 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var hasVel = VelocityLookup.TryGetComponent(target, out var vel);
                 var linVel = hasVel ? vel.Linear : float3.zero;
 
-                Drawer.Text32(pos + new float3(0, 0.4f, 0), $"Lin: {d.Linear:G2}", TextColor, 10f);
-                Drawer.Text32(pos + new float3(0, 0.2f, 0), $"Ang: {d.Angular:G2}", TextColor, 10f);
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                if (math.lengthsq(linVel) > 0.01f && d.Linear > 0f)
+                // Far: the body being braked — a short marker arrow against its velocity.
+                if (math.lengthsq(linVel) > 0.01f)
+                    Drawer.Arrow(pos, -math.normalize(linVel) * 0.75f, TrailColor);
+                else
+                    Drawer.Sphere(pos, 0.1f, Segments, TrailColor);
+
+                if (tier >= DebugTier.Mid)
+                    Drawer.Text32(pos + new float3(0, 0.4f, 0), (FixedString32Bytes)"Drag", TextColor, 10f);
+
+                if (tier == DebugTier.Close)
+                {
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"lin ");
+                    readout.Append(d.Linear);
+                    readout.Append((FixedString32Bytes)"  ang ");
+                    readout.Append(d.Angular);
+                    readout.Append((FixedString32Bytes)"  v ");
+                    readout.Append(math.length(linVel));
+                    Drawer.Text128(pos + new float3(0, 0.2f, 0), readout, TextColor, 10f);
+                }
+
+                if (tier == DebugTier.Close && math.lengthsq(linVel) > 0.01f && d.Linear > 0f)
                 {
                     var currentPos = pos;
                     var currentVel = linVel;

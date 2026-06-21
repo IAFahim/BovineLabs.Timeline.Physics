@@ -32,11 +32,14 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
     [BurstCompile]
     public partial struct SweptTriggerSystem : ISystem
     {
+        private ComponentLookup<SweptTriggerConfig> _sweptConfigLookup;
+
         /// <inheritdoc/>
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<SweptTriggerConfig>();
+            this._sweptConfigLookup = state.GetComponentLookup<SweptTriggerConfig>(true);
         }
 
         /// <inheritdoc/>
@@ -51,28 +54,39 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
             // Sources that have at least one active clip this frame (the "active at precise moments" gate).
             var activeSources = new NativeParallelHashSet<Entity>(128, state.WorldUpdateAllocator);
 
+            this._sweptConfigLookup.Update(ref state);
+
             var collectHandle = new CollectActiveSourcesJob
             {
                 ActiveSources = activeSources.AsParallelWriter(),
+                SweptConfig = this._sweptConfigLookup,
             }.ScheduleParallel(state.Dependency);
 
             state.Dependency = new SweepJob
             {
                 CollisionWorld = physicsWorld.PhysicsWorld.CollisionWorld,
                 ActiveSources = activeSources,
+                StorageInfo = SystemAPI.GetEntityStorageInfoLookup(),
             }.ScheduleParallel(collectHandle);
         }
 
-        /// <summary>Collects the bound source of every active clip (any track) into the active set.</summary>
+        /// <summary>
+        /// Collects the bound source of every active clip whose target is a swept source. Guarding on
+        /// <see cref="SweptTriggerConfig"/> means only genuine swept sources are ever marked active — a clip
+        /// of any other kind that happens to bind a non-swept entity can never spuriously arm a sweep.
+        /// </summary>
         [BurstCompile]
         [WithAll(typeof(ClipActive))]
         private partial struct CollectActiveSourcesJob : IJobEntity
         {
             public NativeParallelHashSet<Entity>.ParallelWriter ActiveSources;
 
+            [ReadOnly]
+            public ComponentLookup<SweptTriggerConfig> SweptConfig;
+
             private void Execute(in TrackBinding binding)
             {
-                if (binding.Value != Entity.Null)
+                if (binding.Value != Entity.Null && this.SweptConfig.HasComponent(binding.Value))
                 {
                     this.ActiveSources.Add(binding.Value);
                 }
@@ -88,6 +102,9 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
 
             [ReadOnly]
             public NativeParallelHashSet<Entity> ActiveSources;
+
+            [ReadOnly]
+            public EntityStorageInfoLookup StorageInfo;
 
             private void Execute(
                 Entity entity,
@@ -168,7 +185,10 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                 for (var i = 0; i < prevHits.Length; i++)
                 {
                     var e = prevHits[i].Value;
-                    if (!Contains(in current, e))
+
+                    // Skip entities destroyed since last frame — emitting an Exit for a recycled/dead entity
+                    // could reference a different (reused) entity. Consumers also guard, but don't emit it.
+                    if (!Contains(in current, e) && this.StorageInfo.Exists(e))
                     {
                         events.Add(new StatefulTriggerEvent
                         {

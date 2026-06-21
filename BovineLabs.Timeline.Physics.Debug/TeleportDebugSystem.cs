@@ -130,12 +130,15 @@ namespace BovineLabs.Timeline.Physics.Debug
             _linkLookup.Update(ref state);
 
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTeleportGizmoSystem>(
-                    ref state, TeleportDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TeleportDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawTeleportJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 Segments = math.clamp(TeleportDebugSystem.Segments.Data, 8, 64),
                 PatchColor = TeleportDebugSystem.PatchColor.Data,
                 RadiusColor = TeleportDebugSystem.RadiusColor.Data,
@@ -156,6 +159,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawTeleportJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public int Segments;
             public Color PatchColor;
             public Color RadiusColor;
@@ -180,50 +185,65 @@ namespace BovineLabs.Timeline.Physics.Debug
                     entity, d, trackLtw.Position,
                     TransformLookup, TargetsLookup, LinkSources, Links);
 
+                var tier = TimelineDebugTier.Resolve(frame.LandingPosition, Viewer, HasViewer);
+
+                // Far: what the system does — the landing radius + the spot it teleports to.
                 Drawer.Circle(frame.LandingPosition, new float3(0f, d.Radius, 0f), RadiusColor);
                 Drawer.Sphere(frame.LandingPosition, 0.15f, Segments, ReferenceColor);
 
-                DrawPatchBoundary(frame.LandingPosition, d.Radius, frame.ReferenceRotation,
-                    d.AzimuthCenter, d.AzimuthHalfRange,
-                    d.ElevationCenter, d.ElevationHalfRange);
-
-                Drawer.Arrow(frame.LandingPosition, math.mul(frame.ReferenceRotation, math.forward()) * 1.5f,
-                    ReferenceColor);
-
-                Drawer.Line(frame.AzimuthPosition, frame.LandingPosition, new Color(0.5f, 0.5f, 0.5f, 0.3f));
-
-                if (d.RequireLineOfSight)
+                if (tier >= DebugTier.Mid)
                 {
-                    var losStart = frame.TeleportedPosition + new float3(0f, d.LineOfSightOffset, 0f);
-                    var losEnd = frame.LandingPosition + new float3(0f, d.LineOfSightOffset, 0f);
-                    Drawer.Line(losStart, losEnd, LosColor);
-                    if (Verbose)
-                        Drawer.Text32((losStart + losEnd) * 0.5f + new float3(0f, 0.25f, 0f), "LOS Check", LosColor,
-                            8f);
+                    // Mid: the facing the teleport will leave the body in + a label.
+                    Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f),
+                        math.mul(frame.FacingRotation, math.forward()) * 1.25f,
+                        new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
+                    Drawer.Text32(frame.LandingPosition + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"Teleport",
+                        TextColor, 10f);
+
+                    if (d.RequireLineOfSight)
+                    {
+                        var losStart = frame.TeleportedPosition + new float3(0f, d.LineOfSightOffset, 0f);
+                        var losEnd = frame.LandingPosition + new float3(0f, d.LineOfSightOffset, 0f);
+                        Drawer.Line(losStart, losEnd, LosColor);
+                    }
                 }
 
-                Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f),
-                    math.mul(frame.FacingRotation, math.forward()) * 1.25f,
-                    new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
-
-                if (Verbose)
+                if (tier == DebugTier.Close)
                 {
-                    Drawer.Text32(frame.LandingPosition + new float3(0f, 0.5f, 0f), $"r={d.Radius:G2}", RadiusColor,
-                        10f);
-                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 1f, 0f),
-                        $"Az {math.degrees(d.AzimuthCenter):G0}° ±{math.degrees(d.AzimuthHalfRange):G0}°", TextColor,
+                    // Close: the full spherical patch boundary + reference frame + every angle/number.
+                    DrawPatchBoundary(frame.LandingPosition, d.Radius, frame.ReferenceRotation,
+                        d.AzimuthCenter, d.AzimuthHalfRange,
+                        d.ElevationCenter, d.ElevationHalfRange);
+
+                    Drawer.Arrow(frame.LandingPosition, math.mul(frame.ReferenceRotation, math.forward()) * 1.5f,
+                        ReferenceColor);
+
+                    Drawer.Line(frame.AzimuthPosition, frame.LandingPosition, new Color(0.5f, 0.5f, 0.5f, 0.3f));
+
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"r ");
+                    readout.Append(d.Radius);
+                    readout.Append((FixedString32Bytes)"  Az ");
+                    readout.Append(math.degrees(d.AzimuthCenter));
+                    readout.Append((FixedString32Bytes)" +-");
+                    readout.Append(math.degrees(d.AzimuthHalfRange));
+                    Drawer.Text128(frame.LandingPosition + new float3(d.Radius + 0.2f, 1f, 0f), readout, TextColor, 8f);
+
+                    var elReadout = new FixedString128Bytes();
+                    elReadout.Append((FixedString32Bytes)"El ");
+                    elReadout.Append(math.degrees(d.ElevationCenter));
+                    elReadout.Append((FixedString32Bytes)" +-");
+                    elReadout.Append(math.degrees(d.ElevationHalfRange));
+                    Drawer.Text128(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.6f, 0f), elReadout, TextColor,
                         8f);
-                    Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.6f, 0f),
-                        $"El {math.degrees(d.ElevationCenter):G0}° ±{math.degrees(d.ElevationHalfRange):G0}°",
-                        TextColor, 8f);
 
                     var facingLabel = d.FacingMode switch
                     {
-                        TeleportFacingMode.FaceTarget => "Face Target",
-                        TeleportFacingMode.FaceAway => "Face Away",
-                        TeleportFacingMode.PreserveCurrent => "Preserve",
-                        TeleportFacingMode.MatchTarget => "Match Target",
-                        _ => "?"
+                        TeleportFacingMode.FaceTarget => (FixedString32Bytes)"Face Target",
+                        TeleportFacingMode.FaceAway => (FixedString32Bytes)"Face Away",
+                        TeleportFacingMode.PreserveCurrent => (FixedString32Bytes)"Preserve",
+                        TeleportFacingMode.MatchTarget => (FixedString32Bytes)"Match Target",
+                        _ => (FixedString32Bytes)"?"
                     };
                     Drawer.Text32(frame.LandingPosition + new float3(d.Radius + 0.2f, 0.2f, 0f), facingLabel, TextColor,
                         8f);

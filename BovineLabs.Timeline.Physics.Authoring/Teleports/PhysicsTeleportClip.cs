@@ -108,30 +108,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            ushort teleportTargetLinkKey = 0;
-            if (entityToTeleportLink != null && EntityLinkAuthoringUtility.TryGetKey(entityToTeleportLink, out var k00))
-                teleportTargetLinkKey = k00;
-
-            ushort teleportLinkKey = 0;
-            if (teleportRelativeToLink != null &&
-                EntityLinkAuthoringUtility.TryGetKey(teleportRelativeToLink, out var k0))
-                teleportLinkKey = k0;
-
-            ushort azimuthTargetLinkKey = 0;
-            if (azimuthTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(azimuthTargetLink, out var kAz))
-                azimuthTargetLinkKey = kAz;
-
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
-
-            ushort failureLinkKey = 0;
-            if (failureRouteLink != null && EntityLinkAuthoringUtility.TryGetKey(failureRouteLink, out var k2))
-                failureLinkKey = k2;
-
-            ushort facingTargetLinkKey = 0;
-            if (facingTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(facingTargetLink, out var k3))
-                facingTargetLinkKey = k3;
+            var teleportTargetLinkKey = ResolveLinkKey(entityToTeleportLink);
+            var teleportLinkKey = ResolveLinkKey(teleportRelativeToLink);
+            var azimuthTargetLinkKey = ResolveLinkKey(azimuthTargetLink);
+            var readStatKey = ResolveLinkKey(readStatLink);
+            var failureLinkKey = ResolveLinkKey(failureRouteLink);
+            var facingTargetLinkKey = ResolveLinkKey(facingTargetLink);
 
             var builder = new PhysicsTeleportBuilder
             {
@@ -184,6 +166,11 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
             builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
+        }
+
+        private static ushort ResolveLinkKey(EntityLinkSchema link)
+        {
+            return link != null && EntityLinkAuthoringUtility.TryGetKey(link, out var key) ? key : (ushort)0;
         }
     }
 }

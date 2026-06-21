@@ -70,12 +70,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsKinematicOverrideGizmoSystem>(
-                    ref state, KinematicOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, KinematicOverrideDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 BoxColor = KinematicOverrideDebugSystem.BoxColor.Data,
                 ZeroGColor = KinematicOverrideDebugSystem.ZeroGColor.Data,
                 TextColor = KinematicOverrideDebugSystem.TextColor.Data,
@@ -89,6 +92,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color BoxColor;
             public Color ZeroGColor;
             public Color TextColor;
@@ -114,19 +119,36 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
                 var rot = ltw.Rotation;
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
                 if (d.IsKinematic)
                 {
+                    // Far: what the system does — the frozen-body marker.
                     Drawer.Circle(pos, new float3(0f, 0.5f, 0f), BoxColor);
-                    Drawer.Circle(pos, math.mul(rot, new float3(0.5f, 0f, 0f)), BoxColor);
-                    Drawer.Circle(pos, math.mul(rot, new float3(0f, 0f, 0.5f)), BoxColor);
-                    Drawer.Text32(pos + new float3(0f, 0.8f, 0f), "KINEMATIC", TextColor, 10f);
+
+                    if (tier >= DebugTier.Mid)
+                    {
+                        Drawer.Circle(pos, math.mul(rot, new float3(0.5f, 0f, 0f)), BoxColor);
+                        Drawer.Circle(pos, math.mul(rot, new float3(0f, 0f, 0.5f)), BoxColor);
+                        Drawer.Text32(pos + new float3(0f, 0.8f, 0f), (FixedString32Bytes)"KINEMATIC", TextColor, 10f);
+                    }
                 }
 
                 if (d.ZeroGravity)
                 {
-                    Drawer.Text32(pos + new float3(0f, 0.5f, 0f), "g×0", ZeroGColor, 12f);
                     Drawer.Circle(pos + new float3(0f, 0.5f, 0f), new float3(0f, 0.15f, 0f), ZeroGColor);
+                    if (tier >= DebugTier.Mid)
+                        Drawer.Text32(pos + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"g0", ZeroGColor, 12f);
+                }
+
+                if (tier == DebugTier.Close)
+                {
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"kinematic ");
+                    readout.Append(d.IsKinematic ? '1' : '0');
+                    readout.Append((FixedString32Bytes)"  zeroG ");
+                    readout.Append(d.ZeroGravity ? '1' : '0');
+                    Drawer.Text128(pos + new float3(0f, 1.1f, 0f), readout, TextColor, 10f);
                 }
             }
         }

@@ -63,12 +63,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsFilterOverrideGizmoSystem>(
-                    ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, FilterOverrideDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 RingColor = FilterOverrideDebugSystem.RingColor.Data,
                 TextColor = FilterOverrideDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
@@ -81,6 +84,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color RingColor;
             public Color TextColor;
 
@@ -105,13 +110,39 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
 
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
+
+                // Far: what the system does — the override ring under the body.
                 var groundPos = pos - new float3(0f, 0.5f, 0f);
                 Drawer.Circle(groundPos, new float3(0f, 0.7f, 0f), RingColor);
-                Drawer.Circle(groundPos, new float3(0f, 0.65f, 0f), RingColor);
 
-                Drawer.Text32(pos + new float3(0f, 0.4f, 0f), $"Belongs: 0x{d.BelongsToOverride:X8}", TextColor, 10f);
-                Drawer.Text32(pos + new float3(0f, 0.2f, 0f), $"Collides: 0x{d.CollidesWithOverride:X8}", TextColor,
-                    10f);
+                if (tier >= DebugTier.Mid)
+                {
+                    Drawer.Circle(groundPos, new float3(0f, 0.65f, 0f), RingColor);
+                    Drawer.Text32(pos + new float3(0f, 0.4f, 0f), (FixedString32Bytes)"Filter", TextColor, 10f);
+                }
+
+                if (tier == DebugTier.Close)
+                {
+                    var belongs = new FixedString128Bytes();
+                    belongs.Append((FixedString32Bytes)"belongs 0x");
+                    AppendHex8(ref belongs, d.BelongsToOverride);
+                    Drawer.Text128(pos + new float3(0f, 0.2f, 0f), belongs, TextColor, 10f);
+
+                    var collides = new FixedString128Bytes();
+                    collides.Append((FixedString32Bytes)"collides 0x");
+                    AppendHex8(ref collides, d.CollidesWithOverride);
+                    Drawer.Text128(pos + new float3(0f, 0f, 0f), collides, TextColor, 10f);
+                }
+            }
+
+            private static void AppendHex8(ref FixedString128Bytes s, uint value)
+            {
+                for (var shift = 28; shift >= 0; shift -= 4)
+                {
+                    var nibble = (int)((value >> shift) & 0xF);
+                    s.Append((char)(nibble < 10 ? '0' + nibble : 'A' + (nibble - 10)));
+                }
             }
         }
     }

@@ -64,7 +64,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsAngularPIDDebugSystem>(
-                    ref state, PhysicsAngularPIDDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, PhysicsAngularPIDDebugSystemConfig.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             _localToWorldLookup.Update(ref state);
@@ -76,6 +77,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 LocalToWorldLookup = _localToWorldLookup,
                 LocalTransformLookup = _localTransformLookup,
                 ParentLookup = _parentLookup,
@@ -89,6 +92,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
@@ -110,16 +115,41 @@ namespace BovineLabs.Timeline.Physics.Debug
                 PhysicsMath.ResolveAngularPidTarget(animated.AuthoredData, entity, in TargetsLookup,
                     in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var finalRot);
 
+                var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
+
+                // Far: what the system does — the orientation it is turning the body toward.
                 var forward = math.mul(finalRot, math.forward());
-                var up = math.mul(finalRot, math.up());
                 Drawer.Arrow(selfPos, forward, ColorForward);
-                Drawer.Arrow(selfPos, up, ColorUp);
 
-                PhysicsMath.DrawAngularPidPrediction(ref Drawer, selfPos, selfRot,
-                    finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
+                if (tier >= DebugTier.Mid)
+                {
+                    // Mid: the up axis + label + live angular velocity.
+                    var up = math.mul(finalRot, math.up());
+                    Drawer.Arrow(selfPos, up, ColorUp);
+                    Drawer.Text32(selfPos + new float3(0, 0.4f, 0), "Angular PID", ColorForward, 12f);
+                    if (VelocityLookup.TryGetComponent(entity, out var velocity))
+                        Drawer.Arrow(selfPos, velocity.Angular, ColorAngVel);
+                }
 
-                if (VelocityLookup.TryGetComponent(entity, out var velocity))
-                    Drawer.Arrow(selfPos, velocity.Angular, ColorAngVel);
+                if (tier == DebugTier.Close)
+                {
+                    // Close: predicted swing path + the PID gains.
+                    PhysicsMath.DrawAngularPidPrediction(ref Drawer, selfPos, selfRot,
+                        finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
+
+                    var tuning = animated.AuthoredData.Tuning;
+                    var angSpd = VelocityLookup.TryGetComponent(entity, out var v) ? math.length(v.Angular) : 0f;
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"w ");
+                    readout.Append(angSpd);
+                    readout.Append((FixedString32Bytes)"r/s  P");
+                    readout.Append(tuning.Proportional.x);
+                    readout.Append((FixedString32Bytes)" D");
+                    readout.Append(tuning.Derivative.x);
+                    readout.Append((FixedString32Bytes)" I");
+                    readout.Append(tuning.Integral.x);
+                    Drawer.Text128(selfPos + new float3(0, 0.7f, 0), readout, TimelineDebugColors.Label, 11f);
+                }
             }
         }
     }

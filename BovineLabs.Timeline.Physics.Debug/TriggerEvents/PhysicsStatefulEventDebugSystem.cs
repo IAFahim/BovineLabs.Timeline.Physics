@@ -63,18 +63,23 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsStatefulEventDebugSystem>(
-                    ref state, StatefulEventDebugSystemConfig.Enabled.Data, out var drawer))
+                    ref state, StatefulEventDebugSystemConfig.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawTriggerJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 TextColor = StatefulEventDebugSystemConfig.TextColor.Data
             }.ScheduleParallel(_triggerQuery, state.Dependency);
 
             state.Dependency = new DrawCollisionJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 TextColor = StatefulEventDebugSystemConfig.TextColor.Data
             }.ScheduleParallel(_collisionQuery, state.Dependency);
         }
@@ -83,6 +88,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawTriggerJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color TextColor;
 
             private static readonly FixedString32Bytes Title = "Triggers:\n";
@@ -95,6 +102,18 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (triggers.IsEmpty) return;
 
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
+                var tier = TimelineDebugTier.Resolve(ltw.Position, Viewer, HasViewer);
+
+                // Far: what the system does — a marker that this entity has live trigger events.
+                Drawer.Sphere(origin, 0.12f, 8, TextColor);
+
+                if (tier == DebugTier.Mid)
+                {
+                    Drawer.Text32(origin, (FixedString32Bytes)"Trigger", TextColor, 10f);
+                    return;
+                }
+
+                if (tier == DebugTier.Far) return;
 
                 FixedString128Bytes label = default;
                 label.Append(Title);
@@ -126,6 +145,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawCollisionJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color TextColor;
 
             private static readonly FixedString32Bytes Title = "Collisions:\n";
@@ -138,6 +159,18 @@ namespace BovineLabs.Timeline.Physics.Debug
                 if (collisions.IsEmpty) return;
 
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
+                var tier = TimelineDebugTier.Resolve(ltw.Position, Viewer, HasViewer);
+
+                // Far: what the system does — a marker that this entity has live collision events.
+                Drawer.Sphere(origin, 0.12f, 8, TextColor);
+
+                if (tier == DebugTier.Mid)
+                {
+                    Drawer.Text32(origin, (FixedString32Bytes)"Collision", TextColor, 10f);
+                    return;
+                }
+
+                if (tier == DebugTier.Far) return;
 
                 FixedString128Bytes label = default;
                 label.Append(Title);

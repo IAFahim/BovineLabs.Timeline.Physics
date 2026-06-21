@@ -70,7 +70,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsGravityOverrideGizmoSystem>(
-                    ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer))
+                    ref state, GravityOverrideDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             var worldGravity = new float3(0, -9.81f, 0);
@@ -80,6 +81,8 @@ namespace BovineLabs.Timeline.Physics.Debug
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 WorldGravity = worldGravity,
                 ArrowColor = GravityOverrideDebugSystem.ArrowColor.Data,
                 ZeroGColor = GravityOverrideDebugSystem.ZeroGColor.Data,
@@ -94,6 +97,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public float3 WorldGravity;
             public Color ArrowColor;
             public Color ZeroGColor;
@@ -120,11 +125,14 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var d = animated.Value;
                 var pos = GetAntiJitterPosition(target, ltw.Position);
                 var gScale = d.GravityScale;
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
                 if (math.abs(gScale) < 0.001f)
                 {
-                    Drawer.Text32(pos + new float3(0f, 0.5f, 0f), "g×0", ZeroGColor, 12f);
+                    // Far: zero-g marker.
                     Drawer.Circle(pos + new float3(0f, 0.5f, 0f), new float3(0f, 0.15f, 0f), ZeroGColor);
+                    if (tier >= DebugTier.Mid)
+                        Drawer.Text32(pos + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"g0", ZeroGColor, 12f);
                 }
                 else
                 {
@@ -134,9 +142,21 @@ namespace BovineLabs.Timeline.Physics.Debug
                         arrowLen = math.length(gVec) / math.length(WorldGravity);
 
                     var dir = math.normalize(gVec);
+
+                    // Far: what the system does — the scaled gravity arrow.
                     Drawer.Arrow(pos, dir * arrowLen, ArrowColor);
 
-                    Drawer.Text32(pos + dir * arrowLen + new float3(0, 0.3f, 0), $"g×{gScale:G2}", TextColor, 10f);
+                    if (tier >= DebugTier.Mid)
+                        Drawer.Text32(pos + dir * arrowLen + new float3(0, 0.3f, 0), (FixedString32Bytes)"Gravity",
+                            TextColor, 10f);
+
+                    if (tier == DebugTier.Close)
+                    {
+                        var readout = new FixedString128Bytes();
+                        readout.Append((FixedString32Bytes)"g x ");
+                        readout.Append(gScale);
+                        Drawer.Text128(pos + dir * arrowLen + new float3(0, 0.1f, 0), readout, TextColor, 10f);
+                    }
                 }
             }
         }

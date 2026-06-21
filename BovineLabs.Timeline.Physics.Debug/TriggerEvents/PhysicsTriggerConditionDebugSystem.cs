@@ -67,12 +67,15 @@ namespace BovineLabs.Timeline.Physics.Debug
         public void OnUpdate(ref SystemState state)
         {
             if (!TimelineDebugUtility.TryGetDrawer<PhysicsTriggerConditionGizmoSystem>(
-                    ref state, TriggerConditionDebugSystem.Enabled.Data, out var drawer))
+                    ref state, TriggerConditionDebugSystem.Enabled.Data, out var drawer,
+                    out var viewer, out var hasViewer))
                 return;
 
             state.Dependency = new DrawJob
             {
                 Drawer = drawer,
+                Viewer = viewer,
+                HasViewer = hasViewer,
                 RouteColor = TriggerConditionDebugSystem.RouteColor.Data,
                 TextColor = TriggerConditionDebugSystem.TextColor.Data,
                 TransformLookup = SystemAPI.GetComponentLookup<LocalToWorld>(true),
@@ -88,6 +91,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         private partial struct DrawJob : IJobEntity
         {
             public Drawer Drawer;
+            public float3 Viewer;
+            public bool HasViewer;
             public Color RouteColor;
             public Color TextColor;
 
@@ -117,9 +122,9 @@ namespace BovineLabs.Timeline.Physics.Debug
                     return;
 
                 var pos = triggerLtw.Position;
+                var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                Drawer.Text32(pos + new float3(0f, 0.5f, 0f), $"-> {config.Condition}", TextColor, 10f);
-
+                // Far: what the system does — the enter/stay/exit arrow marker.
                 var markerSize = 0.5f;
                 if (config.EventState == StatefulEventState.Enter)
                 {
@@ -136,10 +141,29 @@ namespace BovineLabs.Timeline.Physics.Debug
                     Drawer.Line(pos + new float3(-markerSize, 0, 0), pos + new float3(markerSize, 0, 0), RouteColor);
                 }
 
-                var drawColor = new Color(1f, 0.4f, 0f, 0.8f);
-                TriggerGizmoUtility.DrawActuallyFired(
-                    triggerEntity, config.EventState, pos, ref Drawer,
-                    TriggerEventsLookup, CollisionEventsLookup, drawColor, "TRIGGERED!");
+                if (tier >= DebugTier.Mid)
+                {
+                    Drawer.Text32(pos + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"Trigger Cond", TextColor, 10f);
+                    var drawColor = new Color(1f, 0.4f, 0f, 0.8f);
+                    TriggerGizmoUtility.DrawActuallyFired(
+                        triggerEntity, config.EventState, pos, ref Drawer,
+                        TriggerEventsLookup, CollisionEventsLookup, drawColor, "TRIGGERED!");
+                }
+
+                if (tier == DebugTier.Close)
+                {
+                    var readout = new FixedString128Bytes();
+                    readout.Append((FixedString32Bytes)"cond ");
+                    readout.Append((int)(ushort)config.Condition);
+                    readout.Append((FixedString32Bytes)"  on ");
+                    if (config.EventState == StatefulEventState.Enter)
+                        readout.Append((FixedString32Bytes)"Enter");
+                    else if (config.EventState == StatefulEventState.Exit)
+                        readout.Append((FixedString32Bytes)"Exit");
+                    else
+                        readout.Append((FixedString32Bytes)"Stay");
+                    Drawer.Text128(pos + new float3(0f, 0.75f, 0f), readout, TextColor, 10f);
+                }
             }
         }
     }

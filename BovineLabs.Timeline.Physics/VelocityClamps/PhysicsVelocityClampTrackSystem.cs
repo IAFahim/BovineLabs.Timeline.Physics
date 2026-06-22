@@ -127,7 +127,8 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
                 ECB.SetComponentEnabled<ActiveVelocityClamp>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveVelocityClamp
                 {
-                    Config = JobHelpers.Blend<PhysicsVelocityClampData, PhysicsVelocityClampMixer>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsVelocityClampData, PhysicsVelocityClampMixer>(ref mixData,
+                        new PhysicsVelocityClampData { MaxLinearSpeed = -1f, MaxAngularSpeed = -1f })
                 });
             }
         }

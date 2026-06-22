@@ -32,6 +32,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
     public partial struct PhysicsTriggerInstantiateSystem : ISystem
     {
         private EntityQuery _query;
+        private EntityTypeHandle _entityHandle;
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
         private ComponentTypeHandle<PhysicsTriggerFilterData> _filterHandle;
@@ -58,6 +59,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 .WithAll<TrackBinding, ClipActive, PhysicsTriggerInstantiateData, PhysicsTriggerFilterData>()
                 .Build();
 
+            _entityHandle = state.GetEntityTypeHandle();
             _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
             _filterHandle = state.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
@@ -77,6 +79,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
+            _entityHandle.Update(ref state);
             _trackBindingHandle.Update(ref state);
             _dataHandle.Update(ref state);
             _filterHandle.Update(ref state);
@@ -102,6 +105,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 Spawned = spawned.AsParallelWriter(),
                 Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Registry = SystemAPI.GetSingleton<ObjectDefinitionRegistry>(),
+                EntityHandle = _entityHandle,
                 TrackBindingHandle = _trackBindingHandle,
                 DataHandle = _dataHandle,
                 FilterHandle = _filterHandle,
@@ -130,18 +134,19 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
         private struct SpawnKey : IEquatable<SpawnKey>
         {
+            public Entity Clip;
             public Entity Self;
             public Entity Other;
             public ObjectId ObjectId;
 
             public bool Equals(SpawnKey other)
             {
-                return Self == other.Self && Other == other.Other && ObjectId.Equals(other.ObjectId);
+                return Clip == other.Clip && Self == other.Self && Other == other.Other && ObjectId.Equals(other.ObjectId);
             }
 
             public override int GetHashCode()
             {
-                return (int)math.hash(new int3(Self.Index, Other.Index, ObjectId.GetHashCode()));
+                return (int)math.hash(new int4(Clip.Index, Self.Index, Other.Index, ObjectId.GetHashCode()));
             }
         }
 
@@ -152,6 +157,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public BLLogger Logger;
             [ReadOnly] public ObjectDefinitionRegistry Registry;
 
+            [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
@@ -170,6 +176,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
             {
+                var entities = chunk.GetNativeArray(EntityHandle);
                 var configs = chunk.GetNativeArray(ref DataHandle);
                 var filters = chunk.GetNativeArray(ref FilterHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
@@ -207,14 +214,15 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         ? selfTargets
                         : default;
 
-                    ProcessTriggerEvents(unfilteredChunkIndex, self, prefab, in cfg, in filter, in targets,
+                    var clip = entities[i];
+                    ProcessTriggerEvents(unfilteredChunkIndex, clip, self, prefab, in cfg, in filter, in targets,
                         isFirstFrame, isLastFrame);
-                    ProcessCollisionEvents(unfilteredChunkIndex, self, prefab, in cfg, in filter, in targets,
+                    ProcessCollisionEvents(unfilteredChunkIndex, clip, self, prefab, in cfg, in filter, in targets,
                         isFirstFrame, isLastFrame);
                 }
             }
 
-            private void ProcessTriggerEvents(int chunkIndex, Entity self, Entity prefab,
+            private void ProcessTriggerEvents(int chunkIndex, Entity clip, Entity self, Entity prefab,
                 in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
                 bool isFirstFrame, bool isLastFrame)
             {
@@ -236,11 +244,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var midpoint = (selfPos + otherPos) * 0.5f;
                     var dir = math.normalizesafe(selfPos - otherPos);
 
-                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets, filter.HitMode);
+                    Spawn(chunkIndex, clip, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets, filter.HitMode);
                 }
             }
 
-            private void ProcessCollisionEvents(int chunkIndex, Entity self, Entity prefab,
+            private void ProcessCollisionEvents(int chunkIndex, Entity clip, Entity self, Entity prefab,
                 in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
                 bool isFirstFrame, bool isLastFrame)
             {
@@ -264,11 +272,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
                     var normal = hasContact ? evt.Normal : math.normalizesafe(selfPos - otherPos);
 
-                    Spawn(chunkIndex, prefab, self, evt.EntityB, in cfg, pt, normal, in targets, filter.HitMode);
+                    Spawn(chunkIndex, clip, prefab, self, evt.EntityB, in cfg, pt, normal, in targets, filter.HitMode);
                 }
             }
 
-            private void Spawn(int chunkIndex, Entity prefab, Entity self, Entity other,
+            private void Spawn(int chunkIndex, Entity clip, Entity prefab, Entity self, Entity other,
                 in PhysicsTriggerInstantiateData cfg, float3 contactPoint, float3 contactNormal, in Targets targets,
                 PhysicsTriggerHitMode hitMode
             )
@@ -276,7 +284,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var dedupKey = hitMode == PhysicsTriggerHitMode.FirstPerRoot
                     ? PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)
                     : other;
-                if (!Spawned.Add(new SpawnKey { Self = self, Other = dedupKey, ObjectId = cfg.ObjectId }))
+                if (!Spawned.Add(new SpawnKey { Clip = clip, Self = self, Other = dedupKey, ObjectId = cfg.ObjectId }))
                     return;
 
                 var spawnTarget = other;

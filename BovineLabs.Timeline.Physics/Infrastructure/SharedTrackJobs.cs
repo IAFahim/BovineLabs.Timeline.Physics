@@ -5,6 +5,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Jobs;
 
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
@@ -91,6 +92,20 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
         [ReadOnly] public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly BlendData;
         [NativeDisableParallelForRestriction] public ComponentLookup<TActive> ActiveLookup;
+
+        /// <summary>
+        ///     Forces single-threaded execution. Two distinct binding entities can carry the same
+        ///     <see cref="TrackBinding" /> body, so running across chunks in parallel would have two worker
+        ///     threads call <c>SetComponentEnabled</c> on the same body's enableable component concurrently —
+        ///     an unsynchronised read-modify-write on the shared per-chunk 64-bit mask word (also corrupting
+        ///     neighbouring entities' bits). This instance method shadows the <c>IJobChunk</c> parallel
+        ///     extension so existing <c>.ScheduleParallel(query, dependsOn)</c> call sites route here and run
+        ///     single-threaded, where the mask word is only ever written by one thread.
+        /// </summary>
+        public JobHandle ScheduleParallel(EntityQuery query, JobHandle dependsOn)
+        {
+            return this.Schedule(query, dependsOn);
+        }
 
         public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
             in v128 chunkEnabledMask)

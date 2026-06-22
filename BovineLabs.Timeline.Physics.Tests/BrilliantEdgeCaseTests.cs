@@ -69,33 +69,38 @@ namespace BovineLabs.Timeline.Physics.Tests
             );
 
             var entities = new NativeArray<Entity>(10000, Allocator.TempJob);
-            Manager.CreateEntity(archetype, entities);
-
-            for (var i = 0; i < entities.Length; i++)
+            try
             {
-                Manager.SetComponentData(entities[i], new LocalToWorld { Value = float4x4.identity });
-                Manager.SetComponentData(entities[i], new PhysicsVelocity { Linear = float3.zero });
-                Manager.SetComponentData(entities[i],
-                    new PhysicsMass
-                        { InverseMass = 1f, InverseInertia = new float3(1), Transform = RigidTransform.identity });
+                Manager.CreateEntity(archetype, entities);
 
-                var buffer = Manager.GetBuffer<PendingForce>(entities[i]);
-                buffer.Add(new PendingForce { Linear = new float3(0, 1, 0) });
+                for (var i = 0; i < entities.Length; i++)
+                {
+                    Manager.SetComponentData(entities[i], new LocalToWorld { Value = float4x4.identity });
+                    Manager.SetComponentData(entities[i], new PhysicsVelocity { Linear = float3.zero });
+                    Manager.SetComponentData(entities[i],
+                        new PhysicsMass
+                            { InverseMass = 1f, InverseInertia = new float3(1), Transform = RigidTransform.identity });
+
+                    var buffer = Manager.GetBuffer<PendingForce>(entities[i]);
+                    buffer.Add(new PendingForce { Linear = new float3(0, 1, 0) });
+                }
+
+                var sys = World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>();
+                sys.Update(WorldUnmanaged);
+                Manager.CompleteAllTrackedJobs();
+
+                var sw = Stopwatch.StartNew();
+                sys.Update(WorldUnmanaged);
+                Manager.CompleteAllTrackedJobs();
+                sw.Stop();
+
+                Debug.Log($"Accumulator System took {sw.Elapsed.TotalMilliseconds:F4}ms for 10,000 entities");
+                Assert.Less(sw.Elapsed.TotalMilliseconds, 50.0, "System should be fast enough");
             }
-
-            var sys = World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>();
-            sys.Update(WorldUnmanaged);
-            Manager.CompleteAllTrackedJobs();
-
-            var sw = Stopwatch.StartNew();
-            sys.Update(WorldUnmanaged);
-            Manager.CompleteAllTrackedJobs();
-            sw.Stop();
-
-            Debug.Log($"Accumulator System took {sw.Elapsed.TotalMilliseconds:F4}ms for 10,000 entities");
-            Assert.Less(sw.Elapsed.TotalMilliseconds, 50.0, "System should be fast enough");
-
-            entities.Dispose();
+            finally
+            {
+                entities.Dispose();
+            }
         }
 
         #endregion

@@ -1,6 +1,6 @@
 ---
 name: unity-track-swept-trigger
-description: Master of SweptTriggerTrack + SweptTriggerSourceAuthoring (package BovineLabs.Timeline.Physics, ns BovineLabs.Timeline.Physics.Authoring) — the SWEPT companion to StatefulTriggerTrack for animation-driven melee weapons (a swung blade). It traces a "dummy" capsule from the body's previous to current pose each active frame and writes the SAME StatefulTriggerEvent buffer the simulation-driven trigger uses, so the EXACT same clips (Instantiate / Condition / Force / BreakForce / Query) fire — but detection is swept so a fast swing can't tunnel past a thin target. Owns the empty-CollidesWith silent-no-op, the Enter-not-Stay-on-fast-swings rule, and the clip-must-be-active gate. Portable to any project containing the package; worked example (WireOnPlayer) from vex-ee. Use when a designer says "when my SWINGING weapon hits X, spawn/do Z" (vs a static overlap zone → use unity-track-stateful-trigger).
+description: Master of SweptTriggerTrack + SweptTriggerSourceAuthoring (package BovineLabs.Timeline.Physics, ns BovineLabs.Timeline.Physics.Authoring) — the SWEPT companion to StatefulTriggerTrack for animation-driven melee weapons (a swung blade). It traces a "dummy" capsule from the body's previous to current pose each active frame and writes the SAME StatefulTriggerEvent buffer the simulation-driven trigger uses, so the EXACT same clips (Instantiate / Condition / Force / BreakForce / Query) fire — but detection is swept (with auto-densified rotation sub-steps) so a fast swing is far less likely to tunnel past a thin target. Owns the empty-CollidesWith silent-no-op, the Enter-not-Stay-on-fast-swings rule, the entity-granular (not collider-key) events, and the clip-must-be-active gate. Portable to any project containing the package; worked example (WireOnPlayer) from vex-ee. Use when a designer says "when my SWINGING weapon hits X, spawn/do Z" (vs a static overlap zone → use unity-track-stateful-trigger).
 ---
 
 # SweptTriggerTrack specialist
@@ -58,11 +58,15 @@ Operate per `unity-timeline-track-authoring` and `unity-agent-protocol`; use the
 3. **The clip-active gate.** No active clip on the Swept track this frame → no sweep at all. If your
    clip's time window doesn't overlap the swing's contact frames, the blade passes through with no
    hits. Align the clip to the active frames.
-4. **Contact point = midpoint, not blade edge.** Swept events are TRIGGER events (no true contact
-   point), so `Instantiate.positionMode = MatchContactPoint` / radial `Force` fall back to the
-   self↔target midpoint. Fine for melee (the blade IS at the contact); if you need exact placement,
-   that needs the system to emit `StatefulCollisionEvent` with the cast Position/Normal (programmer
-   task).
+4. **`MatchContactPoint` spawns in MID-AIR on swept clips.** Swept events are TRIGGER events with NO
+   true contact point, but `Instantiate.positionMode` defaults to `MatchContactPoint` and `Force`'s
+   radial origin assume one — so they silently fall back to the **midpoint between the blade centre and
+   the target centre**. The spawned VFX/projectile then appears floating halfway between weapon and
+   victim, looking disconnected ("a sphere comes first, away from the blade"). **For swept melee set
+   `positionMode = MatchCollidedEntity`** (spawn ON the victim) or `MatchSelf` (at the blade). Only use
+   `MatchContactPoint` on the simulation `StatefulTriggerTrack`, whose events DO carry a contact point.
+   Exact edge placement on swept would need the system to emit `StatefulCollisionEvent` with the cast
+   Position/Normal (programmer task).
 5. **Animation drives the swing — you do NOT add a movement track.** The bone-anchored weapon already
    follows the Rukhanka animation. Do not add a Position/PID track to "make it swing". Just put the
    Swept Trigger clip on the attack's active window. (The vex-ee worked example uses a long

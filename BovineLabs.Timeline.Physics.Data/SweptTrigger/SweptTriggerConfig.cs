@@ -11,7 +11,9 @@ namespace BovineLabs.Timeline.Physics
     /// resulting Enter/Stay/Exit edges into the entity's <c>StatefulTriggerEvent</c> buffer — the exact
     /// buffer the physics simulation fills for a real trigger. Every existing Stateful Trigger clip
     /// (Instantiate / Condition / Force / BreakForce / Query) therefore works unchanged, but the detection
-    /// is swept so a fast melee swing can never tunnel past a thin target.
+    /// is swept so a fast melee swing is far less likely to tunnel past a thin target. Translation is covered
+    /// continuously; rotation is sampled per sub-step, so the system auto-densifies sub-steps with the per-frame
+    /// angular speed (raise <see cref="SubSteps"/> for an authored floor on extreme spins).
     /// </summary>
     public struct SweptTriggerConfig : IComponentData
     {

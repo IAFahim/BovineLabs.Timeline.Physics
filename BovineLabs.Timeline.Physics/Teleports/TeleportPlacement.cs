@@ -40,12 +40,22 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var worldTransform = LocalTransform.FromPositionRotation(landing, facing);
             worldTransform.Scale = localScale;
 
-            if (!hasParentTransform)
+            // A singular parent LocalToWorld (scaled-to-0, degenerate, or the uninitialized all-zero
+            // default) would make the world->local conversion produce NaN/Inf. Treat it as no parent.
+            if (!hasParentTransform || math.abs(math.determinant(parentLocalToWorld.Value)) < math.EPSILON)
                 return worldTransform;
 
-            var worldMatrix = float4x4.TRS(worldTransform.Position, worldTransform.Rotation, 1f);
-            var localMatrix = math.mul(math.inverse(parentLocalToWorld.Value), worldMatrix);
-            var localTransform = LocalTransform.FromMatrix(localMatrix);
+            // Convert world->local using only the parent's world position+rotation. Going through a full
+            // float4x4 inverse/FromMatrix would fold any non-uniform parent scale into the result as shear,
+            // distorting the extracted rotation.
+            var parentPosition = parentLocalToWorld.Value.c3.xyz;
+            var parentRotation = new quaternion(math.orthonormalize(new float3x3(parentLocalToWorld.Value)));
+            var inverseParentRotation = math.conjugate(parentRotation);
+
+            var localPosition = math.mul(inverseParentRotation, worldTransform.Position - parentPosition);
+            var localRotation = math.mul(inverseParentRotation, worldTransform.Rotation);
+
+            var localTransform = LocalTransform.FromPositionRotation(localPosition, localRotation);
             localTransform.Scale = localScale;
             return localTransform;
         }

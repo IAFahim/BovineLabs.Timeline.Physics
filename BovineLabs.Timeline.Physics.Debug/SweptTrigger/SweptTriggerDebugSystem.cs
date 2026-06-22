@@ -24,10 +24,10 @@ namespace BovineLabs.Timeline.Physics.Debug
         [ConfigVar("sweptgizmo.draw-enabled", false, "Draw the swept-trigger capsule, sweep path and hits.")]
         public static readonly SharedStatic<bool> Enabled = SharedStatic<bool>.GetOrCreate<Tags.Enabled>();
 
-        [ConfigVar("sweptgizmo.active-color", 0.2f, 0.95f, 0.3f, 0.8f, "Swept capsule colour while active (green).")]
+        [ConfigVar("sweptgizmo.active-color", 0.2f, 0.95f, 0.3f, 0.8f, "Swept capsule colour while sweeping (green).")]
         public static readonly SharedStatic<Color> ActiveColor = SharedStatic<Color>.GetOrCreate<Tags.ActiveColor>();
 
-        [ConfigVar("sweptgizmo.idle-color", 0.5f, 0.5f, 0.55f, 0.4f, "Swept capsule colour while idle (grey).")]
+        [ConfigVar("sweptgizmo.idle-color", 0.3f, 0.6f, 1f, 0.55f, "Swept capsule colour while idle (blue) — shows placement when not swinging.")]
         public static readonly SharedStatic<Color> IdleColor = SharedStatic<Color>.GetOrCreate<Tags.IdleColor>();
 
         [ConfigVar("sweptgizmo.path-color", 0.95f, 0.85f, 0.2f, 0.9f, "Sweep path colour (yellow).")]
@@ -120,28 +120,36 @@ namespace BovineLabs.Timeline.Physics.Debug
                 in DynamicBuffer<StatefulTriggerEvent> events)
             {
                 var active = state.WasActive == 1;
+
+                // ALWAYS draw the capsule volume (dim blue when idle, bright green while sweeping) so a designer
+                // can see the hit volume's PLACEMENT at any time, not just during the brief active swing window.
+                // The noisy extras (sweep path, hit markers, labels) stay gated on `active` below to avoid idle
+                // clutter — so an idle weapon shows just its volume outline, an active one shows the full detail.
                 var col = active ? ActiveColor : IdleColor;
 
-                // Swept capsule volume at the current pose (local capsule endpoints -> world).
-                var v0 = math.transform(ltw.Value, config.Vertex0);
-                var v1 = math.transform(ltw.Value, config.Vertex1);
+                // Draw EXACTLY the volume the swept query tests: SweptTriggerSystem casts the capsule via
+                // RigidTransform(ltw.Rotation, ltw.Position) with QueryColliderScale = 1 — it ignores the
+                // source's (often bone-inherited) world SCALE. Transforming the endpoints through the full
+                // ltw.Value instead would scale the drawn capsule and make the play-mode volume jump away from
+                // both the query and the unscaled author gizmo (the "before/after switch on Play"). Use
+                // position + rotation only so edit gizmo, runtime debug, and the actual hit test all coincide.
+                // The capsule's own hemispherical caps already enclose v0/v1, so no extra end spheres are drawn.
+                var pos = ltw.Position;
+                var rot = ltw.Rotation;
+                var v0 = pos + math.rotate(rot, config.Vertex0);
+                var v1 = pos + math.rotate(rot, config.Vertex1);
                 var center = (v0 + v1) * 0.5f;
                 var height = math.distance(v0, v1) + (2f * config.Radius);
 
                 var tier = TimelineDebugTier.Resolve(center, this.Viewer, this.HasViewer);
 
                 // Far: what the system does — the swept capsule volume.
-                this.Drawer.Capsule(center, ltw.Rotation, height, config.Radius, 12, col);
-                this.Drawer.Sphere(v0, config.Radius, 8, col);
-                this.Drawer.Sphere(v1, config.Radius, 8, col);
+                this.Drawer.Capsule(center, rot, height, config.Radius, 12, col);
 
-                if (tier >= DebugTier.Mid)
+                if (active && tier >= DebugTier.Mid)
                 {
-                    // Mid: the sweep path + markers on overlapped entities + a label.
-                    if (active)
-                    {
-                        this.Drawer.Line(state.PrevPosition, ltw.Position, this.PathColor);
-                    }
+                    // Mid: the sweep path + markers on overlapped entities + a label (active sources only).
+                    this.Drawer.Line(state.PrevPosition, ltw.Position, this.PathColor);
 
                     for (var i = 0; i < hits.Length; i++)
                     {
@@ -158,12 +166,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                         this.TextColor, 10f);
                 }
 
-                if (tier != DebugTier.Close)
+                if (!active || tier != DebugTier.Close)
                 {
                     return;
                 }
 
-                // Close: live Enter/Stay/Exit labels + hit count.
+                // Close: live Enter/Stay/Exit labels + hit count (active sources only).
                 FixedString128Bytes label = default;
                 label.Append('S');
                 label.Append('W');

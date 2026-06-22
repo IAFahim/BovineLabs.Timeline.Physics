@@ -41,6 +41,26 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsLinearPIDData Lerp(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b, in float s)
         {
+            // World/LineOfSight TargetOffset is an absolute world target, not a relative offset. When only one side is
+            // absolute (the common single-clip blend case, where the partner is the meaningless default(...) fill),
+            // lerping its position toward (0,0,0) or reinterpreting its mode at the 0.5 threshold drags the goal toward
+            // world origin / a mis-typed goal. Hold the absolute side authoritatively instead of blending it.
+            var aAbsolute = IsAbsolute(a.TargetMode);
+            var bAbsolute = IsAbsolute(b.TargetMode);
+            if (aAbsolute != bAbsolute)
+            {
+                var absolute = aAbsolute ? a : b;
+                return new PhysicsLinearPIDData
+                {
+                    Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
+                    TrackingTarget = absolute.TrackingTarget,
+                    TargetMode = absolute.TargetMode,
+                    TargetOffset = absolute.TargetOffset,
+                    Strength = math.lerp(a.Strength, b.Strength, s),
+                    StrengthStat = absolute.StrengthStat
+                };
+            }
+
             return new PhysicsLinearPIDData
             {
                 Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
@@ -50,6 +70,11 @@ namespace BovineLabs.Timeline.Physics
                 Strength = math.lerp(a.Strength, b.Strength, s),
                 StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
             };
+        }
+
+        private static bool IsAbsolute(PidLinearTargetMode mode)
+        {
+            return mode == PidLinearTargetMode.World || mode == PidLinearTargetMode.LineOfSight;
         }
 
         public PhysicsLinearPIDData Add(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b)

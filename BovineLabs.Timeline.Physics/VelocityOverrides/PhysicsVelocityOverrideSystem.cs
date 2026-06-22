@@ -136,7 +136,7 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entities[i], targets,
                         LinkSources, Links, StatLookup);
 
-                    if (math.abs(multiplier) < 1e-5f) continue;
+                    if (!math.isfinite(multiplier) || math.abs(multiplier) < 1e-5f) continue;
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, entities[i], in TargetsLookup,
                         in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);
@@ -146,6 +146,7 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
                     var pv = physicsVelocities[i];
                     pv.Linear = linVel * multiplier;
                     pv.Angular = angVel * multiplier;
+                    if (!math.all(math.isfinite(pv.Linear)) || !math.all(math.isfinite(pv.Angular))) continue;
                     physicsVelocities[i] = pv;
 
                     if (isInstant)

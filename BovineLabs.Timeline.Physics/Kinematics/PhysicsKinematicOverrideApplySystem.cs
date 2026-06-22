@@ -117,7 +117,9 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     }
                     else if (isActive && state.Fired)
                     {
-                        OnStay(ref lanes, actives[i].Config, hasActiveGravityOverride, i);
+                        OnStay(ref lanes, ref state, actives[i].Config, hasActiveGravityOverride, entity,
+                            unfilteredChunkIndex, i);
+                        states[i] = state;
                     }
                     else if (!isActive && state.Fired)
                     {
@@ -184,7 +186,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 state.Fired = true;
             }
 
-            private void OnStay(ref Lanes lanes, in PhysicsKinematicOverrideData config, bool hasActiveGravityOverride,
+            private void OnStay(ref Lanes lanes, ref PhysicsKinematicOverrideState state,
+                in PhysicsKinematicOverrideData config, bool hasActiveGravityOverride, Entity entity, int chunkIndex,
                 int i)
             {
                 if (lanes.HasMassOverride)
@@ -194,7 +197,31 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     lanes.MassOverrides[i] = mo;
                 }
 
-                if (config.ZeroGravity && lanes.HasGravityFactor && !hasActiveGravityOverride)
+                if (!config.ZeroGravity || hasActiveGravityOverride)
+                {
+                    return;
+                }
+
+                // The overlapping gravity-override clip may have ended after we entered. Capture ownership of the
+                // gravity factor before zeroing it so OnExit can restore it; mirror the OnEnter capture block.
+                if (!state.GravityCaptured)
+                {
+                    state.GravityCaptured = true;
+
+                    if (lanes.HasGravityFactor)
+                    {
+                        state.OriginalGravityScale = lanes.GravityFactors[i].Value;
+                        state.AddedGravityComponent = false;
+                    }
+                    else
+                    {
+                        state.OriginalGravityScale = 1f;
+                        state.AddedGravityComponent = true;
+                        ECB.AddComponent(chunkIndex, entity, new PhysicsGravityFactor { Value = 0f });
+                    }
+                }
+
+                if (lanes.HasGravityFactor)
                 {
                     var factor = lanes.GravityFactors[i];
                     factor.Value = 0f;

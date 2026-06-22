@@ -231,6 +231,8 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 return;
             }
 
+            var maxOut = math.max(tuning.MaxOutput, 0f);
+
             var isInit = state.IsInitialized;
             var prevError = math.select(error, state.PreviousError, isInit);
             var integral = math.select(float3.zero, state.IntegralAccumulator, isInit);
@@ -244,7 +246,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             else
             {
                 var safeIntegral = math.max(tuning.Integral, new float3(0.001f));
-                var integralMax = tuning.MaxOutput / safeIntegral;
+                var integralMax = maxOut / safeIntegral;
                 nextIntegral = math.clamp(nextIntegral, -integralMax, integralMax);
             }
 
@@ -255,9 +257,9 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                             + tuning.Derivative * derivative;
 
             var magSq = math.lengthsq(rawOutput);
-            var maxSq = tuning.MaxOutput * tuning.MaxOutput;
+            var maxSq = maxOut * maxOut;
 
-            output = magSq > maxSq ? math.normalize(rawOutput) * tuning.MaxOutput : rawOutput;
+            output = magSq > maxSq ? math.normalize(rawOutput) * maxOut : rawOutput;
 
             nextState = new PidStateData
             {

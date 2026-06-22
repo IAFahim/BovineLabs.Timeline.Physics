@@ -150,8 +150,9 @@ namespace BovineLabs.Timeline.Physics.Forces
                 velocity.Linear += totalLinear * mass.InverseMass;
 
                 var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
-                var localAngular = math.rotate(math.inverse(rotation), totalAngular);
-                velocity.Angular += math.rotate(rotation, localAngular * mass.InverseInertia);
+                var inertiaRot = math.mul(rotation, mass.Transform.rot);
+                var localAngular = math.rotate(math.inverse(inertiaRot), totalAngular);
+                velocity.Angular += math.rotate(inertiaRot, localAngular * mass.InverseInertia);
 
                 forces.Clear();
                 return true;

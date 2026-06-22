@@ -230,14 +230,17 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     return;
                 }
 
-                if (filter.HitMode == PhysicsTriggerHitMode.FirstPerRoot &&
-                    !seenRoots.Add(PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)))
+                if (!PhysicsTriggerResolution.TryResolveLinkedTarget(cfg.ApplyTo, cfg.ApplyToLinkKey, self, other,
+                        targets, LinkSources, Links, out var victim))
                 {
                     return;
                 }
 
-                if (!PhysicsTriggerResolution.TryResolveLinkedTarget(cfg.ApplyTo, cfg.ApplyToLinkKey, self, other,
-                        targets, LinkSources, Links, out var victim))
+                // The corrective impulse is absolute (computed against the victim's pre-frame velocity), not additive,
+                // so a victim that yields multiple matching events in one frame (compound/multi-collider, AllContacts,
+                // or several events resolving to the same body) must only be corrected once — otherwise the summed
+                // impulses multiply Δv and over-brake/launch the body. Dedup by victim regardless of HitMode.
+                if (!seenRoots.Add(victim))
                 {
                     return;
                 }

@@ -197,6 +197,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         continue;
 
                     var forward = math.rotate(selfRot, math.forward());
+                    if (!math.all(math.isfinite(forward))) continue;
+
                     var maxDistSq = config.MaxDistance > 0f ? config.MaxDistance * config.MaxDistance
                         : float.MaxValue;
                     var minAlignment = config.MaxAngle > 0f ? math.cos(config.MaxAngle) : float.MinValue;

@@ -39,6 +39,14 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsAngularPIDMixer : IMixer<PhysicsAngularPIDData>
     {
+        // The Blend helper fills missing weight with default(PhysicsAngularPIDData), whose TargetRotation is the
+        // zero quaternion (0,0,0,0) rather than identity. Slerping toward that yields a non-unit / shrunk rotation
+        // that corrupts the resolved PID target at every blend edge, so treat a (near-)zero quaternion as identity.
+        private static quaternion SanitizeRotation(in quaternion q)
+        {
+            return math.lengthsq(q.value) > 1e-6f ? math.normalize(q) : quaternion.identity;
+        }
+
         public PhysicsAngularPIDData Lerp(in PhysicsAngularPIDData a, in PhysicsAngularPIDData b, in float s)
         {
             return new PhysicsAngularPIDData
@@ -46,7 +54,7 @@ namespace BovineLabs.Timeline.Physics
                 Tuning = PidMixer.Lerp(a.Tuning, b.Tuning, s),
                 TrackingTarget = s < 0.5f ? a.TrackingTarget : b.TrackingTarget,
                 TargetMode = s < 0.5f ? a.TargetMode : b.TargetMode,
-                TargetRotation = math.slerp(a.TargetRotation, b.TargetRotation, s),
+                TargetRotation = math.slerp(SanitizeRotation(a.TargetRotation), SanitizeRotation(b.TargetRotation), s),
                 Strength = math.lerp(a.Strength, b.Strength, s),
                 StrengthStat = s < 0.5f ? a.StrengthStat : b.StrengthStat
             };
@@ -63,7 +71,7 @@ namespace BovineLabs.Timeline.Physics
                 Tuning = PidMixer.Add(a.Tuning, b.Tuning),
                 TrackingTarget = dominant.TrackingTarget,
                 TargetMode = dominant.TargetMode,
-                TargetRotation = PidMixer.AddRotation(a.TargetRotation, b.TargetRotation),
+                TargetRotation = PidMixer.AddRotation(SanitizeRotation(a.TargetRotation), SanitizeRotation(b.TargetRotation)),
                 Strength = a.Strength + b.Strength,
                 StrengthStat = dominant.StrengthStat
             };

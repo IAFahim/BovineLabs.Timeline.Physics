@@ -20,6 +20,15 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
     /// BEFORE every consumer system, so the existing Instantiate / Force / Condition / BreakForce / Query
     /// clips consume swept events identically, with zero changes to them or to core. Core's clear/stateful
     /// systems run after simulation and never collide with these writes.
+    /// <para>
+    /// Swept events are ENTITY-granular, not collider-key granular: each contacted rigid body yields exactly
+    /// one <c>StatefulTriggerEvent</c> (ColliderKeyB/BodyIndex left 0), whereas the simulation trigger emits
+    /// one event per overlapping child collider of a compound target. Every consumer here reads only EntityB +
+    /// State (never the collider key / body index), so Instantiate and all FirstPerRoot consumers behave
+    /// identically; only HitMode=AllContacts on a compound target differs (swept applies once per entity).
+    /// A swept source therefore must NOT also be a real Unity.Physics trigger body — this system owns and
+    /// rewrites the buffer each frame and would clobber the simulation's events.
+    /// </para>
     /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateBefore(typeof(PhysicsTriggerQuerySystem))]
@@ -33,6 +42,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
     public partial struct SweptTriggerSystem : ISystem
     {
         private ComponentLookup<SweptTriggerConfig> _sweptConfigLookup;
+        private EntityQuery _activeClipQuery;
 
         /// <inheritdoc/>
         [BurstCompile]
@@ -40,6 +50,12 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
         {
             state.RequireForUpdate<SweptTriggerConfig>();
             this._sweptConfigLookup = state.GetComponentLookup<SweptTriggerConfig>(true);
+
+            // Same entity set CollectActiveSourcesJob iterates; its count is the upper bound on distinct
+            // active sources, so it sizes activeSources's fixed ParallelWriter capacity (F15).
+            this._activeClipQuery = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<ClipActive, TrackBinding>()
+                .Build(ref state);
         }
 
         /// <inheritdoc/>
@@ -52,7 +68,11 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
             }
 
             // Sources that have at least one active clip this frame (the "active at precise moments" gate).
-            var activeSources = new NativeParallelHashSet<Entity>(128, state.WorldUpdateAllocator);
+            // A NativeParallelHashSet written through a ParallelWriter does NOT grow, so size it to the actual
+            // upper bound (one source per active clip) — a fixed cap would ThrowFull / silently drop sources at
+            // scale (F15). math.max(1, ..) keeps capacity valid when no clips are active.
+            var capacity = math.max(1, this._activeClipQuery.CalculateEntityCount());
+            var activeSources = new NativeParallelHashSet<Entity>(capacity, state.WorldUpdateAllocator);
 
             this._sweptConfigLookup.Update(ref state);
 
@@ -142,7 +162,19 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                     // at its own midpoint. More sub-steps = finer rotation coverage for very fast swings.
                     var startPos = state.WasActive == 1 ? state.PrevPosition : curPos;
                     var startRot = state.WasActive == 1 ? state.PrevRotation : curRot;
-                    var steps = math.max(1, config.SubSteps);
+
+                    // ColliderCast translates the collider with a FIXED orientation, so a fast ROTATION between
+                    // frames (the dominant melee case: a blade swinging about a near-stationary pivot) leaves an
+                    // angular gap the linear cast cannot see — a thin target sitting between the start and end
+                    // orientations would be missed. Auto-derive enough sub-steps that the blade TIP never arcs
+                    // more than one capsule-radius of chord per sub-step, then honour the authored minimum. For
+                    // slow / non-rotating swings the angle is ~0 so this collapses back to config.SubSteps at no
+                    // extra cost; capped so a pathological spin can't explode the cast count.
+                    var cosHalf = math.min(1f, math.abs(math.dot(startRot.value, curRot.value)));
+                    var sweepAngle = 2f * math.acos(cosHalf);
+                    var tipRadius = math.max(math.length(config.Vertex0), math.length(config.Vertex1));
+                    var autoSteps = (int)math.ceil((tipRadius * sweepAngle) / math.max(config.Radius, 1e-4f));
+                    var steps = math.clamp(math.max(config.SubSteps, autoSteps), 1, 32);
 
                     var castHits = new NativeList<ColliderCastHit>(16, Allocator.Temp);
                     for (var s = 0; s < steps; s++)

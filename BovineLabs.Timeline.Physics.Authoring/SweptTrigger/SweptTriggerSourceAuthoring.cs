@@ -10,13 +10,16 @@ namespace BovineLabs.Timeline.Physics.Authoring
     /// <summary>
     /// Binding target for <see cref="SweptTriggerTrack"/>. Defines a "dummy" capsule collider that is SWEPT
     /// against the world each active frame to drive the same <c>StatefulTriggerEvent</c> buffer the
-    /// simulation-driven stateful trigger uses — catching fast melee swings without tunneling, with no
+    /// simulation-driven stateful trigger uses — greatly reducing tunnelling on fast melee swings, with no
     /// changes to any existing trigger clip or system.
     /// <para>
     /// Attach to the bone-anchored weapon object (its animated world transform is the sweep path). The
     /// capsule is authored as parameters here rather than a <c>PhysicsShapeAuthoring</c> so it never gets
     /// merged into the character's compound collider. To ignore the wielder, also add a
     /// <c>TargetsAuthoring</c> with Owner = the character and leave the clip's Ignore Target = Owner.
+    /// The swept volume is authored in METRES and ignores the object's transform scale (the query runs at
+    /// QueryColliderScale = 1) — size it via radius/length on an unscaled object; the Scene gizmo shows the
+    /// true unscaled volume.
     /// </para>
     /// </summary>
     [DisallowMultipleComponent]
@@ -53,18 +56,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public int subSteps = 1;
 
 #if UNITY_EDITOR
-        // Author-time feedback so designers aren't tuning the swept volume blind.
-        private void OnValidate()
-        {
-            if (this.collidesWith.Value == 0)
-            {
-                Debug.LogWarning(
-                    $"{nameof(SweptTriggerSourceAuthoring)} on '{this.name}': 'Collides With' is empty — the sweep will hit NOTHING. " +
-                    "Set the category your targets belong to (or Everything).", this);
-            }
-        }
-
         // Draws the swept capsule volume in the Scene view at AUTHOR time (not just play), so designers can size/place it.
+        // The empty-CollidesWith and missing-Owner traps are surfaced (with one-click fixes) by the custom inspector,
+        // not via OnValidate — OnValidate re-logged on every scene/prefab load and edit, spamming the console.
         private void OnDrawGizmosSelected()
         {
             var half = Mathf.Max(0f, this.length * 0.5f);
@@ -79,7 +73,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var v0 = this.offset - (dir * half);
             var v1 = this.offset + (dir * half);
             var prev = Gizmos.matrix;
-            Gizmos.matrix = this.transform.localToWorldMatrix;
+
+            // Draw in UNSCALED world space (position + rotation only). The runtime sweep queries the capsule via
+            // RigidTransform with QueryColliderScale = 1, so the actual hit volume ignores the object's lossyScale.
+            // Drawing through localToWorldMatrix would squash the gizmo by a non-unit (e.g. 0.18,0.5,0.18) scale and
+            // misrepresent what gets hit — keep the gizmo honest by matching the query's unscaled metres.
+            Gizmos.matrix = Matrix4x4.TRS(this.transform.position, this.transform.rotation, Vector3.one);
             Gizmos.color = this.collidesWith.Value == 0 ? new Color(1f, 0.3f, 0.3f, 0.9f) : new Color(0.4f, 0.85f, 1f, 0.9f);
             Gizmos.DrawWireSphere(v0, r);
             Gizmos.DrawWireSphere(v1, r);

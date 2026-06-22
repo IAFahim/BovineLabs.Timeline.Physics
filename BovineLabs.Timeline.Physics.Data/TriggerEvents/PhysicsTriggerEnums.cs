@@ -25,7 +25,6 @@ namespace BovineLabs.Timeline.Physics
         FirstPerRoot
     }
 
-
     public static class StatefulEventMatching
     {
         public static bool Matches(StatefulEventState actual, StatefulEventState wanted,

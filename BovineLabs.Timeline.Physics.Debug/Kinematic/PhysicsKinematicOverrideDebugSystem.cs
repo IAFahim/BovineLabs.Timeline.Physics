@@ -109,7 +109,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return fallback;
             }
 
-
             public void Execute(Entity entity, in TrackBinding binding, in PhysicsKinematicOverrideAnimated animated)
             {
                 var target = binding.Value;
@@ -123,7 +122,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (d.IsKinematic)
                 {
-                    // Far: what the system does — the frozen-body marker.
                     Drawer.Circle(pos, new float3(0f, 0.5f, 0f), BoxColor);
 
                     if (tier >= DebugTier.Mid)

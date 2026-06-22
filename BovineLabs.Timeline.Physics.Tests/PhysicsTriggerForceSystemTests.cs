@@ -207,8 +207,8 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.CompleteAllTrackedJobs();
 
             return Manager.GetBuffer<PendingForce>(shapeA).Length
-                + Manager.GetBuffer<PendingForce>(shapeB).Length
-                + Manager.GetBuffer<PendingForce>(shapeC).Length;
+                   + Manager.GetBuffer<PendingForce>(shapeB).Length
+                   + Manager.GetBuffer<PendingForce>(shapeC).Length;
         }
 
         private Entity CreateShape(Entity root, float3 pos)

@@ -16,12 +16,6 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Splines
 {
-    /// <summary>
-    ///     Drives each body carrying an enabled <see cref="ActiveSplineFollow" /> along its referenced spline by
-    ///     appending a PID force toward a point that advances along the path. A real physical motor (writes
-    ///     <see cref="PendingForce" />, resolved through inverse mass by the accumulator), so it composes with gravity
-    ///     and collisions instead of teleporting the transform.
-    /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
@@ -101,7 +95,6 @@ namespace BovineLabs.Timeline.Physics.Splines
             }.ScheduleParallel(_query, state.Dependency);
         }
 
-        // Maps an (unbounded) progress accumulator to an evaluation parameter in [0,1] per the wrap mode.
         private static float WrapEval(float p, SplineWrap wrap)
         {
             switch (wrap)
@@ -110,8 +103,8 @@ namespace BovineLabs.Timeline.Physics.Splines
                     return p - math.floor(p);
                 case SplineWrap.PingPong:
                     var m = math.abs(p);
-                    m -= math.floor(m / 2f) * 2f; // m in [0,2)
-                    return 1f - math.abs(1f - m); // triangle 0->1->0
+                    m -= math.floor(m / 2f) * 2f;
+                    return 1f - math.abs(1f - m);
                 default:
                     return math.saturate(p);
             }
@@ -151,10 +144,7 @@ namespace BovineLabs.Timeline.Physics.Splines
                     var config = actives[i].Config;
                     var state = states[i];
 
-                    if (!Registry.TryGetValue(config.SplineKey, out var spline) || !spline.IsCreated)
-                    {
-                        continue;
-                    }
+                    if (!Registry.TryGetValue(config.SplineKey, out var spline) || !spline.IsCreated) continue;
 
                     var length = math.max(spline.Value.Length, 1e-3f);
                     var delta = config.Traversal == SplineTraversal.ConstantSpeed
@@ -180,13 +170,11 @@ namespace BovineLabs.Timeline.Physics.Splines
                     force *= config.Strength * multiplier;
 
                     if (math.lengthsq(force) > 1e-5f)
-                    {
                         pendingForces[i].Add(new PendingForce
                         {
                             Linear = force * DeltaTime,
                             Angular = float3.zero
                         });
-                    }
 
                     state.Pid = nextPid;
                     states[i] = state;

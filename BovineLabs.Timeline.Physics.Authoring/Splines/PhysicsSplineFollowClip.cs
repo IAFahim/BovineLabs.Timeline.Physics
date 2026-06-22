@@ -11,11 +11,6 @@ using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring.Splines
 {
-    /// <summary>
-    ///     Force-traces the bound physics body along a <see cref="SplineSchema" />'s path: a PID motor whose target
-    ///     point advances along the spline as the clip plays. Composes with gravity/collisions (it writes forces, not
-    ///     transforms). Strength is stat-driven, so an intrinsic/stat can scale or cut the pull at runtime.
-    /// </summary>
     public class PhysicsSplineFollowClip : DOTSClip, ITimelineClipAsset
     {
         [Header("Path")]
@@ -25,8 +20,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
         public SplineTraversal traversal = SplineTraversal.OverDuration;
         public SplineWrap wrap = SplineWrap.Clamp;
 
-        [Header("Speed")]
-        [Tooltip("ConstantSpeed mode: metres/second along the path.")]
+        [Header("Speed")] [Tooltip("ConstantSpeed mode: metres/second along the path.")]
         public float speed = 10f;
 
         [Tooltip("OverDuration mode: seconds to traverse the whole path.")]
@@ -42,11 +36,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
             Proportional = new float3(20f, 20f, 20f),
             Derivative = new float3(4f, 4f, 4f),
             Integral = float3.zero,
-            MaxOutput = 200f,
+            MaxOutput = 200f
         };
 
-        [Header("Influence")]
-        [Min(0f)] public float strength = 1f;
+        [Header("Influence")] [Min(0f)] public float strength = 1f;
 
         [Tooltip("Optional stat that scales the pull (×100 encoded). Resolved through Targets / EntityLinks.")]
         public StatSchemaObject strengthStat;
@@ -62,10 +55,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
             var commands = new BakerCommands(context.Baker, clipEntity);
 
             ushort statLinkKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k))
-            {
-                statLinkKey = k;
-            }
+            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k)) statLinkKey = k;
 
             var builder = new PhysicsSplineFollowBuilder
             {
@@ -83,9 +73,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
                         ReadFrom = readStatFrom,
-                        LinkKey = statLinkKey,
-                    },
-                },
+                        LinkKey = statLinkKey
+                    }
+                }
             };
             builder.ApplyTo(ref commands);
 

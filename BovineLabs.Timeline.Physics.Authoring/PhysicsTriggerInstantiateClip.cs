@@ -38,7 +38,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the event.")]
         public EntityLinkSchema[] requireLinks = Array.Empty<EntityLinkSchema>();
 
-        [Tooltip("AllContacts spawns once per contacting collider; FirstPerRoot spawns once per enemy (resolved root).")]
+        [Tooltip(
+            "AllContacts spawns once per contacting collider; FirstPerRoot spawns once per enemy (resolved root).")]
         public PhysicsTriggerHitMode hitMode = PhysicsTriggerHitMode.AllContacts;
 
         public override double duration => 1;

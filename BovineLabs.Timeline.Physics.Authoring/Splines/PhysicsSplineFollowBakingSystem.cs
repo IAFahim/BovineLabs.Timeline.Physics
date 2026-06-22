@@ -5,11 +5,6 @@ using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.Authoring.Splines
 {
-    /// <summary>
-    ///     Pre-adds the disabled <see cref="ActiveSplineFollow" /> + <see cref="PhysicsSplineFollowState" /> pair and
-    ///     the force accumulation buffers to every body bound by a spline-follow track, mirroring
-    ///     PhysicsTimelineBakingSystem. The track system enables the Active component only while a clip is live.
-    /// </summary>
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     public partial struct PhysicsSplineFollowBakingSystem : ISystem
     {
@@ -24,10 +19,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {
                 var target = binding.ValueRO.Value;
-                if (target == Entity.Null)
-                {
-                    continue;
-                }
+                if (target == Entity.Null) continue;
 
                 if (!em.HasComponent<ActiveSplineFollow>(target))
                 {
@@ -36,15 +28,9 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
                     ecb.AddComponent<PhysicsSplineFollowState>(target);
                 }
 
-                if (!em.HasBuffer<PendingForce>(target))
-                {
-                    ecb.AddBuffer<PendingForce>(target);
-                }
+                if (!em.HasBuffer<PendingForce>(target)) ecb.AddBuffer<PendingForce>(target);
 
-                if (!em.HasBuffer<PendingVelocity>(target))
-                {
-                    ecb.AddBuffer<PendingVelocity>(target);
-                }
+                if (!em.HasBuffer<PendingVelocity>(target)) ecb.AddBuffer<PendingVelocity>(target);
 
                 if (!em.HasComponent<PendingVelocityReset>(target))
                 {

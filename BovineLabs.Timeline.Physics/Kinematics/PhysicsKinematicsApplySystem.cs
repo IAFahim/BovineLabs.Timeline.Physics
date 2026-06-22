@@ -291,11 +291,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 return true;
             }
 
-            /// <summary>
-            ///     Resolves stochastic and velocity-relative directions. With latching enabled the first
-            ///     resolved direction is held for the rest of the clip activation; otherwise each fire
-            ///     re-evaluates (advancing the random stream for the random modes).
-            /// </summary>
             private bool TryResolveDynamicDirection(in ArchetypeChunk chunk, int i, Entity body,
                 in PhysicsForceData config, bool hasRandom, NativeArray<PhysicsForceRandom> randoms,
                 bool hasVelocity, NativeArray<PhysicsVelocity> velocities, ref PhysicsForceState state,

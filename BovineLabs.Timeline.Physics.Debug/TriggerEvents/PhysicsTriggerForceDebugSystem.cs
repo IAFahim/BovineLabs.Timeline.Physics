@@ -116,7 +116,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = pos;
                 var tier = TimelineDebugTier.Resolve(origin, Viewer, HasViewer);
 
-                // Far: what the system does — the force source marker.
                 Drawer.Sphere(origin, 0.1f, 8, ForceColor);
 
                 if (tier == DebugTier.Mid)
@@ -197,7 +196,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier == DebugTier.Close)
                 {
-                    // Close: the force type/magnitude/falloff/mode readout + falloff radii rings.
                     Drawer.Text32(origin + new float3(0f, 0.5f, 0f), label, TextColor, 10f);
 
                     if (config.FalloffCurve != PhysicsTriggerFalloffCurve.None)

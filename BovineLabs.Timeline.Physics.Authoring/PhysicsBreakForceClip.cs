@@ -13,11 +13,6 @@ using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring
 {
-    /// <summary>
-    ///     "Break force" clip for the Stateful Trigger track. When a body touches the bound trigger source, measure
-    ///     its momentum: at or under a (stat-scaled) threshold it is caught — stopped, reversed, or redirected; above
-    ///     it, it breaks through untouched. The shield strength is a live stat, so it can be powered up or drained.
-    /// </summary>
     public sealed class PhysicsBreakForceClip : DOTSClip, ITimelineClipAsset
     {
         public StatefulEventState triggerState = StatefulEventState.Enter;
@@ -25,33 +20,32 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         [Header("Break")]
         [Tooltip("Momentum (speed × mass) the break can absorb. 0 = unbreakable (always catches).")]
-        [Min(0f)] public float threshold = 50f;
+        [Min(0f)]
+        public float threshold = 50f;
 
-        [Tooltip("0 = dead stop · 1 = full reverse / full-speed return · >1 = amplified return.")]
-        [Min(0f)] public float restitution;
+        [Tooltip("0 = dead stop · 1 = full reverse / full-speed return · >1 = amplified return.")] [Min(0f)]
+        public float restitution;
 
-        [Header("Redirect (degrees)")]
-        [Tooltip("Angle around the source's up axis.")]
+        [Header("Redirect (degrees)")] [Tooltip("Angle around the source's up axis.")]
         public float azimuth;
 
         [Tooltip("Angle above the source's forward.")]
         public float elevation;
 
         [Header("Shield Strength Stat (optional)")]
-        [Tooltip("If set, multiplies the threshold — a live shield-strength stat, resolved through Targets/EntityLinks.")]
+        [Tooltip(
+            "If set, multiplies the threshold — a live shield-strength stat, resolved through Targets/EntityLinks.")]
         public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
         public EntityLinkSchema readStatLink;
 
-        [Header("Apply To")]
-        [Tooltip("Whom to push. Target = the contacting body (the arrow).")]
+        [Header("Apply To")] [Tooltip("Whom to push. Target = the contacting body (the arrow).")]
         public Target applyTo = Target.Target;
 
         public EntityLinkSchema applyToLink;
 
-        [Header("Filtering")]
-        [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
+        [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
 
         [Tooltip("If populated, ONLY colliders matching these Entity Links will trigger the break.")]
@@ -68,15 +62,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             ushort readStatKey = 0;
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-            {
                 readStatKey = k1;
-            }
 
             ushort applyToKey = 0;
-            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2))
-            {
-                applyToKey = k2;
-            }
+            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2)) applyToKey = k2;
 
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
@@ -94,17 +83,17 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
                         ReadFrom = readStatFrom,
-                        LinkKey = readStatKey,
+                        LinkKey = readStatKey
                     },
                     ApplyTo = applyTo,
-                    ApplyToLinkKey = applyToKey,
+                    ApplyToLinkKey = applyToKey
                 },
                 FilterData = new PhysicsTriggerFilterData
                 {
                     IgnoreTarget = ignoreTarget,
                     LinkFilterBlob = filterBlob,
-                    HitMode = hitMode,
-                },
+                    HitMode = hitMode
+                }
             };
             builder.ApplyTo(ref commands);
 

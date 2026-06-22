@@ -20,6 +20,7 @@
     "Unity.Entities.Hybrid",
     "Unity.Physics",
     "Unity.Physics.Custom",
+    "Unity.Physics.Hybrid",
     "Unity.Timeline",
     "Unity.Burst",
     "Unity.Splines",

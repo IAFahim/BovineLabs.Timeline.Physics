@@ -112,31 +112,23 @@ namespace BovineLabs.Timeline.Physics.Forces
                         dirty |= AccumulateForces(ref velocity, forceAccessor[i], mass, transforms[i]);
                     }
 
-                    if (hasVelocityBuffer)
-                    {
-                        dirty |= AccumulateVelocities(ref velocity, velocityAccessor[i]);
-                    }
+                    if (hasVelocityBuffer) dirty |= AccumulateVelocities(ref velocity, velocityAccessor[i]);
 
-                    if (dirty)
-                    {
-                        velocities[i] = velocity;
-                    }
+                    if (dirty) velocities[i] = velocity;
                 }
             }
 
             private static void ApplyReset(ref PhysicsVelocity velocity, VelocityResetFlags flags)
             {
                 velocity.Linear = math.select(velocity.Linear, float3.zero, (flags & VelocityResetFlags.Linear) != 0);
-                velocity.Angular = math.select(velocity.Angular, float3.zero, (flags & VelocityResetFlags.Angular) != 0);
+                velocity.Angular =
+                    math.select(velocity.Angular, float3.zero, (flags & VelocityResetFlags.Angular) != 0);
             }
 
             private static bool AccumulateForces(ref PhysicsVelocity velocity, DynamicBuffer<PendingForce> forces,
                 in PhysicsMass mass, in LocalToWorld transform)
             {
-                if (forces.Length == 0)
-                {
-                    return false;
-                }
+                if (forces.Length == 0) return false;
 
                 var totalLinear = float3.zero;
                 var totalAngular = float3.zero;
@@ -158,12 +150,10 @@ namespace BovineLabs.Timeline.Physics.Forces
                 return true;
             }
 
-            private static bool AccumulateVelocities(ref PhysicsVelocity velocity, DynamicBuffer<PendingVelocity> deltas)
+            private static bool AccumulateVelocities(ref PhysicsVelocity velocity,
+                DynamicBuffer<PendingVelocity> deltas)
             {
-                if (deltas.Length == 0)
-                {
-                    return false;
-                }
+                if (deltas.Length == 0) return false;
 
                 for (var v = 0; v < deltas.Length; v++)
                 {
@@ -177,13 +167,6 @@ namespace BovineLabs.Timeline.Physics.Forces
         }
     }
 
-    /// <summary>
-    ///     Drains <see cref="PendingVelocityReset" /> requests, then <see cref="PendingForce" /> and
-    ///     <see cref="PendingVelocity" /> buffers, at the end of <see cref="PhysicsProducerGroup" />
-    ///     (before the physics step). Any system that appends to these within
-    ///     <see cref="PhysicsProducerGroup" /> must be ordered before this system to ensure forces are
-    ///     applied in the correct frame.
-    /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
@@ -206,13 +189,6 @@ namespace BovineLabs.Timeline.Physics.Forces
         }
     }
 
-    /// <summary>
-    ///     Drains <see cref="PendingVelocityReset" /> requests, then <see cref="PendingForce" /> and
-    ///     <see cref="PendingVelocity" /> buffers, at the end of <see cref="PhysicsModifierGroup" />
-    ///     (after the physics step). Any system that appends to these within
-    ///     <see cref="PhysicsModifierGroup" /> must be ordered before this system to ensure forces are
-    ///     applied in the correct frame.
-    /// </summary>
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]

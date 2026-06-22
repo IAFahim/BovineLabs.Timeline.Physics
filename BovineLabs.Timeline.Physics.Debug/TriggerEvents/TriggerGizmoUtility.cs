@@ -22,10 +22,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             float radius = 0.75f,
             float textSize = 14f)
         {
-            // One brief marker on an ACTUAL state match — not a lingering sphere per event every frame.
-            // Match the exact state (false, false): previously isClipFirstFrame=true made an Enter-config
-            // trigger match every Stay event, so a body resting in a zone spewed a fresh pile of circles
-            // each frame. Exact match = a clean flash on real Enter/Stay/Exit only.
             if (!HasMatchingEvent(triggerEntity, configEventState, triggerEventsLookup, collisionEventsLookup))
                 return;
 

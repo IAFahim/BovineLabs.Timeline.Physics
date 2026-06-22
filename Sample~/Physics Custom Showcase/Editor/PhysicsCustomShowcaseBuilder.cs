@@ -10,14 +10,7 @@ using Material = Unity.Physics.Material;
 
 namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
 {
-    /// <summary>
-    ///     NON-TIMELINE example for BovineLabs.Timeline.Physics: a "game playground" showcase of the underlying
-    ///     com.unity.physics.custom authoring — every shape, all three motion types, material (friction/restitution)
-    ///     permutations, collision-response modes, and a sampling of joints — laid out as labelled stations. The
-    ///     raw-physics counterpart to the package's Timeline samples (no PlayableDirector, no DOTS Timeline track).
-    ///     Builds into the SubScene of the currently ACTIVE scene; idempotent (re-running clears the prior showcase).
-    ///     Run via Tools ▸ BovineLabs ▸ Samples ▸ Build Physics Custom Showcase.
-    /// </summary>
+
     public static class PhysicsCustomShowcaseBuilder
     {
         private const string Root = "PhysicsCustomShowcase";
@@ -25,7 +18,6 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
         [MenuItem("Tools/BovineLabs/Samples/Build Physics Custom Showcase")]
         public static void BuildMenu() => Debug.Log(Build());
 
-        // Portable: find the first SubScene in the active scene rather than hardcoding a project path.
         private static string FindSubScenePath(UnityEngine.SceneManagement.Scene scene)
         {
             foreach (var go in scene.GetRootGameObjects())
@@ -59,11 +51,9 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
                 var root = new GameObject(Root);
                 EditorSceneManager.MoveGameObjectToScene(root, sub);
 
-                // ---- ground -----------------------------------------------------------------------------------
                 var ground = Box("Ground (Static)", new Vector3(0, -0.5f, -16), new Vector3(40, 1, 22), root);
-                Shape(ground); // shape-only => static collider
+                Shape(ground);
 
-                // ---- station 1: every shape (dynamic, drops onto ground) ---------------------------------------
                 var sx = new[] { -10f, -5f, 0f, 5f };
                 BoxShape(Dynamic(Box("Shape: Box", new Vector3(sx[0], 4, -9), Vector3.one, root)));
                 SphereShape(Dynamic(Sphere("Shape: Sphere", new Vector3(sx[1], 4, -9), root)));
@@ -71,13 +61,11 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
                 ConvexShape(Dynamic(Sphere("Shape: ConvexHull", new Vector3(sx[3], 4, -9), root)));
                 log.AppendLine("SHAPES|Box,Sphere,Cylinder,ConvexHull (Capsule/Mesh/Plane available, not instanced)");
 
-                // ---- station 2: motion types ------------------------------------------------------------------
                 BoxShape(Body(Box("Motion: Dynamic", new Vector3(-6, 4, -13), Vector3.one, root), BodyMotionType.Dynamic).gameObject);
                 BoxShape(Body(Box("Motion: Kinematic", new Vector3(0, 1.5f, -13), new Vector3(3, 0.4f, 3), root), BodyMotionType.Kinematic).gameObject);
                 BoxShape(Body(Box("Motion: Static", new Vector3(6, 1.5f, -13), new Vector3(1, 3, 1), root), BodyMotionType.Static).gameObject);
                 log.AppendLine("MOTION|Dynamic,Kinematic,Static");
 
-                // ---- station 3: restitution (bounce) + friction ----------------------------------------------
                 var rest = new[] { 0.1f, 0.6f, 0.95f };
                 for (var i = 0; i < 3; i++)
                 {
@@ -93,7 +81,6 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
                 slider.Friction = new PhysicsMaterialCoefficient { Value = 0.02f, CombineMode = Material.CombinePolicy.Minimum };
                 log.AppendLine("MATERIALS|restitution 0.1/0.6/0.95 + low-friction ramp slider");
 
-                // ---- station 4: collision response ------------------------------------------------------------
                 var trigger = Box("Trigger Zone (RaiseTriggerEvents)", new Vector3(-6, 1.5f, -21), new Vector3(3, 3, 3), root);
                 var ts = Shape(trigger);
                 ts.OverrideCollisionResponse = true;
@@ -105,43 +92,38 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
                 ce.CollisionResponse = CollisionResponsePolicy.CollideRaiseCollisionEvents;
                 log.AppendLine("RESPONSE|RaiseTriggerEvents zone + CollideRaiseCollisionEvents body");
 
-                // ---- station 5: joints ------------------------------------------------------------------------
-                // Pendulum (ball-and-socket anchored to a world pivot 2m above)
                 var pivot = new Vector3(-10, 6, -25);
                 var pend = SphereShape(Dynamic(Sphere("Joint: Pendulum", pivot + new Vector3(2.5f, -1.5f, 0), root)));
                 var bs = pend.gameObject.AddComponent<BallAndSocketJoint>();
-                bs.ConnectedBody = null;          // null => anchored in world space
+                bs.ConnectedBody = null;
                 bs.AutoSetConnected = false;
                 bs.PositionLocal = float3.zero;
                 bs.PositionInConnectedEntity = pivot;
 
-                // Hinge door (limited hinge to a static frame)
                 var frame = Box("Joint: Door Frame (Static)", new Vector3(-2, 2.5f, -25), new Vector3(0.3f, 3, 0.3f), root);
                 Body(frame, BodyMotionType.Static); BoxShape(frame);
-                // Door centred so its LEFT edge (x = -2) sits at the frame; hinge pivots at that edge, not the centre.
+
                 var door = BoxShape(Dynamic(Box("Joint: Door", new Vector3(-0.8f, 2.5f, -25), new Vector3(2.4f, 2.6f, 0.15f), root)));
                 var hinge = door.gameObject.AddComponent<LimitedHingeJoint>();
                 hinge.ConnectedBody = frame.GetComponent<PhysicsBodyAuthoring>();
                 hinge.AutoSetConnected = true;
-                hinge.PositionLocal = new float3(-1.2f, 0f, 0f); // hinge at the door's left edge (at the frame)
+                hinge.PositionLocal = new float3(-1.2f, 0f, 0f);
                 hinge.HingeAxisLocal = new float3(0, 1, 0);
                 hinge.PerpendicularAxisLocal = new float3(1, 0, 0);
                 hinge.MinAngle = -1.6f;
                 hinge.MaxAngle = 1.6f;
 
-                // Distance chain (3 links hanging from a static anchor)
                 var anchor = Box("Joint: Chain Anchor (Static)", new Vector3(8, 6, -25), new Vector3(0.4f, 0.4f, 0.4f), root);
                 Body(anchor, BodyMotionType.Static); BoxShape(anchor);
                 PhysicsBodyAuthoring prev = anchor.GetComponent<PhysicsBodyAuthoring>();
                 for (var i = 0; i < 3; i++)
                 {
-                    // Links touch end-to-end (spacing == diameter); the joint anchors at the link's TOP, so each link
-                    // hangs from the one above instead of free-rotating about coincident centres (which crumbled).
+
                     var link = SphereShape(Dynamic(Sphere($"Joint: Chain Link {i + 1}", new Vector3(8, 5.3f - i * 1.0f, -25), root)));
                     var dist = link.gameObject.AddComponent<LimitedDistanceJoint>();
                     dist.ConnectedBody = prev;
                     dist.AutoSetConnected = true;
-                    dist.PositionLocal = new float3(0f, 0.5f, 0f); // anchor at the link's top end
+                    dist.PositionLocal = new float3(0f, 0.5f, 0f);
                     dist.MinDistance = 0f;
                     dist.MaxDistance = 0.12f;
                     prev = link.GetComponent<PhysicsBodyAuthoring>();
@@ -167,7 +149,6 @@ namespace BovineLabs.Timeline.Physics.Sample.PhysicsCustom
             return log.ToString();
         }
 
-        // ---- helpers --------------------------------------------------------------------------------------------
         private static GameObject Strip(GameObject go)
         {
             var c = go.GetComponent<UnityEngine.Collider>();

@@ -68,13 +68,10 @@ namespace BovineLabs.Timeline.Physics.Debug
                     out var viewer, out var hasViewer))
                 return;
 
-            // Resolve each spawned prefab's name (ObjectId -> prefab entity -> GameObject name) on the main thread —
-            // GetName trips the EntityManager safety handle inside a job. Designers read names, not raw ObjectIds.
-            // ponytail: names are editor/dev-only; unresolved ids fall back to "ID:n" in the job.
             var names = new NativeHashMap<ObjectId, FixedString64Bytes>(16, Allocator.TempJob);
             if (SystemAPI.TryGetSingleton<ObjectDefinitionRegistry>(out var registry))
-            {
-                foreach (var config in SystemAPI.Query<RefRO<PhysicsTriggerInstantiateData>>().WithAll<TrackBinding, ClipActive>())
+                foreach (var config in SystemAPI.Query<RefRO<PhysicsTriggerInstantiateData>>()
+                             .WithAll<TrackBinding, ClipActive>())
                 {
                     var id = config.ValueRO.ObjectId;
                     if (names.ContainsKey(id))
@@ -82,11 +79,10 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     if (registry.TryGetValue(id, out var prefab) && state.EntityManager.Exists(prefab))
                     {
-                        state.EntityManager.GetName(prefab, out FixedString64Bytes name);
+                        state.EntityManager.GetName(prefab, out var name);
                         names.Add(id, name);
                     }
                 }
-            }
 
             state.Dependency = new DrawJob
             {
@@ -140,7 +136,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var pos = ltw.Position;
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: what the system does — the quiet spawn marker (mirrors the Force gizmo's 0.1 sphere).
                 Drawer.Sphere(pos, 0.1f, 8, GhostColor);
 
                 if (tier == DebugTier.Mid)
@@ -148,10 +143,9 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier == DebugTier.Close)
                 {
-                    // Close: the prefab name, when it fires, and where it lands.
                     var spawn = Names.TryGetValue(config.ObjectId, out var nm)
                         ? nm
-                        : (FixedString64Bytes)config.ObjectId.ToFixedString();
+                        : config.ObjectId.ToFixedString();
                     var placement = config.PositionMode == PhysicsTriggerPositionMode.MatchCollidedEntity
                         ? (FixedString32Bytes)" @ other"
                         : config.PositionMode == PhysicsTriggerPositionMode.MatchContactPoint
@@ -166,7 +160,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier >= DebugTier.Mid)
                 {
-                    // Small green flash only when it actually fires (confirms a real spawn vs just clip-active).
                     var drawColor = new Color(0f, 1f, 0f, 0.8f);
                     TriggerGizmoUtility.DrawActuallyFired(
                         triggerEntity, config.EventState, pos, ref Drawer,

@@ -17,7 +17,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var queuedBuffers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
-            // Continuous-force families (PID/Force/Velocity/Drag) also need the shared accumulation buffers.
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsLinearPIDAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -69,7 +68,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 EnsureAccumulationBuffers(ref ecb, target, em, queuedBuffers);
             }
 
-            // Stateful single-component families just need the disabled Active + State pair.
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsRicochetAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
@@ -121,9 +119,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
             queuedBuffers.Dispose();
         }
 
-        // Adds a disabled Active enableable component (+ its companion State) so the runtime track
-        // system has somewhere to write, without enabling it at bake time.
-        private static void EnsureActiveState<TActive, TState>(ref EntityCommandBuffer ecb, Entity target, EntityManager em)
+        private static void EnsureActiveState<TActive, TState>(ref EntityCommandBuffer ecb, Entity target,
+            EntityManager em)
             where TActive : unmanaged, IComponentData, IEnableableComponent
             where TState : unmanaged, IComponentData
         {
@@ -133,7 +130,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             ecb.AddComponent<TState>(target);
         }
 
-        // Drag has no companion State component — just the disabled Active marker.
         private static void EnsureActive<TActive>(ref EntityCommandBuffer ecb, Entity target, EntityManager em)
             where TActive : unmanaged, IComponentData, IEnableableComponent
         {

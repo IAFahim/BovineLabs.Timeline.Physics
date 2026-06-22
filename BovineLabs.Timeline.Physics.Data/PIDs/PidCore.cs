@@ -7,7 +7,7 @@ namespace BovineLabs.Timeline.Physics
     public struct PidTuning
     {
         public float3 Proportional;
-        public float3 Derivative; // D before I — tune in this order
+        public float3 Derivative;
         public float3 Integral;
         public float MaxOutput;
     }
@@ -16,7 +16,7 @@ namespace BovineLabs.Timeline.Physics
     {
         public float3 IntegralAccumulator;
         public float3 PreviousError;
-        public float3 CapturedTargetPosition; // InitialLocal mode: locked on first tick
+        public float3 CapturedTargetPosition;
         public bool IsInitialized;
     }
 

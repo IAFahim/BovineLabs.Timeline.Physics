@@ -9,15 +9,6 @@ using Unity.Jobs;
 
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
-    /// <summary>
-    ///     Re-arms per-body track state at the start of a contiguous activation span, i.e. only when the
-    ///     body's <c>Active*</c> component is currently disabled (no clip drove it last frame). Used by the
-    ///     capture-and-restore override tracks (gravity, kinematic, collision-filter) whose state holds the
-    ///     body's ORIGINAL value captured on enter: re-arming mid-span (e.g. across two touching clips on the
-    ///     same body) would wipe that capture and let the apply system re-capture the already-overridden value
-    ///     as the "original", so the gate is load-bearing. For fire-once / per-clip tracks that must re-fire on
-    ///     every clip edge (force, velocity, PID, ricochet, teleport, …) use <see cref="ResetStateAlwaysTrackJob{TState}" />.
-    /// </summary>
     [BurstCompile]
     public struct ResetStateTrackJob<TState, TActive> : IJobChunk
         where TState : unmanaged, IComponentData
@@ -44,14 +35,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         }
     }
 
-    /// <summary>
-    ///     Re-arms per-body track state on EVERY clip activation edge, unconditionally. Scheduled over the
-    ///     "clip just became active" query (<c>WithAll&lt;ClipActive&gt;().WithNone&lt;ClipActivePrevious&gt;()</c>),
-    ///     so each clip — including back-to-back/adjacent clips that share a target — resets the body's latch
-    ///     (<c>Fired</c>, <c>ResetApplied</c>, direction/PID-integral state) and therefore re-fires. Use this for
-    ///     fire-once / per-clip tracks. Capture-and-restore override tracks must NOT use it (see
-    ///     <see cref="ResetStateTrackJob{TState,TActive}" />) — re-arming mid-span corrupts their captured original.
-    /// </summary>
     [BurstCompile]
     public struct ResetStateAlwaysTrackJob<TState> : IJobChunk
         where TState : unmanaged, IComponentData
@@ -75,15 +58,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         }
     }
 
-    /// <summary>
-    ///     Disables a body's <c>Active*</c> component once no clip of this track type drives it this frame,
-    ///     i.e. when the body is absent from the current blend map. Scheduled over the "clip just ended"
-    ///     query (<c>WithAll&lt;ClipActivePrevious&gt;().WithNone&lt;ClipActive&gt;()</c>) and run AFTER the
-    ///     blend has been produced: an ended clip whose target is still present in <see cref="BlendData" />
-    ///     (because another clip keeps driving it) is left enabled. This replaces the old timeline-end
-    ///     disable, so while-active effects stop / restore at clip end rather than only when the whole
-    ///     timeline deactivates.
-    /// </summary>
     [BurstCompile]
     public struct DisableAbsentTrackJob<TData, TActive> : IJobChunk
         where TData : unmanaged
@@ -93,15 +67,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         [ReadOnly] public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly BlendData;
         [NativeDisableParallelForRestriction] public ComponentLookup<TActive> ActiveLookup;
 
-        /// <summary>
-        ///     Forces single-threaded execution. Two distinct binding entities can carry the same
-        ///     <see cref="TrackBinding" /> body, so running across chunks in parallel would have two worker
-        ///     threads call <c>SetComponentEnabled</c> on the same body's enableable component concurrently —
-        ///     an unsynchronised read-modify-write on the shared per-chunk 64-bit mask word (also corrupting
-        ///     neighbouring entities' bits). This instance method shadows the <c>IJobChunk</c> parallel
-        ///     extension so existing <c>.ScheduleParallel(query, dependsOn)</c> call sites route here and run
-        ///     single-threaded, where the mask word is only ever written by one thread.
-        /// </summary>
         public JobHandle ScheduleParallel(EntityQuery query, JobHandle dependsOn)
         {
             return this.Schedule(query, dependsOn);

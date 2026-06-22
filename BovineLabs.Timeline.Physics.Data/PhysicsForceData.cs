@@ -18,19 +18,12 @@ namespace BovineLabs.Timeline.Physics
         TowardTarget,
         AwayFromTarget,
 
-        /// <summary>Uniform random direction on the unit sphere, scaled by Magnitude.</summary>
         RandomSphere,
 
-        /// <summary>
-        ///     Random direction inside an azimuth/elevation patch (same convention as the teleport
-        ///     patch: azimuth 0 = +Z of the resolved Space frame), scaled by Magnitude.
-        /// </summary>
         RandomCone,
 
-        /// <summary>Along the body's current linear velocity, scaled by Magnitude. No-op while stationary.</summary>
         AlongVelocity,
 
-        /// <summary>Against the body's current linear velocity, scaled by Magnitude. No-op while stationary.</summary>
         AgainstVelocity
     }
 
@@ -46,23 +39,16 @@ namespace BovineLabs.Timeline.Physics
         public Target DirectionTarget;
         public ushort DirectionTargetLinkKey;
 
-        /// <summary>RandomCone patch, radians. The patch frame is the resolved Space rotation.</summary>
         public float ConeAzimuthCenter;
 
         public float ConeAzimuthHalfRange;
         public float ConeElevationCenter;
         public float ConeElevationHalfRange;
 
-        /// <summary>Offsets the per-entity random stream. 0 is valid; entity identity decorrelates bodies.</summary>
         public uint Seed;
 
-        /// <summary>
-        ///     When true, stochastic and velocity-relative directions are sampled once per clip
-        ///     activation and held; when false they are re-evaluated every fire.
-        /// </summary>
         public bool LatchDirection;
 
-        /// <summary>Zeroes the masked velocity axes once per clip activation, on the first fire tick.</summary>
         public VelocityResetFlags ResetVelocityOnFire;
 
         public float3 Angular;
@@ -77,12 +63,6 @@ namespace BovineLabs.Timeline.Physics
         public float3 LatchedDirection;
     }
 
-    /// <summary>
-    ///     Per-entity random stream for stochastic direction modes. Lives outside
-    ///     <see cref="PhysicsForceState" /> so clip re-activation resets fire/latch state without
-    ///     rewinding the stream — each activation draws fresh values. A zero state is lazily seeded
-    ///     from (Seed, entity), so a given entity and seed always replays the same sequence.
-    /// </summary>
     public struct PhysicsForceRandom : IComponentData
     {
         public Random Value;

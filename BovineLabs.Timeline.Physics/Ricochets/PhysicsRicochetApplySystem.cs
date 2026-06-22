@@ -157,9 +157,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey,
                         entity, Entity.Null, targets, LinkSources, Links, out var originEntity) &&
                     LtwLookup.HasComponent(originEntity))
-                {
                     return LtwLookup[originEntity].Position;
-                }
 
                 return float3.zero;
             }
@@ -169,9 +167,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection, config.RayDirectionLinkKey,
                         entity, Entity.Null, targets, LinkSources, Links, out var dirEntity) &&
                     LtwLookup.HasComponent(dirEntity))
-                {
                     return math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
-                }
 
                 return math.forward();
             }
@@ -190,10 +186,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                         config.RicochetMask, config.TerminalHitMask, config.MinGrazingAngle,
                         CollisionWorld, ColliderLookup);
 
-                    if (!stepResult.HitFound)
-                    {
-                        break;
-                    }
+                    if (!stepResult.HitFound) break;
 
                     remainingDistance -= stepResult.DistanceTraveled;
 
@@ -203,10 +196,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                         break;
                     }
 
-                    if (!stepResult.IsRicochet)
-                    {
-                        break;
-                    }
+                    if (!stepResult.IsRicochet) break;
 
                     currentDir = PhysicsMath.Reflect(currentDir, stepResult.SurfaceNormal);
                     currentPos = stepResult.HitPosition + currentDir * 0.01f;
@@ -217,10 +207,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
             private void HandleTerminalHit(in PhysicsRicochetData config, Entity entity,
                 in PhysicsMath.RicochetStepResult stepResult, int bounceCount)
             {
-                if (config.HitConditionKey == 0)
-                {
-                    return;
-                }
+                if (config.HitConditionKey == 0) return;
 
                 var hitEntity = stepResult.HitEntity;
                 var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
@@ -228,9 +215,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity,
                         hitEntity, hitTargets, LinkSources, Links, out var target) &&
                     Writers.TryGet(target, out var writer))
-                {
                     writer.Trigger(config.HitConditionKey, bounceCount);
-                }
             }
         }
     }

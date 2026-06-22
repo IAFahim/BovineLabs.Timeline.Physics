@@ -13,11 +13,6 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Debug
 {
-    /// <summary>
-    /// Quill visualizer for the Swept Trigger: draws the swept capsule volume, the prev-&gt;cur sweep path,
-    /// a marker on each currently-overlapped entity, and the live Enter/Stay/Exit labels. Enable via the
-    /// config var <c>sweptgizmo.draw-enabled</c> (or the ConfigVars window) and press Play.
-    /// </summary>
     [Configurable]
     public static class SweptTriggerDebugConfig
     {
@@ -27,7 +22,8 @@ namespace BovineLabs.Timeline.Physics.Debug
         [ConfigVar("sweptgizmo.active-color", 0.2f, 0.95f, 0.3f, 0.8f, "Swept capsule colour while sweeping (green).")]
         public static readonly SharedStatic<Color> ActiveColor = SharedStatic<Color>.GetOrCreate<Tags.ActiveColor>();
 
-        [ConfigVar("sweptgizmo.idle-color", 0.3f, 0.6f, 1f, 0.55f, "Swept capsule colour while idle (blue) — shows placement when not swinging.")]
+        [ConfigVar("sweptgizmo.idle-color", 0.3f, 0.6f, 1f, 0.55f,
+            "Swept capsule colour while idle (blue) — shows placement when not swinging.")]
         public static readonly SharedStatic<Color> IdleColor = SharedStatic<Color>.GetOrCreate<Tags.IdleColor>();
 
         [ConfigVar("sweptgizmo.path-color", 0.95f, 0.85f, 0.2f, 0.9f, "Sweep path colour (yellow).")]
@@ -41,12 +37,29 @@ namespace BovineLabs.Timeline.Physics.Debug
 
         private struct Tags
         {
-            public struct Enabled { }
-            public struct ActiveColor { }
-            public struct IdleColor { }
-            public struct PathColor { }
-            public struct HitColor { }
-            public struct TextColor { }
+            public struct Enabled
+            {
+            }
+
+            public struct ActiveColor
+            {
+            }
+
+            public struct IdleColor
+            {
+            }
+
+            public struct PathColor
+            {
+            }
+
+            public struct HitColor
+            {
+            }
+
+            public struct TextColor
+            {
+            }
         }
     }
 
@@ -71,9 +84,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             if (!TimelineDebugUtility.TryGetDrawer<SweptTriggerDebugSystem>(
                     ref state, SweptTriggerDebugConfig.Enabled.Data, out var drawer,
                     out var viewer, out var hasViewer))
-            {
                 return;
-            }
 
             _ltwLookup.Update(ref state);
 
@@ -87,7 +98,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 IdleColor = SweptTriggerDebugConfig.IdleColor.Data,
                 PathColor = SweptTriggerDebugConfig.PathColor.Data,
                 HitColor = SweptTriggerDebugConfig.HitColor.Data,
-                TextColor = SweptTriggerDebugConfig.TextColor.Data,
+                TextColor = SweptTriggerDebugConfig.TextColor.Data
             }.ScheduleParallel(state.Dependency);
         }
 
@@ -98,8 +109,7 @@ namespace BovineLabs.Timeline.Physics.Debug
             public float3 Viewer;
             public bool HasViewer;
 
-            [ReadOnly]
-            public ComponentLookup<LocalToWorld> LtwLookup;
+            [ReadOnly] public ComponentLookup<LocalToWorld> LtwLookup;
 
             public Color ActiveColor;
             public Color IdleColor;
@@ -121,57 +131,37 @@ namespace BovineLabs.Timeline.Physics.Debug
             {
                 var active = state.WasActive == 1;
 
-                // ALWAYS draw the capsule volume (dim blue when idle, bright green while sweeping) so a designer
-                // can see the hit volume's PLACEMENT at any time, not just during the brief active swing window.
-                // The noisy extras (sweep path, hit markers, labels) stay gated on `active` below to avoid idle
-                // clutter — so an idle weapon shows just its volume outline, an active one shows the full detail.
                 var col = active ? ActiveColor : IdleColor;
 
-                // Draw EXACTLY the volume the swept query tests: SweptTriggerSystem casts the capsule via
-                // RigidTransform(ltw.Rotation, ltw.Position) with QueryColliderScale = 1 — it ignores the
-                // source's (often bone-inherited) world SCALE. Transforming the endpoints through the full
-                // ltw.Value instead would scale the drawn capsule and make the play-mode volume jump away from
-                // both the query and the unscaled author gizmo (the "before/after switch on Play"). Use
-                // position + rotation only so edit gizmo, runtime debug, and the actual hit test all coincide.
-                // The capsule's own hemispherical caps already enclose v0/v1, so no extra end spheres are drawn.
                 var pos = ltw.Position;
                 var rot = ltw.Rotation;
-                var v0 = pos + math.rotate(rot, config.Vertex0);
-                var v1 = pos + math.rotate(rot, config.Vertex1);
-                var center = (v0 + v1) * 0.5f;
-                var height = math.distance(v0, v1) + (2f * config.Radius);
+                var center = pos + math.rotate(rot, config.DebugCenter);
 
-                var tier = TimelineDebugTier.Resolve(center, this.Viewer, this.HasViewer);
+                var tier = TimelineDebugTier.Resolve(center, Viewer, HasViewer);
 
-                // Far: what the system does — the swept capsule volume.
-                this.Drawer.Capsule(center, rot, height, config.Radius, 12, col);
+                DrawBox(ref Drawer, center, rot, config.DebugExtents, col);
 
                 if (active && tier >= DebugTier.Mid)
                 {
-                    // Mid: the sweep path + markers on overlapped entities + a label (active sources only).
-                    this.Drawer.Line(state.PrevPosition, ltw.Position, this.PathColor);
+                    Drawer.Line(state.PrevPosition, ltw.Position, PathColor);
 
                     for (var i = 0; i < hits.Length; i++)
                     {
                         var e = hits[i].Value;
-                        if (this.LtwLookup.HasComponent(e))
+                        if (LtwLookup.HasComponent(e))
                         {
-                            var hp = this.LtwLookup[e].Position;
-                            this.Drawer.Sphere(hp, 0.25f, 10, this.HitColor);
-                            this.Drawer.Line(center, hp, this.HitColor);
+                            var hp = LtwLookup[e].Position;
+                            Drawer.Sphere(hp, 0.25f, 10, HitColor);
+                            Drawer.Line(center, hp, HitColor);
                         }
                     }
 
-                    this.Drawer.Text32(ltw.Position + new float3(0f, 1.2f, 0f), (FixedString32Bytes)"Swept",
-                        this.TextColor, 10f);
+                    Drawer.Text32(ltw.Position + new float3(0f, 1.2f, 0f), (FixedString32Bytes)"Swept",
+                        TextColor, 10f);
                 }
 
-                if (!active || tier != DebugTier.Close)
-                {
-                    return;
-                }
+                if (!active || tier != DebugTier.Close) return;
 
-                // Close: live Enter/Stay/Exit labels + hit count (active sources only).
                 FixedString128Bytes label = default;
                 label.Append('S');
                 label.Append('W');
@@ -188,20 +178,39 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     var s = events[i].State;
                     if (s == StatefulEventState.Enter)
-                    {
                         label.Append(Enter);
-                    }
                     else if (s == StatefulEventState.Stay)
-                    {
                         label.Append(Stay);
-                    }
-                    else if (s == StatefulEventState.Exit)
-                    {
-                        label.Append(Exit);
-                    }
+                    else if (s == StatefulEventState.Exit) label.Append(Exit);
                 }
 
-                this.Drawer.Text128(ltw.Position + new float3(0f, 1.5f, 0f), label, this.TextColor, 10f);
+                Drawer.Text128(ltw.Position + new float3(0f, 1.5f, 0f), label, TextColor, 10f);
+            }
+
+            private static void DrawBox(ref Drawer drawer, float3 center, quaternion rot, float3 size, Color color)
+            {
+                var h = size * 0.5f;
+                var c0 = center + math.rotate(rot, new float3(-h.x, -h.y, -h.z));
+                var c1 = center + math.rotate(rot, new float3(h.x, -h.y, -h.z));
+                var c2 = center + math.rotate(rot, new float3(h.x, -h.y, h.z));
+                var c3 = center + math.rotate(rot, new float3(-h.x, -h.y, h.z));
+                var c4 = center + math.rotate(rot, new float3(-h.x, h.y, -h.z));
+                var c5 = center + math.rotate(rot, new float3(h.x, h.y, -h.z));
+                var c6 = center + math.rotate(rot, new float3(h.x, h.y, h.z));
+                var c7 = center + math.rotate(rot, new float3(-h.x, h.y, h.z));
+
+                drawer.Line(c0, c1, color);
+                drawer.Line(c1, c2, color);
+                drawer.Line(c2, c3, color);
+                drawer.Line(c3, c0, color);
+                drawer.Line(c4, c5, color);
+                drawer.Line(c5, c6, color);
+                drawer.Line(c6, c7, color);
+                drawer.Line(c7, c4, color);
+                drawer.Line(c0, c4, color);
+                drawer.Line(c1, c5, color);
+                drawer.Line(c2, c6, color);
+                drawer.Line(c3, c7, color);
             }
         }
     }

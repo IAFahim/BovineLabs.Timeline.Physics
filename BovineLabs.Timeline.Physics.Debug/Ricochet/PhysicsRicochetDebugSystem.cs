@@ -201,7 +201,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(origin, Viewer, HasViewer);
 
-                // Far: what the system does — the firing origin.
                 Drawer.Sphere(origin, 0.15f, Segments, OriginColor);
                 if (tier >= DebugTier.Mid)
                     Drawer.Text32(origin + new float3(0f, 0.3f, 0f), (FixedString32Bytes)"Ricochet", TextColor, 10f);
@@ -266,7 +265,8 @@ namespace BovineLabs.Timeline.Physics.Debug
                             var bounceLabel = new FixedString32Bytes();
                             bounceLabel.Append((FixedString32Bytes)"Bounce ");
                             bounceLabel.Append(bounceCount + 1);
-                            Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), bounceLabel, rayColor, 10f);
+                            Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.2f, 0f), bounceLabel, rayColor,
+                                10f);
                         }
 
                         Drawer.Arrow(stepResult.HitPosition, stepResult.SurfaceNormal * 0.4f,

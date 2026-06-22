@@ -129,7 +129,8 @@ namespace BovineLabs.Timeline.Physics.Filters
                 ECB.SetComponentEnabled<ActiveFilterOverride>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveFilterOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, DiscreteMixer<PhysicsFilterOverrideData>>(ref mixData,
+                    Config = JobHelpers.Blend<PhysicsFilterOverrideData, DiscreteMixer<PhysicsFilterOverrideData>>(
+                        ref mixData,
                         default)
                 });
             }

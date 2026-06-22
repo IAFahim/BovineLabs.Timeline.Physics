@@ -15,7 +15,6 @@ using UnityEngine;
 
 #if UNITY_EDITOR || BL_DEBUG
 
-
 namespace BovineLabs.Timeline.Physics.Debug
 {
     [Configurable]
@@ -132,7 +131,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: the body being braked — a short marker arrow against its velocity.
                 if (math.lengthsq(linVel) > 0.01f)
                     Drawer.Arrow(pos, -math.normalize(linVel) * 0.75f, TrailColor);
                 else

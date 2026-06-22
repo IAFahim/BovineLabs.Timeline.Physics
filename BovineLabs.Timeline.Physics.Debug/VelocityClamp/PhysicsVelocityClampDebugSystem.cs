@@ -154,7 +154,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                     var visualRadius = limit * 0.1f;
                     visualRadius = math.clamp(visualRadius, 0.5f, 5f);
 
-                    // Far: what the system does — the speed-limit sphere coloured by how close we are.
                     Drawer.Sphere(pos, visualRadius, Segments, col);
 
                     if (tier >= DebugTier.Mid && hasVel && linSpd > 0.01f)
@@ -183,7 +182,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                     var visualRadius = limit * 0.2f;
                     visualRadius = math.clamp(visualRadius, 0.5f, 5f);
 
-                    // Far: the angular limit ring.
                     Drawer.Circle(pos, new float3(0f, visualRadius, 0f), col);
 
                     if (tier == DebugTier.Close)

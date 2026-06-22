@@ -12,9 +12,6 @@ namespace BovineLabs.Timeline.Physics
         public Target TrackingTarget;
         public PidLinearTargetMode TargetMode;
 
-        /// <summary>
-        ///     In World mode, this acts as the absolute world position. In Offset mode, it is an offset from the tracking target.
-        /// </summary>
         public float3 TargetOffset;
 
         public float Strength;
@@ -41,10 +38,6 @@ namespace BovineLabs.Timeline.Physics
     {
         public PhysicsLinearPIDData Lerp(in PhysicsLinearPIDData a, in PhysicsLinearPIDData b, in float s)
         {
-            // World/LineOfSight TargetOffset is an absolute world target, not a relative offset. When only one side is
-            // absolute (the common single-clip blend case, where the partner is the meaningless default(...) fill),
-            // lerping its position toward (0,0,0) or reinterpreting its mode at the 0.5 threshold drags the goal toward
-            // world origin / a mis-typed goal. Hold the absolute side authoritatively instead of blending it.
             var aAbsolute = IsAbsolute(a.TargetMode);
             var bAbsolute = IsAbsolute(b.TargetMode);
             if (aAbsolute != bAbsolute)

@@ -1,42 +1,60 @@
+using BovineLabs.Reaction.Authoring.Core;
+using BovineLabs.Timeline.Physics.Authoring;
+using Unity.Mathematics;
+using Unity.Physics.Authoring;
+using UnityEditor;
+using UnityEngine;
+
 #if UNITY_EDITOR
 namespace BovineLabs.Timeline.Physics.Editor
 {
-    using BovineLabs.Reaction.Authoring.Core;
-    using BovineLabs.Timeline.Physics.Authoring;
-    using Unity.Physics.Authoring;
-    using UnityEditor;
-    using UnityEngine;
-
-    /// <summary>
-    /// Designer-facing inspector for <see cref="SweptTriggerSourceAuthoring"/>: surfaces the silent-failure
-    /// traps inline (empty Collides With, missing Owner, bad size) with one-click fixes, plus a reminder of
-    /// the Enter-not-Stay rule. Pairs with the author-time Scene gizmo on the component itself.
-    /// </summary>
     [CustomEditor(typeof(SweptTriggerSourceAuthoring))]
     public sealed class SweptTriggerSourceAuthoringEditor : UnityEditor.Editor
     {
         public override void OnInspectorGUI()
         {
-            this.DrawDefaultInspector();
+            DrawDefaultInspector();
 
-            var src = (SweptTriggerSourceAuthoring)this.target;
+            var src = (SweptTriggerSourceAuthoring)target;
 
             EditorGUILayout.Space(6);
             EditorGUILayout.LabelField("Swept Trigger — Setup Check", EditorStyles.boldLabel);
 
-            // Trap #1: empty CollidesWith => hits nothing, no error.
-            if (src.collidesWith.Value == 0)
+            var shape = src.GetComponent<PhysicsShapeAuthoring>();
+
+            if (shape == null)
             {
-                EditorGUILayout.HelpBox("'Collides With' is empty — the sweep will hit NOTHING.", MessageType.Error);
-                if (GUILayout.Button("Fix: set Collides With = Everything (then narrow to your enemy category)"))
+                EditorGUILayout.HelpBox(
+                    "No PhysicsShapeAuthoring — the swept volume is defined by a (disabled) PhysicsShapeAuthoring " +
+                    "(Box / Capsule / Sphere / Cylinder / Convex / Mesh) with Unity's shape handles.",
+                    MessageType.Error);
+                if (GUILayout.Button("Fix: add a disabled PhysicsShapeAuthoring (capsule) to define the volume"))
+                    AddDisabledShape(src.gameObject);
+            }
+            else
+            {
+                if (shape.enabled)
                 {
-                    Undo.RecordObject(src, "Swept Collides With");
-                    src.collidesWith = new PhysicsCategoryTags { Value = ~0u };
-                    EditorUtility.SetDirty(src);
+                    EditorGUILayout.HelpBox(
+                        "The PhysicsShapeAuthoring is ENABLED, so it ALSO becomes a real collider. Disable it — the " +
+                        "swept source only READS its shape; it must not be a physics body.",
+                        MessageType.Error);
+                    if (GUILayout.Button(
+                            "Fix: disable the PhysicsShapeAuthoring (keep its shape, drop the real collider)"))
+                    {
+                        Undo.RecordObject(shape, "Disable swept shape");
+                        shape.enabled = false;
+                        EditorUtility.SetDirty(shape);
+                    }
                 }
+
+                if (shape.CollidesWith.Value == 0)
+                    EditorGUILayout.HelpBox(
+                        "The shape's 'Collides With' is empty — the sweep will hit NOTHING. Set it on the " +
+                        "PhysicsShapeAuthoring (Override Collides With) to your enemy category.",
+                        MessageType.Warning);
             }
 
-            // Trap #2: no Targets/Owner => clips' Ignore Target = Owner can't skip the wielder.
             var targets = src.GetComponent<TargetsAuthoring>();
             if (targets == null)
             {
@@ -53,7 +71,9 @@ namespace BovineLabs.Timeline.Physics.Editor
             }
             else if (targets.Owner == null)
             {
-                EditorGUILayout.HelpBox("TargetsAuthoring present but Owner is empty — set it to the wielder so the swing ignores it.", MessageType.Warning);
+                EditorGUILayout.HelpBox(
+                    "TargetsAuthoring present but Owner is empty — set it to the wielder so the swing ignores it.",
+                    MessageType.Warning);
                 if (GUILayout.Button("Fix: set Owner = rig root"))
                 {
                     Undo.RecordObject(targets, "Set Owner");
@@ -62,35 +82,23 @@ namespace BovineLabs.Timeline.Physics.Editor
                 }
             }
 
-            // Trap #3: degenerate capsule.
-            if (src.radius <= 0.001f)
-            {
-                EditorGUILayout.HelpBox("Radius must be > 0. The blue capsule gizmo in the Scene view shows the swept volume.", MessageType.Warning);
-            }
-
             EditorGUILayout.HelpBox(
                 "Bind a 'BovineLabs/Physics/Swept Trigger' track to this component. On fast swings use trigger state ENTER (not Stay). " +
-                "The Scene gizmo shows the capsule while this object is selected.",
+                "Size/orient the volume with the PhysicsShapeAuthoring's Scene handles; enable the 'sweptgizmo.draw-enabled' " +
+                "ConfigVar to see the swept bounds in play.",
                 MessageType.Info);
         }
 
-        /// <summary>One-click: add a configured swept source (+ Owner-set Targets) to the selected weapon object.</summary>
         [MenuItem("GameObject/BovineLabs/Physics/Swept Trigger Source", false, 30)]
         private static void AddSweptSource(MenuCommand cmd)
         {
             var go = cmd.context as GameObject ?? Selection.activeGameObject;
-            if (go == null)
-            {
-                return;
-            }
+            if (go == null) return;
 
-            var src = go.GetComponent<SweptTriggerSourceAuthoring>();
-            if (src == null)
-            {
-                src = Undo.AddComponent<SweptTriggerSourceAuthoring>(go);
-                src.collidesWith = new PhysicsCategoryTags { Value = ~0u };
-                EditorUtility.SetDirty(src);
-            }
+            if (go.GetComponent<SweptTriggerSourceAuthoring>() == null)
+                Undo.AddComponent<SweptTriggerSourceAuthoring>(go);
+
+            if (go.GetComponent<PhysicsShapeAuthoring>() == null) AddDisabledShape(go);
 
             if (go.GetComponent<TargetsAuthoring>() == null)
             {
@@ -107,6 +115,22 @@ namespace BovineLabs.Timeline.Physics.Editor
         private static bool AddSweptSourceValidate(MenuCommand cmd)
         {
             return (cmd.context as GameObject ?? Selection.activeGameObject) != null;
+        }
+
+        private static void AddDisabledShape(GameObject go)
+        {
+            var shape = Undo.AddComponent<PhysicsShapeAuthoring>(go);
+            shape.SetCapsule(new CapsuleGeometryAuthoring
+            {
+                Center = float3.zero,
+                Height = 0.8f,
+                Radius = 0.1f,
+                Orientation = quaternion.identity
+            });
+            shape.OverrideCollidesWith = true;
+            shape.CollidesWith = new PhysicsCategoryTags { Value = ~0u };
+            shape.enabled = false;
+            EditorUtility.SetDirty(shape);
         }
     }
 }

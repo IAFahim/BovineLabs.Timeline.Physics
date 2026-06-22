@@ -133,8 +133,10 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 ECB.SetComponentEnabled<ActiveKinematicOverride>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveKinematicOverride
                 {
-                    Config = JobHelpers.Blend<PhysicsKinematicOverrideData, DiscreteMixer<PhysicsKinematicOverrideData>>(ref mixData,
-                        default)
+                    Config =
+                        JobHelpers.Blend<PhysicsKinematicOverrideData, DiscreteMixer<PhysicsKinematicOverrideData>>(
+                            ref mixData,
+                            default)
                 });
             }
         }

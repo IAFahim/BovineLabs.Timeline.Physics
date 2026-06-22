@@ -20,13 +20,6 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-    /// <summary>
-    ///     Drives the <c>PhysicsBreakForceClip</c>: on a stateful trigger/collision event from the bound source,
-    ///     measures the contacted body's momentum and — if it is at or under a stat-gated threshold — appends a
-    ///     counter-impulse that stops, reverses, or redirects it. Over threshold, the body breaks through untouched.
-    ///     Reuses the trigger-force gather→stream→apply structure (reads both StatefulTriggerEvent and
-    ///     StatefulCollisionEvent buffers).
-    /// </summary>
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateAfter(typeof(PhysicsForceTrackSystem))]
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
@@ -165,10 +158,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 while (enumerator.NextEntityIndex(out var i))
                 {
                     var self = bindings[i].Value;
-                    if (self == Entity.Null || !LtwLookup.HasComponent(self))
-                    {
-                        continue;
-                    }
+                    if (self == Entity.Null || !LtwLookup.HasComponent(self)) continue;
 
                     var config = configs[i];
                     var filter = filters[i];
@@ -188,28 +178,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     seenRoots.Clear();
 
                     if (TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                    {
                         foreach (var evt in triggers)
-                        {
                             if (StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, isLastFrame))
-                            {
                                 ProcessEvent(self, evt.EntityB, in config, in filter, in targets, selfRot,
                                     ref seenRoots);
-                            }
-                        }
-                    }
 
                     if (CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                    {
                         foreach (var evt in collisions)
-                        {
                             if (StatefulEventMatching.Matches(evt.State, config.EventState, isFirstFrame, isLastFrame))
-                            {
                                 ProcessEvent(self, evt.EntityB, in config, in filter, in targets, selfRot,
                                     ref seenRoots);
-                            }
-                        }
-                    }
                 }
 
                 seenRoots.Dispose();
@@ -220,61 +198,34 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 in PhysicsTriggerFilterData filter, in Targets targets, quaternion selfRot,
                 ref NativeHashSet<Entity> seenRoots)
             {
-                if (other == Entity.Null || !LtwLookup.HasComponent(other))
-                {
-                    return;
-                }
+                if (other == Entity.Null || !LtwLookup.HasComponent(other)) return;
 
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
-                {
                     return;
-                }
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(cfg.ApplyTo, cfg.ApplyToLinkKey, self, other,
                         targets, LinkSources, Links, out var victim))
-                {
                     return;
-                }
 
-                // The corrective impulse is absolute (computed against the victim's pre-frame velocity), not additive,
-                // so a victim that yields multiple matching events in one frame (compound/multi-collider, AllContacts,
-                // or several events resolving to the same body) must only be corrected once — otherwise the summed
-                // impulses multiply Δv and over-brake/launch the body. Dedup by victim regardless of HitMode.
-                if (!seenRoots.Add(victim))
-                {
-                    return;
-                }
+                if (!seenRoots.Add(victim)) return;
 
-                if (!PendingForceLookup.HasBuffer(victim) || !VelocityLookup.TryGetComponent(victim, out var pv))
-                {
-                    return;
-                }
+                if (!PendingForceLookup.HasBuffer(victim) ||
+                    !VelocityLookup.TryGetComponent(victim, out var pv)) return;
 
-                // Kinematic/static bodies have zero inverse mass — a PendingForce can't move them, nothing to "break".
                 var mass = MassLookup.TryGetComponent(victim, out var pm) && pm.InverseMass > 1e-6f
                     ? 1f / pm.InverseMass
                     : 0f;
-                if (mass <= 0f)
-                {
-                    return;
-                }
+                if (mass <= 0f) return;
 
                 var v = pv.Linear;
                 var speed = math.length(v);
-                if (speed < 1e-4f)
-                {
-                    return;
-                }
+                if (speed < 1e-4f) return;
 
                 var multiplier =
                     StatStrengthUtility.Resolve(in cfg.Strength, self, targets, LinkSources, Links, StatLookup);
                 var threshold = cfg.BaseThreshold * multiplier;
 
-                // BaseThreshold 0 = unbreakable (always catch). Otherwise momentum above the threshold breaks through.
-                if (threshold > 0f && speed * mass > threshold)
-                {
-                    return;
-                }
+                if (threshold > 0f && speed * mass > threshold) return;
 
                 float3 deltaV;
                 if (cfg.Mode == PhysicsBreakMode.Brake)
@@ -285,21 +236,18 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 {
                     math.sincos(cfg.Elevation, out var se, out var ce);
                     math.sincos(cfg.Azimuth, out var sa, out var ca);
-                    var localDir = new float3(sa * ce, se, ca * ce); // +Z forward, +Y up in the source frame
+                    var localDir = new float3(sa * ce, se, ca * ce);
                     var target = math.rotate(selfRot, localDir) * (cfg.Restitution * speed);
                     deltaV = target - v;
                 }
 
-                // Accumulator applies impulse × inverse mass, so impulse = mass × Δv lands exactly Δv on the body.
                 var impulse = deltaV * mass;
                 if (math.lengthsq(impulse) > 1e-5f)
-                {
                     Events.Write(new BreakForceEvent
                     {
                         Target = victim,
                         Force = new PendingForce { Linear = impulse, Angular = float3.zero }
                     });
-                }
             }
         }
 
@@ -318,10 +266,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     while (reader.RemainingItemCount > 0)
                     {
                         var evt = reader.Read<BreakForceEvent>();
-                        if (PendingForceLookup.HasBuffer(evt.Target))
-                        {
-                            PendingForceLookup[evt.Target].Add(evt.Force);
-                        }
+                        if (PendingForceLookup.HasBuffer(evt.Target)) PendingForceLookup[evt.Target].Add(evt.Force);
                     }
 
                     reader.EndForEachIndex();

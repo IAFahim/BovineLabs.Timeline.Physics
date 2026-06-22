@@ -109,11 +109,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }.Schedule(state.Dependency);
         }
 
-        /// <summary>
-        ///     Intermediate event produced by <see cref="GatherJob" /> and consumed by <see cref="ApplyForcesJob" />.
-        ///     Stored in a <see cref="NativeStream" /> so that buffer appends happen in a deterministic order
-        ///     without requiring a managed ECB system.
-        /// </summary>
         private struct TriggerForceEvent
         {
             public Entity Target;
@@ -211,7 +206,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 in LtwLookup, in ParentLookup);
                             var hasContact = evt.TryGetDetails(out var details);
                             var pt = hasContact ? details.AverageContactPointPosition : (selfPos + otherPos) * 0.5f;
-                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets, selfPos, selfRot, ref seenRoots);
+                            ProcessEvent(self, evt.EntityB, in config, in filter, pt, in targets, selfPos, selfRot,
+                                ref seenRoots);
                         }
                 }
 
@@ -313,11 +309,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }
         }
 
-        /// <summary>
-        ///     Applies gathered force events to their target entity's <see cref="PendingForce" /> buffer.
-        ///     Runs single-threaded to avoid parallel <see cref="BufferLookup{T}" /> write conflicts when
-        ///     multiple events target the same entity.
-        /// </summary>
         [BurstCompile]
         private struct ApplyForcesJob : IJob
         {

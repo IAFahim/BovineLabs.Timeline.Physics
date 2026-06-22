@@ -12,9 +12,6 @@ namespace BovineLabs.Timeline.Physics
         public Target TrackingTarget;
         public PidAngularTargetMode TargetMode;
 
-        /// <summary>
-        ///     In World mode, this acts as the absolute world rotation. In Offset mode, it is an offset from the tracking target.
-        /// </summary>
         public quaternion TargetRotation;
 
         public float Strength;
@@ -39,9 +36,6 @@ namespace BovineLabs.Timeline.Physics
 
     public readonly struct PhysicsAngularPIDMixer : IMixer<PhysicsAngularPIDData>
     {
-        // The Blend helper fills missing weight with default(PhysicsAngularPIDData), whose TargetRotation is the
-        // zero quaternion (0,0,0,0) rather than identity. Slerping toward that yields a non-unit / shrunk rotation
-        // that corrupts the resolved PID target at every blend edge, so treat a (near-)zero quaternion as identity.
         private static quaternion SanitizeRotation(in quaternion q)
         {
             return math.lengthsq(q.value) > 1e-6f ? math.normalize(q) : quaternion.identity;
@@ -71,7 +65,8 @@ namespace BovineLabs.Timeline.Physics
                 Tuning = PidMixer.Add(a.Tuning, b.Tuning),
                 TrackingTarget = dominant.TrackingTarget,
                 TargetMode = dominant.TargetMode,
-                TargetRotation = PidMixer.AddRotation(SanitizeRotation(a.TargetRotation), SanitizeRotation(b.TargetRotation)),
+                TargetRotation =
+                    PidMixer.AddRotation(SanitizeRotation(a.TargetRotation), SanitizeRotation(b.TargetRotation)),
                 Strength = a.Strength + b.Strength,
                 StrengthStat = dominant.StrengthStat
             };

@@ -187,13 +187,11 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(frame.LandingPosition, Viewer, HasViewer);
 
-                // Far: what the system does — the landing radius + the spot it teleports to.
                 Drawer.Circle(frame.LandingPosition, new float3(0f, d.Radius, 0f), RadiusColor);
                 Drawer.Sphere(frame.LandingPosition, 0.15f, Segments, ReferenceColor);
 
                 if (tier >= DebugTier.Mid)
                 {
-                    // Mid: the facing the teleport will leave the body in + a label.
                     Drawer.Arrow(frame.LandingPosition + new float3(0f, 0.2f, 0f),
                         math.mul(frame.FacingRotation, math.forward()) * 1.25f,
                         new Color(ReferenceColor.r, ReferenceColor.g, ReferenceColor.b, 0.7f));
@@ -210,7 +208,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier == DebugTier.Close)
                 {
-                    // Close: the full spherical patch boundary + reference frame + every angle/number.
                     DrawPatchBoundary(frame.LandingPosition, d.Radius, frame.ReferenceRotation,
                         d.AzimuthCenter, d.AzimuthHalfRange,
                         d.ElevationCenter, d.ElevationHalfRange);

@@ -4,12 +4,6 @@ using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Authoring.Splines
 {
-    /// <summary>
-    ///     A stable, auto-keyed handle to a path. A <c>SplinePathAuthoring</c> GameObject bakes its geometry under
-    ///     this schema's key; a spline-follow clip references the same schema asset and bakes the same key — so the
-    ///     two are linked through an asset→asset reference (serializes safely) and resolved at runtime by key,
-    ///     never by a fragile asset→scene reference. Same IUID + AutoRef pattern as EntityLinkSchema.
-    /// </summary>
     [AutoRef(nameof(SplineSettings), "splines", nameof(SplineSchema), "Schemas/Splines/")]
     [CreateAssetMenu(menuName = "BovineLabs/Splines/Schema")]
     public sealed class SplineSchema : ScriptableObject, IUID

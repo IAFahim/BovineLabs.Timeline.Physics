@@ -9,16 +9,8 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
-    /// <summary>
-    ///     Regression tests for the shared track lifecycle fix: <c>Active*</c> components must disable when
-    ///     their clip ends (not when the whole timeline ends), and the per-body fire latch must re-arm on
-    ///     every clip activation edge for fire-once tracks while a capture-and-restore override track must
-    ///     keep its captured state across a contiguous activation span.
-    /// </summary>
     public class PhysicsTrackLifecycleTests : ECSTestsFixture
     {
-        // --- Force (fire-once family) ---------------------------------------------------------------
-
         [Test]
         public void ContinuousForce_DisablesActiveForce_WhenClipEnds_WhileTimelineStillActive()
         {
@@ -34,14 +26,12 @@ namespace BovineLabs.Timeline.Physics.Tests
                 Magnitude = 1f
             });
 
-            // Frame 1: clip active -> the blend enables ActiveForce on the body.
             track.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
             begin.Update();
             Assert.IsTrue(Manager.IsComponentEnabled<ActiveForce>(body),
                 "ActiveForce should be enabled while the clip is active");
 
-            // Frame 2: the clip ends but the timeline stays active.
             Manager.SetComponentEnabled<ClipActive>(clip, false);
             Manager.AddComponent<ClipActivePrevious>(clip);
             Manager.SetComponentEnabled<ClipActivePrevious>(clip, true);
@@ -62,8 +52,6 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             var body = CreateForceBody();
 
-            // Model a prior impulse that already fired and whose ActiveForce is still enabled (a second clip
-            // begins on the same body with no gap). The new activation edge must re-arm the latch so it fires.
             Manager.SetComponentEnabled<ActiveForce>(body, true);
             Manager.SetComponentData(body, new PhysicsForceState { Fired = true });
 
@@ -84,15 +72,13 @@ namespace BovineLabs.Timeline.Physics.Tests
                 "so adjacent impulse clips each fire");
         }
 
-        // --- Gravity override (capture-and-restore family) ------------------------------------------
-
         [Test]
         public void GravityOverride_DoesNotReArmState_WhileActive()
         {
             var begin = World.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
             var track = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideTrackSystem));
 
-            var body = CreateGravityBody(active: true,
+            var body = CreateGravityBody(true,
                 new PhysicsGravityOverrideState { Fired = true, OriginalGravityScale = 0.5f, AddedComponent = true });
             CreateGravityClip(body);
 
@@ -113,7 +99,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var begin = World.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
             var track = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideTrackSystem));
 
-            var body = CreateGravityBody(active: false,
+            var body = CreateGravityBody(false,
                 new PhysicsGravityOverrideState { Fired = true, OriginalGravityScale = 0.5f, AddedComponent = true });
             CreateGravityClip(body);
 
@@ -127,8 +113,6 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(1f, state.OriginalGravityScale, 1e-6f,
                 "Re-arm resets the captured original to its sentinel so the next OnEnter captures the real value");
         }
-
-        // --- Helpers ---------------------------------------------------------------------------------
 
         private Entity CreateForceBody()
         {

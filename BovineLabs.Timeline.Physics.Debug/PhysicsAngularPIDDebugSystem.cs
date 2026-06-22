@@ -37,7 +37,6 @@ namespace BovineLabs.Timeline.Physics.Debug
         }
     }
 
-
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
@@ -117,13 +116,11 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
 
-                // Far: what the system does — the orientation it is turning the body toward.
                 var forward = math.mul(finalRot, math.forward());
                 Drawer.Arrow(selfPos, forward, ColorForward);
 
                 if (tier >= DebugTier.Mid)
                 {
-                    // Mid: the up axis + label + live angular velocity.
                     var up = math.mul(finalRot, math.up());
                     Drawer.Arrow(selfPos, up, ColorUp);
                     Drawer.Text32(selfPos + new float3(0, 0.4f, 0), "Angular PID", ColorForward, 12f);
@@ -133,7 +130,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier == DebugTier.Close)
                 {
-                    // Close: predicted swing path + the PID gains.
                     PhysicsMath.DrawAngularPidPrediction(ref Drawer, selfPos, selfRot,
                         finalRot, animated.AuthoredData.Tuning, (float)localTime.Value);
 

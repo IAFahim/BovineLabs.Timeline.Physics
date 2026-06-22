@@ -5,6 +5,8 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Physics;
+using UnityEngine;
+using Collider = Unity.Physics.Collider;
 
 namespace BovineLabs.Timeline.Physics.Filters
 {
@@ -126,7 +128,7 @@ namespace BovineLabs.Timeline.Physics.Filters
             [BurstDiscard]
             private static void LogSharedColliderWarning()
             {
-                UnityEngine.Debug.LogWarning(
+                Debug.LogWarning(
                     "PhysicsFilterOverride targets a shared collider blob; the override was skipped. " +
                     "Enable 'Force Unique' on the bound body's collider authoring so the filter can be modified per instance.");
             }

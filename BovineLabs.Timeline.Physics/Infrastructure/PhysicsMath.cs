@@ -5,7 +5,6 @@ using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Transforms;
-using UnityEngine;
 
 namespace BovineLabs.Timeline.Physics.Infrastructure
 {
@@ -78,7 +77,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
 
             return float3.zero;
         }
-
 
         public static quaternion ResolveRotation(
             Entity target,
@@ -175,12 +173,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             resolvedVector = vector;
         }
 
-        /// <summary>
-        ///     Distance attenuation in [0, 1]. Total over all inputs and every
-        ///     <see cref="PhysicsTriggerFalloffCurve" /> value: full magnitude inside the start radius,
-        ///     zero outside the end radius, curve-shaped in between.
-        ///     InverseSquare is true 1/r² attenuation normalized to 1 at the start radius.
-        /// </summary>
         public static float ComputeFalloff(PhysicsTriggerFalloffCurve curve, float distance, float startRadius,
             float endRadius)
         {
@@ -272,7 +264,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
 
         public static float3 Reflect(float3 direction, float3 normal)
         {
-            return direction - (2f * math.dot(direction, normal) * normal);
+            return direction - 2f * math.dot(direction, normal) * normal;
         }
 
         public static void ComputeAngularError(quaternion current, quaternion target, out float3 error)
@@ -398,8 +390,6 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
             var baseRot = quaternion.LookRotationSafe(dir, math.up());
             return math.mul(baseRot, offsetRot);
         }
-
-
 
         public struct RicochetStepResult
         {

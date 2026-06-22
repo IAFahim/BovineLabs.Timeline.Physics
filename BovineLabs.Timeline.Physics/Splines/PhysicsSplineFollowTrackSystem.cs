@@ -9,11 +9,6 @@ using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.Splines
 {
-    /// <summary>
-    ///     Blends the active spline-follow clips on each binding and writes the result to the body's
-    ///     <see cref="ActiveSplineFollow" />. Mirrors the Linear-PID track system house style: reset state on
-    ///     activation edge, prepare authored → value, blend, disable stale, write active.
-    /// </summary>
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
@@ -126,10 +121,7 @@ namespace BovineLabs.Timeline.Physics.Splines
             public void ExecuteNext(int entryIndex, int jobIndex)
             {
                 this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity))
-                {
-                    return;
-                }
+                if (!ActiveLookup.HasComponent(entity)) return;
 
                 ECB.SetComponentEnabled<ActiveSplineFollow>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveSplineFollow

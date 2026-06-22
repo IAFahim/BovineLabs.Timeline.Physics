@@ -6,15 +6,9 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
     {
         public PhysicsVelocityData Lerp(in PhysicsVelocityData a, in PhysicsVelocityData b, in float s)
         {
-            // JobHelpers.Blend injects default(PhysicsVelocityData) as a phantom operand to fade an
-            // under-weighted clip toward zero. Its Mode is SetContinuous (enum 0), so a discrete
-            // 's < 0.5f' pick would let that phantom flip an authored SetInstant clip to SetContinuous
-            // while the real clip weight is below 0.5 - breaking fire-once semantics. The discrete
-            // fields therefore stick to the non-default operand; only when both are authored do we
-            // fall back to the higher-weight operand (s < 0.5f selects a, which carries weight 1 - s).
             var aDefault = IsDefault(a);
             var bDefault = IsDefault(b);
-            var discrete = (bDefault || (!aDefault && s < 0.5f)) ? a : b;
+            var discrete = bDefault || (!aDefault && s < 0.5f) ? a : b;
 
             return new PhysicsVelocityData
             {

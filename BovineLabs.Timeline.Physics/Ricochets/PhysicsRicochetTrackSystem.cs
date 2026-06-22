@@ -128,7 +128,8 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 ECB.SetComponentEnabled<ActiveRicochet>(entryIndex, entity, true);
                 ECB.SetComponent(entryIndex, entity, new ActiveRicochet
                 {
-                    Config = JobHelpers.Blend<PhysicsRicochetData, DiscreteMixer<PhysicsRicochetData>>(ref mixData, default)
+                    Config = JobHelpers.Blend<PhysicsRicochetData, DiscreteMixer<PhysicsRicochetData>>(ref mixData,
+                        default)
                 });
             }
         }

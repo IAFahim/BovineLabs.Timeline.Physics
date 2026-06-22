@@ -108,7 +108,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             }.Schedule(state.Dependency);
         }
 
-
         [BurstCompile]
         private partial struct DrawActiveForceJob : IJobEntity
         {
@@ -140,7 +139,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: what the system does — the applied force arrow.
                 Drawer.Arrow(pos, forceVec * massInv, ColorForce);
 
                 if (tier >= DebugTier.Mid)
@@ -209,7 +207,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: what the system does — the target velocity arrow.
                 Drawer.Arrow(pos, targetVel, ColorVel);
 
                 if (tier >= DebugTier.Mid)

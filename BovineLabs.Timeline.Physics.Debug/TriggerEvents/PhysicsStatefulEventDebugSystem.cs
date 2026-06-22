@@ -104,7 +104,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
                 var tier = TimelineDebugTier.Resolve(ltw.Position, Viewer, HasViewer);
 
-                // Far: what the system does — a marker that this entity has live trigger events.
                 Drawer.Sphere(origin, 0.12f, 8, TextColor);
 
                 if (tier == DebugTier.Mid)
@@ -161,7 +160,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = ltw.Position + new float3(0f, 1f, 0f);
                 var tier = TimelineDebugTier.Resolve(ltw.Position, Viewer, HasViewer);
 
-                // Far: what the system does — a marker that this entity has live collision events.
                 Drawer.Sphere(origin, 0.12f, 8, TextColor);
 
                 if (tier == DebugTier.Mid)

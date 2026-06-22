@@ -141,7 +141,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             public bool Equals(SpawnKey other)
             {
-                return Clip == other.Clip && Self == other.Self && Other == other.Other && ObjectId.Equals(other.ObjectId);
+                return Clip == other.Clip && Self == other.Self && Other == other.Other &&
+                       ObjectId.Equals(other.ObjectId);
             }
 
             public override int GetHashCode()
@@ -226,10 +227,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
                 bool isFirstFrame, bool isLastFrame)
             {
-                if (!TriggerEventsLookup.TryGetBuffer(self, out var triggers))
-                {
-                    return;
-                }
+                if (!TriggerEventsLookup.TryGetBuffer(self, out var triggers)) return;
 
                 foreach (var evt in triggers)
                 {
@@ -244,7 +242,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var midpoint = (selfPos + otherPos) * 0.5f;
                     var dir = math.normalizesafe(selfPos - otherPos);
 
-                    Spawn(chunkIndex, clip, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets, filter.HitMode);
+                    Spawn(chunkIndex, clip, prefab, self, evt.EntityB, in cfg, midpoint, dir, in targets,
+                        filter.HitMode);
                 }
             }
 
@@ -252,10 +251,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 in PhysicsTriggerInstantiateData cfg, in PhysicsTriggerFilterData filter, in Targets targets,
                 bool isFirstFrame, bool isLastFrame)
             {
-                if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions))
-                {
-                    return;
-                }
+                if (!CollisionEventsLookup.TryGetBuffer(self, out var collisions)) return;
 
                 foreach (var evt in collisions)
                 {

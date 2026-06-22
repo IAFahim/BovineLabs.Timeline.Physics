@@ -11,15 +11,10 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
     [UnityCliTool(
         Name = "physics_body_list",
         Group = "vex",
-        Description = "Per PhysicsBodyAuthoring holder in the SubScene: path, MotionType, Mass, shape summary (PhysicsShapeAuthoring collider type), and ForceUnique (the §3.4 filter-override trap). Read-only discovery.")]
+        Description =
+            "Per PhysicsBodyAuthoring holder in the SubScene: path, MotionType, Mass, shape summary (PhysicsShapeAuthoring collider type), and ForceUnique (the §3.4 filter-override trap). Read-only discovery.")]
     public static class PhysicsBodyListTool
     {
-        public class Parameters
-        {
-            [ToolParameter("Subscene .unity path. Default: auto-detected from the active scene's SubScene component.")]
-            public string Subscene { get; set; }
-        }
-
         public static object HandleCommand(JObject @params)
         {
             var p = new Params(@params);
@@ -38,14 +33,12 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
                         var shapes = body.GetComponentsInChildren<PhysicsShapeAuthoring>(true);
                         var shapeSummaries = new List<object>();
                         foreach (var shape in shapes)
-                        {
                             shapeSummaries.Add(new
                             {
                                 path = Hierarchy.PathOf(shape.gameObject),
                                 colliderType = shape.ShapeType.ToString(),
-                                forceUnique = shape.ForceUnique,
+                                forceUnique = shape.ForceUnique
                             });
-                        }
 
                         bodies.Add(new
                         {
@@ -53,17 +46,26 @@ namespace BovineLabs.Timeline.Physics.Editor.CliTools
                             motionType = body.MotionType.ToString(),
                             mass = body.Mass,
                             shapeCount = shapeSummaries.Count,
-                            shapes = shapeSummaries,
+                            shapes = shapeSummaries
                         });
                     }
 
-                    string sceneName = Path.GetFileNameWithoutExtension(session.SubscenePath);
+                    var sceneName = Path.GetFileNameWithoutExtension(session.SubscenePath);
                     return ToolEnvelope.Ok(
                         $"{bodies.Count} physics body holder(s) in '{sceneName}'.",
-                        result: new { subscene = session.SubscenePath, bodies });
+                        new { subscene = session.SubscenePath, bodies });
                 }
             }
-            catch (ToolException e) { return ToolEnvelope.FromException(e); }
+            catch (ToolException e)
+            {
+                return ToolEnvelope.FromException(e);
+            }
+        }
+
+        public class Parameters
+        {
+            [ToolParameter("Subscene .unity path. Default: auto-detected from the active scene's SubScene component.")]
+            public string Subscene { get; set; }
         }
     }
 }

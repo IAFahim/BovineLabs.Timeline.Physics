@@ -35,20 +35,14 @@ namespace BovineLabs.Timeline.Physics
         public float ElevationCenter;
         public float ElevationHalfRange;
 
-        // Landing patch origin - where the spherical patch is centered.
         public Target TeleportRelativeTo;
         public ushort TeleportRelativeToLinkKey;
 
-        // Azimuth reference - what direction counts as azimuth 0°.
-        // Separate from TeleportRelativeTo so the landing direction can be independent
-        // of where the patch is centered.
         public Target AzimuthTarget;
         public ushort AzimuthTargetLinkKey;
 
-        // Frame defining azimuth 0 around the landing patch origin.
         public TeleportReferenceFrame ReferenceFrame;
 
-        // Facing mode and target - where the entity looks after teleport.
         public TeleportFacingMode FacingMode;
         public Target FacingTarget;
         public ushort FacingTargetLinkKey;

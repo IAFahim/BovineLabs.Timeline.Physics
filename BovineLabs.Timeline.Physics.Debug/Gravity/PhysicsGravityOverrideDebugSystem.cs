@@ -115,7 +115,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return fallback;
             }
 
-
             public void Execute(Entity entity, in TrackBinding binding, in PhysicsGravityOverrideAnimated animated)
             {
                 var target = binding.Value;
@@ -129,7 +128,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (math.abs(gScale) < 0.001f)
                 {
-                    // Far: zero-g marker.
                     Drawer.Circle(pos + new float3(0f, 0.5f, 0f), new float3(0f, 0.15f, 0f), ZeroGColor);
                     if (tier >= DebugTier.Mid)
                         Drawer.Text32(pos + new float3(0f, 0.5f, 0f), (FixedString32Bytes)"g0", ZeroGColor, 12f);
@@ -143,7 +141,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                     var dir = math.normalize(gVec);
 
-                    // Far: what the system does — the scaled gravity arrow.
                     Drawer.Arrow(pos, dir * arrowLen, ArrowColor);
 
                     if (tier >= DebugTier.Mid)

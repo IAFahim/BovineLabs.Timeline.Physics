@@ -10,13 +10,10 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsTriggerFilterData : IComponentData
     {
-        // Target to ignore (e.g., Target.Owner to ignore anything sharing the owner's root)
         public Target IgnoreTarget;
 
-        // Optional blob of allowed link keys
         public BlobAssetReference<PhysicsTriggerLinkBlob> LinkFilterBlob;
 
-        // AllContacts: apply once per contacting collider. FirstPerRoot: apply once per resolved root.
         public PhysicsTriggerHitMode HitMode;
     }
 }

@@ -30,10 +30,10 @@ namespace BovineLabs.Timeline.Physics.Tests
 
         public override void TearDown()
         {
-            if (this.physicsWorldCreated)
+            if (physicsWorldCreated)
             {
-                this.physicsWorld.Dispose();
-                this.physicsWorldCreated = false;
+                physicsWorld.Dispose();
+                physicsWorldCreated = false;
             }
 
             base.TearDown();
@@ -41,10 +41,10 @@ namespace BovineLabs.Timeline.Physics.Tests
 
         private void CreatePhysicsWorldSingleton()
         {
-            this.physicsWorld = new PhysicsWorld(0, 0, 0);
-            this.physicsWorldCreated = true;
+            physicsWorld = new PhysicsWorld(0, 0, 0);
+            physicsWorldCreated = true;
             var entity = Manager.CreateSingleton<PhysicsWorldSingleton>();
-            Manager.SetComponentData(entity, new PhysicsWorldSingleton { PhysicsWorld = this.physicsWorld });
+            Manager.SetComponentData(entity, new PhysicsWorldSingleton { PhysicsWorld = physicsWorld });
         }
 
         private void CreateDebugSingletons()

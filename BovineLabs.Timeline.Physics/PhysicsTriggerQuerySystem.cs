@@ -22,13 +22,6 @@ using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
-    /// <summary>
-    ///     Runs before the other trigger reactions and the kinematics producer so a winner selected
-    ///     this tick is consumable by tracks targeting <see cref="Target.Custom" /> in the same tick.
-    ///     Line of sight is evaluated against the previous step's collision world, matching the
-    ///     ricochet and teleport tracks. When no physics world exists, the line-of-sight gate is
-    ///     treated as passing.
-    /// </summary>
     [Configurable]
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [UpdateBefore(typeof(PhysicsKinematicsApplySystem))]
@@ -120,10 +113,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }.Schedule(state.Dependency);
         }
 
-        /// <summary>
-        ///     Produced by <see cref="GatherJob" />, consumed in deterministic chunk order by
-        ///     <see cref="ApplyJob" />, mirroring the trigger force system's pattern.
-        /// </summary>
         private struct TriggerQueryEvent
         {
             public Entity Routed;
@@ -199,7 +188,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var forward = math.rotate(selfRot, math.forward());
                     if (!math.all(math.isfinite(forward))) continue;
 
-                    var maxDistSq = config.MaxDistance > 0f ? config.MaxDistance * config.MaxDistance
+                    var maxDistSq = config.MaxDistance > 0f
+                        ? config.MaxDistance * config.MaxDistance
                         : float.MaxValue;
                     var minAlignment = config.MaxAngle > 0f ? math.cos(config.MaxAngle) : float.MinValue;
                     var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
@@ -318,10 +308,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }
         }
 
-        /// <summary>
-        ///     Runs single-threaded so writes to shared <see cref="Targets" /> components and condition
-        ///     buffers stay race-free regardless of how many query clips routed to the same entity.
-        /// </summary>
         [BurstCompile]
         private struct ApplyJob : IJob
         {

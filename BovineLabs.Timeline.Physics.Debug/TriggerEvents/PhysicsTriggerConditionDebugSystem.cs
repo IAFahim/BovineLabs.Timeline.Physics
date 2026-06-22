@@ -124,7 +124,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var pos = triggerLtw.Position;
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: what the system does — the enter/stay/exit arrow marker.
                 var markerSize = 0.5f;
                 if (config.EventState == StatefulEventState.Enter)
                 {
@@ -154,7 +153,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     var readout = new FixedString128Bytes();
                     readout.Append((FixedString32Bytes)"cond ");
-                    readout.Append((int)(ushort)config.Condition);
+                    readout.Append((ushort)config.Condition);
                     readout.Append((FixedString32Bytes)"  on ");
                     if (config.EventState == StatefulEventState.Enter)
                         readout.Append((FixedString32Bytes)"Enter");

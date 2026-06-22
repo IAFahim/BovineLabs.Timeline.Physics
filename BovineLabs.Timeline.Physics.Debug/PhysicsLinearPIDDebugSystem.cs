@@ -37,7 +37,6 @@ namespace BovineLabs.Timeline.Physics.Debug
         }
     }
 
-
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
@@ -116,13 +115,11 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(selfPos, Viewer, HasViewer);
 
-                // Far: what the system does — the body is being pulled to the goal.
                 Drawer.Line(selfPos, finalPos, ColorLine);
                 Drawer.Point(finalPos, 0.2f, ColorGoal);
 
                 if (tier >= DebugTier.Mid)
                 {
-                    // Mid: the live interaction — current velocity + a label.
                     Drawer.Text32(finalPos + new float3(0, 0.4f, 0), "Linear PID Goal", ColorLine, 12f);
                     if (VelocityLookup.TryGetComponent(entity, out var velocity))
                         Drawer.Arrow(selfPos, velocity.Linear, ColorVel);
@@ -130,7 +127,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 if (tier == DebugTier.Close)
                 {
-                    // Close: every number — predicted path + error distance + the PID gains.
                     PhysicsMath.DrawLinearPidPrediction(ref Drawer, selfPos, finalPos,
                         animated.AuthoredData.Tuning, (float)localTime.Value);
 

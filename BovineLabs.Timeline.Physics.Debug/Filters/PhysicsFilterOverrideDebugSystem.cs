@@ -100,7 +100,6 @@ namespace BovineLabs.Timeline.Physics.Debug
                 return fallback;
             }
 
-
             public void Execute(Entity entity, in TrackBinding binding, in PhysicsFilterOverrideAnimated animated)
             {
                 var target = binding.Value;
@@ -112,7 +111,6 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                 var tier = TimelineDebugTier.Resolve(pos, Viewer, HasViewer);
 
-                // Far: what the system does — the override ring under the body.
                 var groundPos = pos - new float3(0f, 0.5f, 0f);
                 Drawer.Circle(groundPos, new float3(0f, 0.7f, 0f), RingColor);
 

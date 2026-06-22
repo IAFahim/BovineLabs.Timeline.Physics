@@ -26,7 +26,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
 
         public PidLinearTargetMode targetMode = PidLinearTargetMode.TargetLocal;
 
-        [Tooltip("In World mode this is the ABSOLUTE world-space position. In other modes it is an offset from the tracking target.")]
+        [Tooltip(
+            "In World mode this is the ABSOLUTE world-space position. In other modes it is an offset from the tracking target.")]
         public Vector3 targetOffset = new(0, 0, 0);
 
         [Header("Influence")] [Tooltip("Output force multiplier. 0 = no effect, 1 = full, 2 = double.")] [Min(0f)]

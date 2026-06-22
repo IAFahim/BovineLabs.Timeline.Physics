@@ -92,7 +92,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 {
                     HasMassOverride = chunk.Has(ref MassOverrideHandle),
                     HasGravityFactor = chunk.Has(ref GravityFactorHandle),
-                    HasVelocity = chunk.Has(ref VelocityHandle),
+                    HasVelocity = chunk.Has(ref VelocityHandle)
                 };
                 lanes.MassOverrides = lanes.HasMassOverride ? chunk.GetNativeArray(ref MassOverrideHandle) : default;
                 lanes.GravityFactors = lanes.HasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
@@ -197,13 +197,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     lanes.MassOverrides[i] = mo;
                 }
 
-                if (!config.ZeroGravity || hasActiveGravityOverride)
-                {
-                    return;
-                }
+                if (!config.ZeroGravity || hasActiveGravityOverride) return;
 
-                // The overlapping gravity-override clip may have ended after we entered. Capture ownership of the
-                // gravity factor before zeroing it so OnExit can restore it; mirror the OnEnter capture block.
                 if (!state.GravityCaptured)
                 {
                     state.GravityCaptured = true;

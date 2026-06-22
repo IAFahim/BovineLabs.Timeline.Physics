@@ -75,7 +75,6 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void Falloff_InverseSquare_FollowsOneOverDistanceSquared()
         {
-            // Normalized to 1 at the start radius: at 2x the start radius the attenuation is 1/4.
             Assert.AreEqual(0.25f, PhysicsMath.ComputeFalloff(PhysicsTriggerFalloffCurve.InverseSquare, 2f, 1f, 10f),
                 0.0001f);
             Assert.AreEqual(1f / 9f, PhysicsMath.ComputeFalloff(PhysicsTriggerFalloffCurve.InverseSquare, 3f, 1f, 10f),

@@ -7,17 +7,17 @@ namespace BovineLabs.Timeline.Physics
 {
     public enum PhysicsTriggerForceType : byte
     {
-        Directional, // Straight uniform push (conveyor belt, wind tunnels)
-        Radial, // Pushes out or Pulls in from origin (Explosions/Implosions)
-        Vortex // Spins things tangentially around the origin's Up axis
+        Directional,
+        Radial,
+        Vortex
     }
 
     public enum PhysicsTriggerFalloffCurve : byte
     {
-        None, // Constant force regardless of distance
-        Linear, // Force decreases linearly from Start to End radius
-        InverseSquare, // Realistic physical attenuation (1/r^2)
-        Step // Full magnitude up to FalloffEndRadius, zero outside
+        None,
+        Linear,
+        InverseSquare,
+        Step
     }
 
     public struct PhysicsTriggerForceData : IComponentData
@@ -28,9 +28,6 @@ namespace BovineLabs.Timeline.Physics
         public float Magnitude;
         public float3 Direction;
 
-        /// <summary>
-        ///     Note: Radial force combined with MatchCollidedEntity produces a zero-length direction.
-        /// </summary>
         public PhysicsTriggerPositionMode OriginMode;
 
         public PhysicsTriggerFalloffCurve FalloffCurve;

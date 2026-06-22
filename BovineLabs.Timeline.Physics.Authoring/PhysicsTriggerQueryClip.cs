@@ -23,8 +23,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Gates")] [Tooltip("Maximum query distance. 0 = unlimited.")]
         public float maxDistance;
 
-        [Tooltip("Maximum angle from the bound entity's forward, in degrees. 0 = ignore.")]
-        [Range(0f, 180f)]
+        [Tooltip("Maximum angle from the bound entity's forward, in degrees. 0 = ignore.")] [Range(0f, 180f)]
         public float maxAngleDegrees;
 
         public bool requireLineOfSight;

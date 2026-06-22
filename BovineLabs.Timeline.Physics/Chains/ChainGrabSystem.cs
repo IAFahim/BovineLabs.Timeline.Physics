@@ -125,13 +125,13 @@ namespace BovineLabs.Timeline.Physics.Chains
                     if (!LocalToWorldLookup.TryGetComponent(linkEntity, out var linkL2W)) continue;
                     if (!LocalToWorldLookup.TryGetComponent(other, out var otherL2W)) continue;
 
-                    // Switch (not a ternary) so an unhandled mode is visible. Wrap is not yet implemented and
-                    // deliberately falls back to Stick along with the default case.
                     var joint = config.Mode switch
                     {
-                        ChainGrabMode.Reel => CreateReel(unfilteredChunkIndex, link.Root, other, in otherL2W, in config),
-                        ChainGrabMode.Wrap => CreateStick(unfilteredChunkIndex, linkEntity, other, in linkL2W, in otherL2W, in config),
-                        _ => CreateStick(unfilteredChunkIndex, linkEntity, other, in linkL2W, in otherL2W, in config),
+                        ChainGrabMode.Reel => CreateReel(unfilteredChunkIndex, link.Root, other, in otherL2W,
+                            in config),
+                        ChainGrabMode.Wrap => CreateStick(unfilteredChunkIndex, linkEntity, other, in linkL2W,
+                            in otherL2W, in config),
+                        _ => CreateStick(unfilteredChunkIndex, linkEntity, other, in linkL2W, in otherL2W, in config)
                     };
 
                     if (joint == Entity.Null) continue;

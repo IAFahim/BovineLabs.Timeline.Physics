@@ -11,13 +11,6 @@ using SphereCollider = Unity.Physics.SphereCollider;
 
 namespace BovineLabs.Timeline.Physics.Tests
 {
-    /// <summary>
-    ///     Regression coverage for the stateful apply systems whose queries use
-    ///     <see cref="EntityQueryOptions.IgnoreComponentEnabledState" />. These systems previously
-    ///     constructed their <c>ChunkEntityEnumerator</c> with a hardcoded <c>useEnabledMask: true</c>
-    ///     and the (all-zero) mask Unity supplies when no enabled-state filtering occurred, so they
-    ///     iterated zero entities and never executed.
-    /// </summary>
     public class StatefulApplySystemTests : ECSTestsFixture
     {
         [Test]

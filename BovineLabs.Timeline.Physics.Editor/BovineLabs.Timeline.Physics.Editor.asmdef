@@ -24,7 +24,8 @@
     "Unity.Physics.Custom",
     "Unity.Physics.Hybrid",
     "Unity.Timeline",
-    "Unity.Timeline.Editor"
+    "Unity.Timeline.Editor",
+    "Unity.Splines"
   ],
   "optionalUnityReferences": [],
   "includePlatforms": [

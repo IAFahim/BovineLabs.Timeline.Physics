@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsTeleportTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsTeleportData, PhysicsTeleportAnimated> _blendImpl;

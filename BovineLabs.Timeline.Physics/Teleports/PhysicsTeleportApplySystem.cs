@@ -23,6 +23,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsTeleportApplySystem : ISystem
     {
         private EntityQuery _query;

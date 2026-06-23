@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.Filters
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsFilterOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveFilterOverride> _activeHandle;

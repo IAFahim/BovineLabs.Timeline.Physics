@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.Gravities
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsGravityOverrideTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated> _blendImpl;

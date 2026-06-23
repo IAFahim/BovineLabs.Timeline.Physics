@@ -19,6 +19,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct ChainGrabSystem : ISystem
     {
         private EntityTypeHandle _entityHandle;
@@ -215,6 +216,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     [UpdateAfter(typeof(ChainGrabSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct ChainReelSystem : ISystem
     {
         [BurstCompile]
@@ -242,6 +244,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     [UpdateAfter(typeof(ChainReelSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct ChainReleaseSystem : ISystem
     {
         [BurstCompile]

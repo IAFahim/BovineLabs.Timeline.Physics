@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.Sockets
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct SocketReturnTrackSystem : ISystem
     {
         private TrackBlendImpl<SocketReturnData, SocketReturnAnimated> _blendImpl;

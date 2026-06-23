@@ -21,6 +21,7 @@ namespace BovineLabs.Timeline.Physics.PIDs
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsPidApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;

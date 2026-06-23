@@ -22,6 +22,7 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsVelocityOverrideSystem : ISystem
     {
         private EntityQuery _query;

@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.Splines
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
+    [BurstCompile]
     public partial struct PhysicsSplineFollowTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsSplineFollowData, PhysicsSplineFollowAnimated> _blendImpl;

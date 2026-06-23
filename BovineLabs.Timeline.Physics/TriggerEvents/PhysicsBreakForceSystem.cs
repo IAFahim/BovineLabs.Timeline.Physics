@@ -25,6 +25,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsBreakForceSystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -227,19 +228,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (threshold > 0f && speed * mass > threshold) return;
 
-                float3 deltaV;
-                if (cfg.Mode == PhysicsBreakMode.Brake)
-                {
-                    deltaV = -(1f + cfg.Restitution) * v;
-                }
-                else
-                {
-                    math.sincos(cfg.Elevation, out var se, out var ce);
-                    math.sincos(cfg.Azimuth, out var sa, out var ca);
-                    var localDir = new float3(sa * ce, se, ca * ce);
-                    var target = math.rotate(selfRot, localDir) * (cfg.Restitution * speed);
-                    deltaV = target - v;
-                }
+                var deltaV = BreakImpulseKernel.ComputeDeltaV(cfg.Mode, selfRot, v, speed, cfg.Elevation,
+                    cfg.Azimuth, cfg.Restitution);
 
                 var impulse = deltaV * mass;
                 if (math.lengthsq(impulse) > 1e-5f)

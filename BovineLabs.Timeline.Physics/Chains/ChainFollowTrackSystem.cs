@@ -9,6 +9,7 @@ namespace BovineLabs.Timeline.Physics.Chains
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct ChainFollowTrackSystem : ISystem
     {
         private TrackBlendDriver<ChainFollowData, ChainFollowAnimated, ActiveChainFollow, ChainFollowMixer> _driver;

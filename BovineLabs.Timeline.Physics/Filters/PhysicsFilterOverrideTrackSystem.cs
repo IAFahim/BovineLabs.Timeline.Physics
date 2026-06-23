@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.Filters
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsFilterOverrideTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsFilterOverrideData, PhysicsFilterOverrideAnimated> _blendImpl;

@@ -1,4 +1,5 @@
 using BovineLabs.Core.Jobs;
+using BovineLabs.Timeline.Physics.Data.Forces;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.Kinematics;
 using BovineLabs.Timeline.Physics.PIDs;
@@ -139,12 +140,7 @@ namespace BovineLabs.Timeline.Physics.Forces
                     totalAngular += forces[f].Angular;
                 }
 
-                velocity.Linear += totalLinear * mass.InverseMass;
-
-                var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
-                var inertiaRot = math.mul(rotation, mass.Transform.rot);
-                var localAngular = math.rotate(math.inverse(inertiaRot), totalAngular);
-                velocity.Angular += math.rotate(inertiaRot, localAngular * mass.InverseInertia);
+                velocity = ForceInertiaKernel.ApplyForcesToVelocity(velocity, totalLinear, totalAngular, mass, transform);
 
                 forces.Clear();
                 return true;
@@ -172,6 +168,7 @@ namespace BovineLabs.Timeline.Physics.Forces
     [UpdateAfter(typeof(PhysicsPidApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsProducerForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;
@@ -192,6 +189,7 @@ namespace BovineLabs.Timeline.Physics.Forces
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsModifierForceAccumulatorSystem : ISystem
     {
         private PhysicsForceAccumulator _accumulator;

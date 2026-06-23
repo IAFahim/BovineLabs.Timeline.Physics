@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.PIDs
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
+    [BurstCompile]
     public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsAngularPIDData, PhysicsAngularPIDAnimated> _blendImpl;

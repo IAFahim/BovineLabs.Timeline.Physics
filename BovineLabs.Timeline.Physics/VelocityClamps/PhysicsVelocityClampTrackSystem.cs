@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsVelocityClampTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsVelocityClampData, PhysicsVelocityClampAnimated> _blendImpl;

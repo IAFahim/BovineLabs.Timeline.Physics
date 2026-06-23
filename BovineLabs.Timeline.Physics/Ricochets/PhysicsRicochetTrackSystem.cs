@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsRicochetTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsRicochetData, PhysicsRicochetAnimated> _blendImpl;

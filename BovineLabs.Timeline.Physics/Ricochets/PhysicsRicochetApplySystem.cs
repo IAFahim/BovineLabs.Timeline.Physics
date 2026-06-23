@@ -22,6 +22,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsRicochetApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveRicochet> _activeHandle;

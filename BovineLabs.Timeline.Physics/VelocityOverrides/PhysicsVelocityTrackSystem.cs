@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsVelocityTrackSystem : ISystem
     {
         private TrackBlendDriver<PhysicsVelocityData, PhysicsVelocityAnimated, ActiveVelocity, PhysicsVelocityMixer>

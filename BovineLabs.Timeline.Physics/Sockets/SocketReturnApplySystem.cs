@@ -17,6 +17,7 @@ namespace BovineLabs.Timeline.Physics.Sockets
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct SocketReturnApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;

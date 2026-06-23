@@ -6,7 +6,6 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Mathematics;
 using Unity.Physics;
 
 namespace BovineLabs.Timeline.Physics.VelocityClamps
@@ -17,6 +16,7 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
     [UpdateAfter(typeof(PhysicsModifierForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsVelocityClampApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveVelocityClamp> _activeHandle;
@@ -81,21 +81,8 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
                         var config = actives[i].Config;
                         var vel = velocities[i];
 
-                        if (config.MaxLinearSpeed >= 0f)
-                        {
-                            var linSq = math.lengthsq(vel.Linear);
-                            if (linSq > config.MaxLinearSpeed * config.MaxLinearSpeed)
-                                vel.Linear = math.normalize(vel.Linear) * config.MaxLinearSpeed;
-                        }
-
-                        if (config.MaxAngularSpeed >= 0f)
-                        {
-                            var angSq = math.lengthsq(vel.Angular);
-                            if (angSq > config.MaxAngularSpeed * config.MaxAngularSpeed)
-                                vel.Angular = math.normalize(vel.Angular) * config.MaxAngularSpeed;
-                        }
-
-                        velocities[i] = vel;
+                        var clamped = VelocityClampKernel.Clamp(vel, config.MaxLinearSpeed, config.MaxAngularSpeed);
+                        velocities[i] = clamped;
 
                         if (!state.Fired)
                         {
@@ -103,7 +90,7 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
                             states[i] = state;
                         }
                     }
-                    else if (!isActive && state.Fired)
+                    else if (state.Fired)
                     {
                         state.Fired = false;
                         states[i] = state;

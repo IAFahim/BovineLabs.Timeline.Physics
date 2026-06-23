@@ -12,6 +12,7 @@ namespace BovineLabs.Timeline.Physics.Gravities
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsGravityOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveGravityOverride> _activeHandle;

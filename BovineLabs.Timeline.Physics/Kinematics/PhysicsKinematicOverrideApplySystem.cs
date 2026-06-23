@@ -13,6 +13,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsKinematicOverrideApplySystem : ISystem
     {
         private ComponentTypeHandle<ActiveKinematicOverride> _activeHandle;

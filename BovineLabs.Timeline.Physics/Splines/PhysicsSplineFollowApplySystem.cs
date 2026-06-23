@@ -20,6 +20,7 @@ namespace BovineLabs.Timeline.Physics.Splines
     [UpdateAfter(typeof(PhysicsKinematicsApplySystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsSplineFollowApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -95,21 +96,6 @@ namespace BovineLabs.Timeline.Physics.Splines
             }.ScheduleParallel(_query, state.Dependency);
         }
 
-        private static float WrapEval(float p, SplineWrap wrap)
-        {
-            switch (wrap)
-            {
-                case SplineWrap.Loop:
-                    return p - math.floor(p);
-                case SplineWrap.PingPong:
-                    var m = math.abs(p);
-                    m -= math.floor(m / 2f) * 2f;
-                    return 1f - math.abs(1f - m);
-                default:
-                    return math.saturate(p);
-            }
-        }
-
         [BurstCompile]
         private struct FollowJob : IJobChunk
         {
@@ -153,7 +139,7 @@ namespace BovineLabs.Timeline.Physics.Splines
 
                     state.Progress += delta;
 
-                    var aimT = WrapEval(state.Progress + config.Lead, config.Wrap);
+                    var aimT = SplineWrapEval.Evaluate(state.Progress + config.Lead, config.Wrap);
                     var targetPos = spline.Value.EvaluatePosition(aimT);
 
                     var selfPos = PhysicsMath.ResolvePosition(body, in LocalTransformLookup, in LocalToWorldLookup,

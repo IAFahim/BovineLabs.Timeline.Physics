@@ -24,6 +24,7 @@ namespace BovineLabs.Timeline.Physics.Drags
     [UpdateBefore(typeof(PhysicsVelocityOverrideSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsDragApplySystem : ISystem
     {
         private EntityQuery _query;

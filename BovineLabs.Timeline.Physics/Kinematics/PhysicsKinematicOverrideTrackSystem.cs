@@ -14,6 +14,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
     [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsKinematicOverrideTrackSystem : ISystem
     {
         private TrackBlendImpl<PhysicsKinematicOverrideData, PhysicsKinematicOverrideAnimated> _blendImpl;

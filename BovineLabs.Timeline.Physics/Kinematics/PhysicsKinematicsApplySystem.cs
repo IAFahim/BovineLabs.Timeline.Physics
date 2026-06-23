@@ -22,6 +22,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]
+    [BurstCompile]
     public partial struct PhysicsKinematicsApplySystem : ISystem
     {
         private UnsafeComponentLookup<Targets> _targetsLookup;

@@ -90,6 +90,8 @@ namespace BovineLabs.Timeline.Physics.Forces
             {
                 BlendData = blendData,
                 ActiveLookup = _activeLookup,
+                StateLookup = _stateLookup,
+                DeltaTime = SystemAPI.Time.DeltaTime,
                 ECB = ecbWrite
             }.ScheduleParallel(blendData, 64, state.Dependency);
         }
@@ -118,6 +120,11 @@ namespace BovineLabs.Timeline.Physics.Forces
         {
             [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsForceData>>.ReadOnly BlendData;
             [ReadOnly] public ComponentLookup<ActiveForce> ActiveLookup;
+
+            // Each body appears at most once in BlendData, so this per-body write never aliases.
+            [NativeDisableParallelForRestriction] public ComponentLookup<PhysicsForceState> StateLookup;
+            public float DeltaTime;
+
             public EntityCommandBuffer.ParallelWriter ECB;
 
             public void ExecuteNext(int entryIndex, int jobIndex)
@@ -131,6 +138,17 @@ namespace BovineLabs.Timeline.Physics.Forces
                 {
                     Config = JobHelpers.Blend<PhysicsForceData, PhysicsForceMixer>(ref mixData, default)
                 });
+
+                // Accumulate clip-active time on the body (render rate). The fixed-step consumer integrates the
+                // Continuous force against the DELTA of this, so the total impulse = force × active-duration
+                // independent of how many fixed steps run in the window. ResetStateAlwaysTrackJob zeroes the whole
+                // state on the clip's first active frame, so this starts fresh each activation.
+                if (StateLookup.HasComponent(entity))
+                {
+                    var s = StateLookup[entity];
+                    s.ElapsedTime += DeltaTime;
+                    StateLookup[entity] = s;
+                }
             }
         }
     }

@@ -82,9 +82,7 @@ namespace BovineLabs.Timeline.Physics.Editor
 
             if (force.directionMode != PhysicsForceDirectionMode.FixedVector)
             {
-                Handles.color = MutedColor;
-                Label(origin + Vector3.up * size * 0.25f,
-                    $"Force '{force.directionMode}' resolves at runtime — no edit-time arc");
+                DrawNonFixed(force, body, origin, size);
                 return;
             }
 
@@ -134,6 +132,102 @@ namespace BovineLabs.Timeline.Physics.Editor
                 var tip = path[path.Count - 1];
                 Label(tip + Vector3.up * size * 0.15f, $"launch {speed:0.0} m/s{notes}");
             }
+        }
+
+        // Modes whose direction is only known at runtime (Target/random/velocity). We still draw whatever the clip
+        // data alone defines (cone shape, sphere, velocity arrow) plus a full data label, instead of an empty note.
+        private static void DrawNonFixed(PhysicsForceClip force, PhysicsBodyAuthoring body, Vector3 origin, float size)
+        {
+            var arrowLen = size * 1.5f;
+            var basis = force.space == Target.Self ? body.transform.rotation : Quaternion.identity;
+
+            switch (force.directionMode)
+            {
+                case PhysicsForceDirectionMode.RandomSphere:
+                    Handles.color = ArcColor;
+                    Handles.DrawWireDisc(origin, Vector3.up, arrowLen);
+                    Handles.DrawWireDisc(origin, Vector3.right, arrowLen);
+                    Handles.DrawWireDisc(origin, Vector3.forward, arrowLen);
+                    break;
+
+                case PhysicsForceDirectionMode.RandomCone:
+                    DrawCone(force, basis, origin, arrowLen);
+                    break;
+
+                case PhysicsForceDirectionMode.AlongVelocity:
+                case PhysicsForceDirectionMode.AgainstVelocity:
+                {
+                    var v = (Vector3)body.InitialLinearVelocity;
+                    if (v.sqrMagnitude > 1e-6f)
+                    {
+                        var dir = v.normalized;
+                        if (force.directionMode == PhysicsForceDirectionMode.AgainstVelocity) dir = -dir;
+                        DrawArrow(origin, dir * arrowLen, LaunchColor, size);
+                    }
+                    else
+                    {
+                        Handles.color = MutedColor;
+                        Label(origin + Vector3.up * size * 0.4f, "Body has no Initial Linear Velocity to align to");
+                    }
+
+                    break;
+                }
+
+                case PhysicsForceDirectionMode.TowardTarget:
+                case PhysicsForceDirectionMode.AwayFromTarget:
+                    Handles.color = MutedColor;
+                    Label(origin + Vector3.up * size * 0.4f,
+                        $"'{force.directionMode}' aims at runtime '{force.directionTarget}' — no edit-time position");
+                    break;
+            }
+
+            Handles.color = MutedColor;
+            Label(origin + Vector3.up * size * 0.25f, DataLabel(force));
+        }
+
+        private static void DrawCone(PhysicsForceClip force, Quaternion basis, Vector3 origin, float len)
+        {
+            DrawConeRay(basis, force.coneAzimuthCenter, force.coneElevationCenter, origin, len, LaunchColor);
+
+            var az = force.coneAzimuthHalfRange;
+            var el = force.coneElevationHalfRange;
+            DrawConeRay(basis, force.coneAzimuthCenter + az, force.coneElevationCenter + el, origin, len, ArcColor);
+            DrawConeRay(basis, force.coneAzimuthCenter - az, force.coneElevationCenter + el, origin, len, ArcColor);
+            DrawConeRay(basis, force.coneAzimuthCenter + az, force.coneElevationCenter - el, origin, len, ArcColor);
+            DrawConeRay(basis, force.coneAzimuthCenter - az, force.coneElevationCenter - el, origin, len, ArcColor);
+        }
+
+        private static void DrawConeRay(Quaternion basis, float azDeg, float elDeg, Vector3 origin, float len,
+            Color color)
+        {
+            var az = azDeg * Mathf.Deg2Rad;
+            var el = elDeg * Mathf.Deg2Rad;
+            var cosEl = Mathf.Cos(el);
+            var local = new Vector3(cosEl * Mathf.Sin(az), Mathf.Sin(el), cosEl * Mathf.Cos(az));
+            var dir = basis * local;
+            Handles.color = color;
+            Handles.DrawAAPolyLine(4f, origin, origin + dir * len);
+        }
+
+        private static void DrawArrow(Vector3 origin, Vector3 vector, Color color, float size)
+        {
+            var dir = vector.normalized;
+            var tip = origin + vector;
+            Handles.color = color;
+            Handles.DrawAAPolyLine(5f, origin, tip);
+            Handles.ConeHandleCap(0, tip, Quaternion.LookRotation(dir), size * 0.18f, EventType.Repaint);
+        }
+
+        private static string DataLabel(PhysicsForceClip force)
+        {
+            var mag = force.directionMode == PhysicsForceDirectionMode.FixedVector
+                ? ((Vector3)force.linearForce).magnitude
+                : force.magnitude;
+            var modeTag = force.mode == PhysicsForceMode.Impulse ? "impulse" : "continuous";
+            var label = $"{force.directionMode} · {modeTag} · mag {mag:0.#} · {force.space} space";
+            if (force.latchDirection) label += " · latched";
+            if (force.resetVelocityOnFire != VelocityResetFlags.None) label += $" · reset {force.resetVelocityOnFire}";
+            return label;
         }
 
         private static Vector3 ResolveFixedVector(PhysicsForceClip force, PhysicsBodyAuthoring body)

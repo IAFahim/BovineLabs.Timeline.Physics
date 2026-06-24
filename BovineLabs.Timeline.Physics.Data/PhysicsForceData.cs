@@ -61,6 +61,19 @@ namespace BovineLabs.Timeline.Physics
         public bool ResetApplied;
         public bool DirectionLatched;
         public float3 LatchedDirection;
+
+        /// <summary>
+        /// Total CLIP-active time accumulated by the (render-rate) track system since this clip activated.
+        /// A Continuous force integrates against the delta of this — not the fixed-step DeltaTime — so the total
+        /// impulse is force × active-duration regardless of how many fixed steps land in the window. Without it,
+        /// a Continuous force is force × fixedDt × (fixed-steps-in-window), and that step count jitters run-to-run
+        /// (the fixed-step group ticks a variable number of times per rendered frame) — making continuous dashes
+        /// non-deterministic while impulse (a one-shot latch) stays reliable.
+        /// </summary>
+        public float ElapsedTime;
+
+        /// <summary>The portion of <see cref="ElapsedTime"/> already converted to impulse by the consumer.</summary>
+        public float AppliedTime;
     }
 
     public struct PhysicsForceRandom : IComponentData

@@ -100,7 +100,8 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddComponentData(body, LocalTransform.Identity);
             Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
-            Manager.AddComponentData(body, new PhysicsForceState { Fired = false });
+            // Continuous integrates against clip-active time; the track accumulates ElapsedTime at render rate.
+            Manager.AddComponentData(body, new PhysicsForceState { Fired = false, ElapsedTime = 0.1f });
             Manager.AddBuffer<PendingForce>(body);
 
             Manager.AddComponentData(targetEntity, LocalTransform.FromPosition(new float3(5, 0, 0)));
@@ -132,6 +133,67 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(-1f, pendings[0].Linear.x, 0.001f);
             Assert.AreEqual(0f, pendings[0].Linear.y, 0.001f);
             Assert.AreEqual(0f, pendings[0].Linear.z, 0.001f);
+        }
+
+        // Reproduces the dash bug + locks in the fix: a Continuous force's total impulse must equal
+        // force × clip-active-duration, independent of how many fixed steps land inside the window. Pre-fix the
+        // consumer used the fixed-step DeltaTime (force × dt × step-count) so the total jittered with the step
+        // count (which varies run-to-run because the fixed-step group ticks a variable number of times per
+        // rendered frame) — making continuous dashes non-deterministic while impulse stayed reliable.
+        [Test]
+        public void Continuous_TotalImpulse_IsClipDurationBased_NotFixedStepCount()
+        {
+            const float force = 10f;
+            const float clipDuration = 0.10f;
+
+            var totalFewSteps = SumContinuousForceX(force, clipDuration, 2);
+            var totalManySteps = SumContinuousForceX(force, clipDuration, 10);
+
+            Assert.AreEqual(force * clipDuration, totalFewSteps, 1e-4f, "total must be force × duration");
+            Assert.AreEqual(totalFewSteps, totalManySteps, 1e-4f, "total must not depend on fixed-step count");
+        }
+
+        private float SumContinuousForceX(float force, float clipDuration, int steps)
+        {
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, LocalTransform.Identity);
+            Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(body, new PhysicsForceState { Fired = false });
+            Manager.AddBuffer<PendingForce>(body);
+            Manager.AddComponentData(body, new ActiveForce
+            {
+                Config = new PhysicsForceData
+                {
+                    Mode = PhysicsForceMode.Continuous,
+                    DirectionMode = PhysicsForceDirectionMode.FixedVector,
+                    Linear = new float3(force, 0, 0),
+                    Space = Target.None,
+                    Strength = default
+                }
+            });
+
+            World.SetTime(new TimeData(0, 0.016f));
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+
+            var total = 0f;
+            var perStepElapsed = clipDuration / steps;
+            for (var s = 0; s < steps; s++)
+            {
+                // Simulate the render-rate track accumulating clip-active time before each fixed-step consume.
+                var state = Manager.GetComponentData<PhysicsForceState>(body);
+                state.ElapsedTime += perStepElapsed;
+                Manager.SetComponentData(body, state);
+
+                sys.Update(WorldUnmanaged);
+                Manager.CompleteAllTrackedJobs();
+
+                var pendings = Manager.GetBuffer<PendingForce>(body);
+                for (var p = 0; p < pendings.Length; p++) total += pendings[p].Linear.x;
+                pendings.Clear();
+            }
+
+            Manager.DestroyEntity(body);
+            return total;
         }
     }
 }

@@ -196,8 +196,22 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var config = actives[i].Config;
                     var state = states[i];
 
-                    if (config.Mode == PhysicsForceMode.Impulse && state.Fired) continue;
-                    if (config.Mode == PhysicsForceMode.Continuous && DeltaTime <= 0.0001f) continue;
+                    // Impulse: one-shot latch. Continuous: integrate against the CLIP-active time the (render-rate)
+                    // track accumulated (state.ElapsedTime), applying only the unapplied delta — so the total
+                    // impulse = force × active-duration regardless of how many fixed steps land in the window.
+                    // Using the fixed-step DeltaTime here instead made continuous non-deterministic (the fixed-step
+                    // group ticks a variable number of times per rendered frame), while impulse stayed reliable.
+                    float timeScale;
+                    if (config.Mode == PhysicsForceMode.Impulse)
+                    {
+                        if (state.Fired) continue;
+                        timeScale = 1f;
+                    }
+                    else
+                    {
+                        timeScale = state.ElapsedTime - state.AppliedTime;
+                        if (timeScale <= 1e-6f) continue;
+                    }
 
                     var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
@@ -219,14 +233,20 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         state.ResetApplied = true;
                     }
 
-                    var timeScale = config.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
                     pendingForces[i].Add(new PendingForce
                     {
                         Linear = linForce * timeScale * multiplier,
                         Angular = angForce * timeScale * multiplier
                     });
 
-                    if (config.Mode == PhysicsForceMode.Impulse) state.Fired = true;
+                    if (config.Mode == PhysicsForceMode.Impulse)
+                    {
+                        state.Fired = true;
+                    }
+                    else
+                    {
+                        state.AppliedTime = state.ElapsedTime;
+                    }
 
                     states[i] = state;
                 }

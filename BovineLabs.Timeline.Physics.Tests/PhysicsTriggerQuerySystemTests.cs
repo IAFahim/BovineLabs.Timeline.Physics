@@ -228,6 +228,90 @@ namespace BovineLabs.Timeline.Physics.Tests
         }
 
         [Test]
+        public void ExcludeRoles_SkipsRoutedRoleEntities()
+        {
+            var owner = CreateCandidate(new float3(0, 0, 2));
+            var other = CreateCandidate(new float3(0, 0, 3));
+
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.Nearest,
+                RouteTo = Target.Self,
+                ExcludeRoles = PhysicsTriggerRoleMask.Owner
+            });
+
+            // Give the clip a Targets.Owner pointing at `owner`, so ExcludeRoles must skip it.
+            Manager.SetComponentData(clip, new Targets { Owner = owner });
+            AddEvent(clip, owner);
+            AddEvent(clip, other);
+
+            RunQuery();
+
+            // owner is nearest but excluded → `other` wins.
+            Assert.AreEqual(other, Manager.GetComponentData<Targets>(clip).Custom);
+        }
+
+        [Test]
+        public void AllSurvivorsFanout_FiresPerSurvivorAndFillsHitBuffer()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
+                RouteTo = Target.Self,
+                MaxTargets = 8,
+                WriteHitBuffer = true,
+                ValueMode = PhysicsTriggerQueryValueMode.DirectionSector,
+                SectorCount = 8,
+                SectorReference = PhysicsTriggerSectorReference.SelfForward,
+                SectorPlane = PhysicsTriggerSectorPlane.XZ,
+                SectorCustomUp = new float3(0, 1, 0)
+            });
+            Manager.AddBuffer<TriggerQueryHit>(clip);
+
+            var front = CreateCandidate(new float3(0, 0, 3)); // sector 0
+            var right = CreateCandidate(new float3(3, 0, 0)); // sector 2
+            var back = CreateCandidate(new float3(0, 0, -3)); // sector 4
+            AddEvent(clip, front);
+            AddEvent(clip, right);
+            AddEvent(clip, back);
+
+            RunQuery();
+
+            var hits = Manager.GetBuffer<TriggerQueryHit>(clip);
+            Assert.AreEqual(3, hits.Length, "all three survivors emitted a hit");
+
+            // Each hit carries ITS OWN sector value.
+            var sectors = new System.Collections.Generic.HashSet<int>();
+            foreach (var h in hits) sectors.Add(h.Sector);
+            Assert.IsTrue(sectors.Contains(0), "front survivor → sector 0");
+            Assert.IsTrue(sectors.Contains(2), "right survivor → sector 2");
+            Assert.IsTrue(sectors.Contains(4), "back survivor → sector 4");
+        }
+
+        [Test]
+        public void AllSurvivorsFanout_HardCapsAtMaxTargets()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
+                RouteTo = Target.Self,
+                MaxTargets = 2,
+                WriteHitBuffer = true
+            });
+            Manager.AddBuffer<TriggerQueryHit>(clip);
+
+            for (var k = 0; k < 5; k++)
+                AddEvent(clip, CreateCandidate(new float3(0, 0, 2 + k)));
+
+            RunQuery();
+
+            Assert.AreEqual(2, Manager.GetBuffer<TriggerQueryHit>(clip).Length, "survivors past the cap are dropped");
+        }
+
+        [Test]
         public void ClearOnLost_WritesNullAndStateTransitionsOnce()
         {
             var clip = CreateQueryClip(new PhysicsTriggerQueryData

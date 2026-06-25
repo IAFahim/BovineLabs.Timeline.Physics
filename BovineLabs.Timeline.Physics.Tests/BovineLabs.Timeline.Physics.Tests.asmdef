@@ -15,6 +15,7 @@
     "BovineLabs.Timeline.Core",
     "BovineLabs.Timeline.Core.Debug",
     "BovineLabs.Essence.Data",
+    "BovineLabs.Timeline.Essence",
     "BovineLabs.Timeline.Essence.Debug",
     "Unity.Entities.Hybrid",
     "BovineLabs.Quill",

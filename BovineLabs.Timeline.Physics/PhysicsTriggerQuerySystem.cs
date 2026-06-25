@@ -17,6 +17,7 @@ using Unity.Burst;
 using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.IntegerTime;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -80,7 +81,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsTriggerQueryState>()
-                .WithAll<TrackBinding, PhysicsTriggerQueryData, PhysicsTriggerFilterData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsTriggerQueryData, PhysicsTriggerFilterData, PhysicsClipGate>()
                 .Build();
 
             state.RequireForUpdate(_query);
@@ -118,7 +119,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 QueryDataTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsTriggerQueryData>(true),
                 FilterDataTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true),
                 QueryStateTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsTriggerQueryState>(),
-                ClipActivePreviousTypeHandle = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true),
+                PhysicsClipGateTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsClipGate>(true),
                 TimerDataTypeHandle = SystemAPI.GetComponentTypeHandle<TimerData>(true),
                 TimeTransformTypeHandle = SystemAPI.GetComponentTypeHandle<TimeTransform>(true),
                 TargetsLookup = _targetsReadLookup,
@@ -177,7 +178,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerQueryData> QueryDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterDataTypeHandle;
             public ComponentTypeHandle<PhysicsTriggerQueryState> QueryStateTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsClipGate> PhysicsClipGateTypeHandle;
             [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
 
@@ -212,7 +213,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var filters = chunk.GetNativeArray(ref FilterDataTypeHandle);
                 var states = chunk.GetNativeArray(ref QueryStateTypeHandle);
 
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
+                var gates = chunk.GetNativeArray(ref PhysicsClipGateTypeHandle);
                 var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
                 var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
                 var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
@@ -227,26 +228,30 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var filter = filters[i];
                     var queryState = states[i];
 
-                    var isFirstFrame = !hasActivePrev ||
-                                       !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
+                    var isFirstFrame = gates[i].FirstFrame != 0;
                     if (isFirstFrame)
                     {
                         queryState = default;
                         queryState.LastSector = -1;
                     }
 
-                    var isLastFrame = false;
+                    var isLastFrame = gates[i].LastFrame != 0;
                     var normalizedTime = 0.5f;
+                    var prevNormalizedTime = 0.5f;
                     if (hasTiming)
                     {
-                        isLastFrame = StatefulEventMatching.IsClipLastFrame(timers[i], timeTransforms[i]);
                         normalizedTime = NormalizedClipTime(timers[i], timeTransforms[i]);
+                        prevNormalizedTime =
+                            NormalizedClipTimeAt(timers[i].Time - timers[i].DeltaTime, timeTransforms[i]);
                     }
 
-                    // FrameWindowGate: a hard whole-query gate on clip-normalized time.
+                    // FrameWindowGate: a hard whole-query gate on clip-normalized time. Crossing-aware over the
+                    // timer's [previous, current] interval so a low-FPS step that jumps the whole window still opens it.
+                    var windowLo = math.min(prevNormalizedTime, normalizedTime);
+                    var windowHi = math.max(prevNormalizedTime, normalizedTime);
                     var windowOpen = !FlagSet(config.Gates, PhysicsTriggerGateFlags.FrameWindowGate) ||
-                                     (normalizedTime >= config.FrameWindowStart &&
-                                      normalizedTime <= config.FrameWindowEnd);
+                                     (windowHi >= config.FrameWindowStart &&
+                                      windowLo <= config.FrameWindowEnd);
 
                     if (!PhysicsMath.TryResolveTransform(self, in LocalTransformLookup, in LtwLookup,
                             in ParentLookup, out var selfPos, out var selfRot))
@@ -1399,11 +1404,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             private static float NormalizedClipTime(in TimerData timer, in TimeTransform tt)
             {
+                return NormalizedClipTimeAt(timer.Time, in tt);
+            }
+
+            private static float NormalizedClipTimeAt(DiscreteTime time, in TimeTransform tt)
+            {
                 var start = (double)tt.Start;
                 var end = (double)tt.End;
                 var span = end - start;
                 if (span <= 0) return 0.5f;
-                var n = ((double)timer.Time - start) / span;
+                var n = ((double)time - start) / span;
                 return (float)math.clamp(n, 0.0, 1.0);
             }
 

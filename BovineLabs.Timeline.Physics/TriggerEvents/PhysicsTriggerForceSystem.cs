@@ -55,7 +55,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerForceData, PhysicsTriggerFilterData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsTriggerForceData, PhysicsTriggerFilterData, PhysicsClipGate>()
                 .Build();
         }
 
@@ -74,9 +74,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerForceData>(true);
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
-            var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
-            var timerDataType = SystemAPI.GetComponentTypeHandle<TimerData>(true);
-            var timeTransformType = SystemAPI.GetComponentTypeHandle<TimeTransform>(true);
+            var gateType = SystemAPI.GetComponentTypeHandle<PhysicsClipGate>(true);
 
             var events = new NativeStream(_query.CalculateChunkCountWithoutFiltering(), state.WorldUpdateAllocator);
 
@@ -87,9 +85,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
-                ClipActivePreviousTypeHandle = activePrevType,
-                TimerDataTypeHandle = timerDataType,
-                TimeTransformTypeHandle = timeTransformType,
+                PhysicsClipGateTypeHandle = gateType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -124,9 +120,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerForceData> PhysicsTriggerForceDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsClipGate> PhysicsClipGateTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -149,11 +143,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref PhysicsTriggerForceDataTypeHandle);
                 var filters = chunk.GetNativeArray(ref PhysicsTriggerFilterDataTypeHandle);
-
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
-                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
-                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
-                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
+                var gates = chunk.GetNativeArray(ref PhysicsClipGateTypeHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -165,14 +155,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     var config = configs[i];
                     var filter = filters[i];
-                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
-                    var isLastFrame = false;
-                    if (hasTiming)
-                    {
-                        var timer = timers[i];
-                        var timeTransform = timeTransforms[i];
-                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
-                    }
+                    var isFirstFrame = gates[i].FirstFrame != 0;
+                    var isLastFrame = gates[i].LastFrame != 0;
 
                     var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
 

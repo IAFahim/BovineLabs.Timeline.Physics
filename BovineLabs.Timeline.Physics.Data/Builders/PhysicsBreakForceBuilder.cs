@@ -12,6 +12,8 @@ namespace BovineLabs.Timeline.Physics.Data.Builders
         {
             builder.AddComponent(BreakData);
             builder.AddComponent(FilterData);
+            builder.AddComponent(default(PhysicsClipGate));
+            builder.SetComponentEnabled<PhysicsClipGate>(false);
         }
     }
 }

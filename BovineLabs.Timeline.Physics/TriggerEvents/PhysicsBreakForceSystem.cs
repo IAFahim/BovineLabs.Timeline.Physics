@@ -56,7 +56,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsBreakForceData, PhysicsTriggerFilterData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsBreakForceData, PhysicsTriggerFilterData, PhysicsClipGate>()
                 .Build();
 
             state.RequireForUpdate(_query);
@@ -84,9 +84,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 TrackBindingTypeHandle = SystemAPI.GetComponentTypeHandle<TrackBinding>(true),
                 BreakDataTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsBreakForceData>(true),
                 FilterTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true),
-                ClipActivePreviousTypeHandle = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true),
-                TimerDataTypeHandle = SystemAPI.GetComponentTypeHandle<TimerData>(true),
-                TimeTransformTypeHandle = SystemAPI.GetComponentTypeHandle<TimeTransform>(true),
+                PhysicsClipGateTypeHandle = SystemAPI.GetComponentTypeHandle<PhysicsClipGate>(true),
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -122,9 +120,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsBreakForceData> BreakDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsClipGate> PhysicsClipGateTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -149,11 +145,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
                 var configs = chunk.GetNativeArray(ref BreakDataTypeHandle);
                 var filters = chunk.GetNativeArray(ref FilterTypeHandle);
-
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
-                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
-                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
-                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
+                var gates = chunk.GetNativeArray(ref PhysicsClipGateTypeHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -163,14 +155,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     var config = configs[i];
                     var filter = filters[i];
-                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
-                    var isLastFrame = false;
-                    if (hasTiming)
-                    {
-                        var timer = timers[i];
-                        var timeTransform = timeTransforms[i];
-                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
-                    }
+                    var isFirstFrame = gates[i].FirstFrame != 0;
+                    var isLastFrame = gates[i].LastFrame != 0;
 
                     var targets = TargetsLookup.TryGetComponent(self, out var t) ? t : default;
                     var selfRot = PhysicsMath.ResolveRotation(self, in LocalTransformLookup, in LtwLookup,

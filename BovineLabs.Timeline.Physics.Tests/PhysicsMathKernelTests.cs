@@ -238,6 +238,78 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Assert.IsFalse(StatefulEventMatching.IsClipLastFrame(in timer, in transform));
         }
+
+        // ------------------------------------------------------------------------------------------------
+        // Crossing-aware activation (PhysicsClipGate kernel). The point-sample core uses (IsLocalTimeBounded)
+        // misses a clip window that one low-FPS timeline step jumps clean over; the crossing test must not.
+        // ------------------------------------------------------------------------------------------------
+
+        private static readonly TimeTransform Window4To6 = new()
+        {
+            Start = DiscreteTime.FromTicks(4),
+            End = DiscreteTime.FromTicks(6),
+            Scale = 1,
+        };
+
+        [Test]
+        public void Crossing_WholeWindowSteppedOver_IsActive_WherePointSampleMisses()
+        {
+            // The verdict's repro: step time 1 -> 11 across clip [4,6].
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(11), DeltaTime = DiscreteTime.FromTicks(10) };
+
+            // Point sample (what core does) sees only t=11 -> local 7, length 2 -> out of bounds -> inactive.
+            Assert.IsFalse(Window4To6.IsLocalTimeBounded(Window4To6.ToLocalTimeUnbound(timer.Time)));
+
+            // Crossing-aware test recovers it.
+            Assert.IsTrue(StatefulEventMatching.IsClipActiveCrossing(in timer, in Window4To6));
+        }
+
+        [Test]
+        public void Crossing_InsideWindow_IsActive()
+        {
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(5), DeltaTime = DiscreteTime.FromTicks(1) };
+            Assert.IsTrue(StatefulEventMatching.IsClipActiveCrossing(in timer, in Window4To6));
+        }
+
+        [Test]
+        public void Crossing_PausedInsideWindow_IsActive()
+        {
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(5), DeltaTime = DiscreteTime.Zero };
+            Assert.IsTrue(StatefulEventMatching.IsClipActiveCrossing(in timer, in Window4To6));
+        }
+
+        [Test]
+        public void Crossing_EntirelyBeforeWindow_IsInactive()
+        {
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(3), DeltaTime = DiscreteTime.FromTicks(1) };
+            Assert.IsFalse(StatefulEventMatching.IsClipActiveCrossing(in timer, in Window4To6));
+        }
+
+        [Test]
+        public void Crossing_EntirelyAfterWindow_IsInactive()
+        {
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(8), DeltaTime = DiscreteTime.FromTicks(1) };
+            Assert.IsFalse(StatefulEventMatching.IsClipActiveCrossing(in timer, in Window4To6));
+        }
+
+        [Test]
+        public void Crossing_ZeroDurationClip_IsInactive_NotSpuriouslyLatched()
+        {
+            // Start == End -> length 0. The interval crosses the point but a zero-duration clip is not a window;
+            // it must not crossing-activate (core point-sampling handles the instant).
+            var zero = new TimeTransform { Start = DiscreteTime.FromTicks(5), End = DiscreteTime.FromTicks(5), Scale = 1 };
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(7), DeltaTime = DiscreteTime.FromTicks(4) };
+            Assert.IsFalse(StatefulEventMatching.IsClipActiveCrossing(in timer, in zero));
+        }
+
+        [Test]
+        public void Crossing_ScaleZeroClip_IsInactive()
+        {
+            // Scale 0 collapses local time to a constant -> length 0; must not report perpetually active.
+            var frozen = new TimeTransform { Start = DiscreteTime.FromTicks(4), End = DiscreteTime.FromTicks(6), Scale = 0 };
+            var timer = new TimerData { Time = DiscreteTime.FromTicks(5), DeltaTime = DiscreteTime.FromTicks(1) };
+            Assert.IsFalse(StatefulEventMatching.IsClipActiveCrossing(in timer, in frozen));
+        }
     }
 
     public class TeleportPlacementTests

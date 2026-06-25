@@ -42,7 +42,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _writers.Create(ref state);
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsTriggerConditionData, PhysicsTriggerFilterData, ClipActive>()
+                .WithAll<TrackBinding, PhysicsTriggerConditionData, PhysicsTriggerFilterData, PhysicsClipGate>()
                 .Build();
         }
 
@@ -58,18 +58,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerConditionData>(true);
             var filterType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
-            var activePrevType = SystemAPI.GetComponentTypeHandle<ClipActivePrevious>(true);
-            var timerDataType = SystemAPI.GetComponentTypeHandle<TimerData>(true);
-            var timeTransformType = SystemAPI.GetComponentTypeHandle<TimeTransform>(true);
+            var gateType = SystemAPI.GetComponentTypeHandle<PhysicsClipGate>(true);
 
             state.Dependency = new InvokeJob
             {
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerConditionDataTypeHandle = configType,
                 PhysicsTriggerFilterDataTypeHandle = filterType,
-                ClipActivePreviousTypeHandle = activePrevType,
-                TimerDataTypeHandle = timerDataType,
-                TimeTransformTypeHandle = timeTransformType,
+                PhysicsClipGateTypeHandle = gateType,
                 TargetsLookup = _targetsLookup,
                 LinkSources = _linkSourceLookup,
                 Links = _linkLookup,
@@ -86,9 +82,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerConditionData> PhysicsTriggerConditionDataTypeHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> PhysicsTriggerFilterDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsClipGate> PhysicsClipGateTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public UnsafeComponentLookup<EntityLinkSource> LinkSources;
@@ -108,10 +102,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 var seenRoots = new NativeHashSet<Entity>(16, Allocator.Temp);
 
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
-                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
-                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
-                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
+                var gates = chunk.GetNativeArray(ref PhysicsClipGateTypeHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -122,14 +113,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     var config = configs[i];
                     var filter = filters[i];
-                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
-                    var isLastFrame = false;
-                    if (hasTiming)
-                    {
-                        var timer = timers[i];
-                        var timeTransform = timeTransforms[i];
-                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
-                    }
+                    var isFirstFrame = gates[i].FirstFrame != 0;
+                    var isLastFrame = gates[i].LastFrame != 0;
 
                     seenRoots.Clear();
 

@@ -36,9 +36,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private ComponentTypeHandle<TrackBinding> _trackBindingHandle;
         private ComponentTypeHandle<PhysicsTriggerInstantiateData> _dataHandle;
         private ComponentTypeHandle<PhysicsTriggerFilterData> _filterHandle;
-        private ComponentTypeHandle<ClipActivePrevious> _activePrevHandle;
-        private ComponentTypeHandle<TimerData> _timerDataHandle;
-        private ComponentTypeHandle<TimeTransform> _timeTransformHandle;
+        private ComponentTypeHandle<PhysicsClipGate> _gateHandle;
 
         private UnsafeComponentLookup<LocalToWorld> _localToWorldLookup;
         private UnsafeComponentLookup<Targets> _targetsLookup;
@@ -56,16 +54,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<InstantiateGatherJob>();
 
             _query = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, ClipActive, PhysicsTriggerInstantiateData, PhysicsTriggerFilterData>()
+                .WithAll<TrackBinding, PhysicsClipGate, PhysicsTriggerInstantiateData, PhysicsTriggerFilterData>()
                 .Build();
 
             _entityHandle = state.GetEntityTypeHandle();
             _trackBindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
             _dataHandle = state.GetComponentTypeHandle<PhysicsTriggerInstantiateData>(true);
             _filterHandle = state.GetComponentTypeHandle<PhysicsTriggerFilterData>(true);
-            _activePrevHandle = state.GetComponentTypeHandle<ClipActivePrevious>(true);
-            _timerDataHandle = state.GetComponentTypeHandle<TimerData>(true);
-            _timeTransformHandle = state.GetComponentTypeHandle<TimeTransform>(true);
+            _gateHandle = state.GetComponentTypeHandle<PhysicsClipGate>(true);
 
             _localToWorldLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _targetsLookup = state.GetUnsafeComponentLookup<Targets>(true);
@@ -83,9 +79,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _trackBindingHandle.Update(ref state);
             _dataHandle.Update(ref state);
             _filterHandle.Update(ref state);
-            _activePrevHandle.Update(ref state);
-            _timerDataHandle.Update(ref state);
-            _timeTransformHandle.Update(ref state);
+            _gateHandle.Update(ref state);
             _localToWorldLookup.Update(ref state);
             _targetsLookup.Update(ref state);
             _triggerEventsLookup.Update(ref state);
@@ -109,9 +103,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 TrackBindingHandle = _trackBindingHandle,
                 DataHandle = _dataHandle,
                 FilterHandle = _filterHandle,
-                ClipActivePreviousTypeHandle = _activePrevHandle,
-                TimerDataTypeHandle = _timerDataHandle,
-                TimeTransformTypeHandle = _timeTransformHandle,
+                PhysicsClipGateTypeHandle = _gateHandle,
                 LocalToWorldLookup = _localToWorldLookup,
                 TargetsLookup = _targetsLookup,
                 TriggerEventsLookup = _triggerEventsLookup,
@@ -162,9 +154,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerInstantiateData> DataHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsTriggerFilterData> FilterHandle;
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingHandle;
-            [ReadOnly] public ComponentTypeHandle<ClipActivePrevious> ClipActivePreviousTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimerData> TimerDataTypeHandle;
-            [ReadOnly] public ComponentTypeHandle<TimeTransform> TimeTransformTypeHandle;
+            [ReadOnly] public ComponentTypeHandle<PhysicsClipGate> PhysicsClipGateTypeHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
@@ -181,11 +171,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var configs = chunk.GetNativeArray(ref DataHandle);
                 var filters = chunk.GetNativeArray(ref FilterHandle);
                 var trackBindings = chunk.GetNativeArray(ref TrackBindingHandle);
-
-                var hasActivePrev = chunk.Has(ref ClipActivePreviousTypeHandle);
-                var hasTiming = chunk.Has(ref TimerDataTypeHandle) && chunk.Has(ref TimeTransformTypeHandle);
-                var timers = hasTiming ? chunk.GetNativeArray(ref TimerDataTypeHandle) : default;
-                var timeTransforms = hasTiming ? chunk.GetNativeArray(ref TimeTransformTypeHandle) : default;
+                var gates = chunk.GetNativeArray(ref PhysicsClipGateTypeHandle);
 
                 var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
                 while (enumerator.NextEntityIndex(out var i))
@@ -196,14 +182,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var cfg = configs[i];
                     var filter = filters[i];
 
-                    var isFirstFrame = !hasActivePrev || !chunk.IsComponentEnabled(ref ClipActivePreviousTypeHandle, i);
-                    var isLastFrame = false;
-                    if (hasTiming)
-                    {
-                        var timer = timers[i];
-                        var timeTransform = timeTransforms[i];
-                        isLastFrame = StatefulEventMatching.IsClipLastFrame(in timer, in timeTransform);
-                    }
+                    var isFirstFrame = gates[i].FirstFrame != 0;
+                    var isLastFrame = gates[i].LastFrame != 0;
 
                     if (!Registry.TryGetValue(cfg.ObjectId, out var prefab) || prefab == Entity.Null)
                     {

@@ -32,7 +32,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
             _sweptConfigLookup = state.GetComponentLookup<SweptTriggerConfig>(true);
 
             _activeClipQuery = new EntityQueryBuilder(Allocator.Temp)
-                .WithAll<ClipActive, TrackBinding>()
+                .WithAll<PhysicsClipGate, TrackBinding>()
                 .Build(ref state);
         }
 
@@ -61,7 +61,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
         }
 
         [BurstCompile]
-        [WithAll(typeof(ClipActive))]
+        [WithAll(typeof(PhysicsClipGate))]
         private partial struct CollectActiveSourcesJob : IJobEntity
         {
             public NativeParallelHashSet<Entity>.ParallelWriter ActiveSources;
@@ -108,8 +108,10 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
 
                     dist.Dispose();
 
-                    var startPos = state.WasActive == 1 ? state.PrevPosition : curPos;
-                    var startRot = state.WasActive == 1 ? state.PrevRotation : curRot;
+                    // Seed the sweep from the continuously-tracked previous pose (valid once Initialized), NOT from
+                    // WasActive — otherwise the first active frame sweeps zero distance and tunnels.
+                    var startPos = state.Initialized == 1 ? state.PrevPosition : curPos;
+                    var startRot = state.Initialized == 1 ? state.PrevRotation : curRot;
 
                     var cosHalf = math.min(1f, math.abs(math.dot(startRot.value, curRot.value)));
                     var sweepAngle = 2f * math.acos(cosHalf);
@@ -166,6 +168,7 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                 state.PrevPosition = curPos;
                 state.PrevRotation = curRot;
                 state.WasActive = (byte)(active ? 1 : 0);
+                state.Initialized = 1;
 
                 current.Dispose();
             }

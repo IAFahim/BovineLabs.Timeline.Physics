@@ -27,6 +27,14 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
         public void OnCreate(ref SystemState state)
         {
             _driver.OnCreate(ref state);
+
+            // ponytail: skip the whole system when there are no velocity-track entities.
+            // Without this it schedules the generic PrepareAnimatedJob every frame; in an
+            // IL2CPP player that schedule SIGSEGVs (missing job-reflection data for the
+            // generic instantiation), killing the player before anything renders. A scene
+            // with no PhysicsVelocityAnimated has no work here anyway.
+            state.RequireForUpdate<PhysicsVelocityAnimated>();
+
             _stateLookup = state.GetComponentLookup<PhysicsVelocityState>();
 
             using var reset = new EntityQueryBuilder(Allocator.Temp)

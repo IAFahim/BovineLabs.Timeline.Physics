@@ -96,6 +96,15 @@ namespace BovineLabs.Timeline.Physics.Authoring
             }
 
             foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
+                         .WithAll<PhysicsShapeSwapAnimated>()
+                         .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
+            {
+                var target = binding.ValueRO.Value;
+                if (target == Entity.Null) continue;
+                EnsureActiveState<ActiveShapeSwap, PhysicsShapeSwapState>(ref ecb, target, em);
+            }
+
+            foreach (var binding in SystemAPI.Query<RefRO<TrackBinding>>()
                          .WithAll<PhysicsGravityOverrideAnimated>()
                          .WithOptions(EntityQueryOptions.IncludeDisabledEntities | EntityQueryOptions.IncludePrefab))
             {

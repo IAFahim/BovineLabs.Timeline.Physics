@@ -169,6 +169,12 @@ namespace BovineLabs.Timeline.Physics.Debug
                 // 5. Live sector label (graceful sentinel handling).
                 if (isSector && tier >= DebugTier.Mid)
                     DrawSectorLabel(selfPos, in config, in queryState, winner, sectorFwd, up, active);
+
+                // 7. Config readout panel — names the selection / value / gates / route so EVERY clip's filter is
+                // legible at edit time (not just the spatial ones), plus live winner/score/count while firing.
+                // Close tier only (it's verbose); draws faded when configured-but-inactive.
+                if (tier >= DebugTier.Close)
+                    DrawConfigPanel(selfPos, in config, in queryState, winner, active);
             }
 
             // Fade a colour's alpha when the clip is inactive (configured-but-not-firing).
@@ -309,6 +315,72 @@ namespace BovineLabs.Timeline.Physics.Debug
                         first = false;
                     }
                 }
+            }
+
+            // -----------------------------------------------------------------------------------------------
+            // Config readout panel (works for ALL modes, not just the spatial ones)
+            // -----------------------------------------------------------------------------------------------
+
+            private void DrawConfigPanel(float3 origin, in PhysicsTriggerQueryData config,
+                in PhysicsTriggerQueryState st, Entity winner, bool active)
+            {
+                FixedString512Bytes sb = default;
+                sb.Append((FixedString32Bytes)"QUERY ");
+                sb.Append(active ? '*' : '-');
+
+                sb.Append((FixedString32Bytes)"\nsel  ");
+                sb.Append(TriggerQueryDebugNames.Selection(config.Selection));
+
+                sb.Append((FixedString32Bytes)"\nval  ");
+                sb.Append(TriggerQueryDebugNames.Value(config.ValueMode));
+
+                sb.Append((FixedString32Bytes)"\ngate ");
+                TriggerQueryDebugNames.AppendGates(ref sb, config.Gates);
+                if (config.RequireLineOfSight)
+                    sb.Append((FixedString32Bytes)" +LoS");
+                if (config.ExcludeRoles != PhysicsTriggerRoleMask.None)
+                    sb.Append((FixedString32Bytes)" +exRoles");
+
+                sb.Append((FixedString32Bytes)"\nroute ");
+                sb.Append(TriggerQueryDebugNames.RouteSlot(config.RouteSlot));
+                sb.Append('/');
+                sb.Append(TriggerQueryDebugNames.RouteMode(config.RouteMode));
+                sb.Append(' ');
+                sb.Append(TriggerQueryDebugNames.WriteMode(config.WriteMode));
+                if (config.MaxTargets > 1)
+                {
+                    sb.Append((FixedString32Bytes)" K=");
+                    sb.Append(config.MaxTargets);
+                }
+
+                // Live readout while firing: winner index, survivor count, score, and the mode-specific live value.
+                if (active)
+                {
+                    sb.Append((FixedString32Bytes)"\nwin ");
+                    if (winner != Entity.Null)
+                        sb.Append(winner.Index);
+                    else
+                        sb.Append('-');
+
+                    sb.Append((FixedString32Bytes)"  surv ");
+                    sb.Append(st.LastWinnerSet.Length > 0 ? st.LastWinnerSet.Length : (winner != Entity.Null ? 1 : 0));
+
+                    if (config.ValueMode == PhysicsTriggerQueryValueMode.DirectionSector)
+                    {
+                        sb.Append((FixedString32Bytes)"  sec ");
+                        sb.Append(st.LastSector);
+                    }
+                    else if (config.ValueMode == PhysicsTriggerQueryValueMode.OverlapCount)
+                    {
+                        sb.Append((FixedString32Bytes)"  cnt ");
+                        sb.Append(st.PrevCount);
+                    }
+
+                    sb.Append((FixedString32Bytes)"  score ");
+                    sb.Append(st.LastScore / 100);
+                }
+
+                Drawer.Text512(origin + new float3(0f, 1.8f, 0f), sb, Fade(TimelineDebugColors.Label, active), 11f);
             }
 
             private void DrawSectorLabel(float3 origin, in PhysicsTriggerQueryData config,

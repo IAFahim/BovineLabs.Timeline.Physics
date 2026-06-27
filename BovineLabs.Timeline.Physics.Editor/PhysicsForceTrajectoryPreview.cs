@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Physics.Authoring;
 using Unity.Physics.Authoring;
+using Unity.Scripting.LifecycleManagement;
 using UnityEditor;
 using UnityEditor.Timeline;
 using UnityEngine;
@@ -10,7 +11,7 @@ using UnityEngine;
 namespace BovineLabs.Timeline.Physics.Editor
 {
     [InitializeOnLoad]
-    public static class PhysicsForceTrajectoryPreview
+    public static partial class PhysicsForceTrajectoryPreview
     {
         private const string MenuPath = "BovineLabs/Physics/Preview Force Trajectories";
         private const string EnabledKey = "BovineLabs.Physics.ForceTrajectoryPreview";
@@ -31,9 +32,11 @@ namespace BovineLabs.Timeline.Physics.Editor
         static PhysicsForceTrajectoryPreview()
         {
             SceneView.duringSceneGui += OnSceneGui;
-            // ponytail: CoreCLR/no-domain-reload — drop this sub before the assembly unloads or it accumulates per recompile. Upgrade path: [OnCodeUnloading].
-            AssemblyReloadEvents.beforeAssemblyReload += () => SceneView.duringSceneGui -= OnSceneGui;
         }
+
+        // CoreCLR/no-domain-reload: unsubscribe before this assembly unloads on a code reload, else the sub accumulates per recompile.
+        [OnCodeUnloading]
+        private static void OnCodeUnloading() => SceneView.duringSceneGui -= OnSceneGui;
 
         private static bool Enabled
         {

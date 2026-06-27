@@ -31,6 +31,8 @@ namespace BovineLabs.Timeline.Physics.Editor
         static PhysicsForceTrajectoryPreview()
         {
             SceneView.duringSceneGui += OnSceneGui;
+            // ponytail: CoreCLR/no-domain-reload — drop this sub before the assembly unloads or it accumulates per recompile. Upgrade path: [OnCodeUnloading].
+            AssemblyReloadEvents.beforeAssemblyReload += () => SceneView.duringSceneGui -= OnSceneGui;
         }
 
         private static bool Enabled

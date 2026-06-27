@@ -1,0 +1,26 @@
+{
+    "name": "Vex.Knockback",
+    "rootNamespace": "Vex.Knockback",
+    "references": [
+        "BovineLabs.Core",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Timeline.Physics.Data",
+        "Unity.Entities",
+        "Unity.Entities.Hybrid",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Physics",
+        "Unity.Transforms"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

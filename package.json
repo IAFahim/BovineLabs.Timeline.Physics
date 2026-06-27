@@ -43,6 +43,41 @@
       "displayName": "Physics Custom Showcase (Non-Timeline)",
       "description": "Raw com.unity.physics.custom playground (NO timeline): an editor builder that fills the active scene's SubScene with labelled stations for every shape, all three motion types, friction/restitution materials, collision-response modes, and joints (ball-and-socket pendulum, edge-hinged door, hanging distance chain). Run Tools > BovineLabs > Samples > Build Physics Custom Showcase.",
       "path": "Sample~/Physics Custom Showcase"
+    },
+    {
+      "displayName": "Physics Showcase",
+      "description": "Exhaustive 13-column grid covering all 12 DOTS physics timeline tracks (Force, Velocity, Drag, Gravity/Kinematic/Filter/Clamp overrides, Linear/Angular PID, Teleport, Ricochet, Stateful Trigger).",
+      "path": "Sample~/Physics Showcase"
+    },
+    {
+      "displayName": "Swept Trigger Test",
+      "description": "Swept-collision trigger track: Instantiate / Condition / Force / Query clips on swept shapes for fast tunnelling weapons.",
+      "path": "Sample~/Swept Trigger Test"
+    },
+    {
+      "displayName": "Sword Swing",
+      "description": "Physics sword swing driven by a PhysicsAngularPID motor applying torque to a dynamic pivot body.",
+      "path": "Sample~/Sword Swing"
+    },
+    {
+      "displayName": "Spline Follow Example",
+      "description": "Physics-based spline path following using PID velocity control along an authored spline.",
+      "path": "Sample~/Spline Follow Example"
+    },
+    {
+      "displayName": "Knockback Ring",
+      "description": "Directional knockback via a custom PendingForce system: a body ringed by eight trigger zones, launched away from contact.",
+      "path": "Sample~/Knockback Ring"
+    },
+    {
+      "displayName": "Knockback Query Ring",
+      "description": "8-direction knockback from a single PhysicsTriggerQuery in DirectionSector mode, routing per-sector force reactions.",
+      "path": "Sample~/Knockback Query Ring"
+    },
+    {
+      "displayName": "Knockback Reaction",
+      "description": "Data-driven directional knockback: trigger ring -> ConditionEvent -> Reaction -> ActionTimeline force, no custom system.",
+      "path": "Sample~/Knockback Reaction"
     }
   ],
   "documentationUrl": "Documentation~/com.bovinelabs.timeline.physics.md",

@@ -1,0 +1,42 @@
+{
+    "name": "BovineLabs.Timeline.Physics.Sample.SweptTriggerTest",
+    "rootNamespace": "",
+    "references": [
+        "BovineLabs.Timeline.Physics.Authoring",
+        "BovineLabs.Timeline.Physics.Data",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Timeline.Transform.Authoring",
+        "BovineLabs.Timeline.Authoring",
+        "BovineLabs.Timeline.Core.Authoring",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Reaction.Authoring",
+        "BovineLabs.Reaction.Data",
+        "BovineLabs.Core",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Core.Authoring",
+        "BovineLabs.Core.Extensions.Authoring",
+        "BovineLabs.Core.PhysicsStates",
+        "BovineLabs.Core.PhysicsStates.Authoring",
+        "Unity.Physics",
+        "Unity.Physics.Hybrid",
+        "Unity.Physics.Custom",
+        "Unity.Mathematics",
+        "Unity.Collections",
+        "Unity.Burst",
+        "Unity.Entities",
+        "Unity.Scenes",
+        "Unity.Timeline",
+        "Unity.Transforms"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

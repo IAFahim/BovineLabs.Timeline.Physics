@@ -1,0 +1,36 @@
+{
+  "name": "BovineLabs.Timeline.Physics.Sample.SwordSwing",
+  "rootNamespace": "",
+  "references": [
+    "BovineLabs.Timeline.Physics.Authoring",
+    "BovineLabs.Timeline.Physics.Data",
+    "BovineLabs.Timeline.Authoring",
+    "BovineLabs.Timeline.Core.Authoring",
+    "BovineLabs.Core.Authoring",
+    "BovineLabs.Reaction.Data",
+    "BovineLabs.Essence.Authoring",
+    "BovineLabs.Essence.Data",
+    "BovineLabs.Timeline.EntityLinks.Authoring",
+    "Unity.Physics",
+    "Unity.Physics.Custom",
+    "Unity.Physics.Hybrid",
+    "Unity.Timeline",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Collections",
+    "Unity.Mathematics",
+    "Unity.Transforms",
+    "Unity.Scenes"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,26 @@
+{
+    "name": "BovineLabs.Timeline.Physics.Sample.KnockbackRing",
+    "rootNamespace": "Vex.Knockback.Editor",
+    "references": [
+        "Vex.Knockback",
+        "BovineLabs.Core.Extensions.Authoring",
+        "Unity.Physics",
+        "Unity.Physics.Hybrid",
+        "Unity.Physics.Custom",
+        "Unity.Mathematics",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Scenes"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

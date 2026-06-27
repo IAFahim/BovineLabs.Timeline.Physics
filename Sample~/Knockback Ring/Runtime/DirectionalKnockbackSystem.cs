@@ -1,7 +1,7 @@
 namespace Vex.Knockback
 {
     using BovineLabs.Core.PhysicsStates;
-    using BovineLabs.Timeline.Physics;                 // PendingForce
+    using BovineLabs.Timeline.Physics;                 // PendingExternalForce
     using BovineLabs.Timeline.Physics.Forces;          // PhysicsProducerForceAccumulatorSystem
     using BovineLabs.Timeline.Physics.Infrastructure;  // PhysicsProducerGroup
     using Unity.Burst;
@@ -12,9 +12,9 @@ namespace Vex.Knockback
 
     /// <summary>
     /// Reads each <see cref="KnockbackReceiver"/> body's <c>StatefulTriggerEvent</c> buffer and, on every trigger
-    /// <c>Enter</c>, appends a one-shot <c>PendingForce</c> impulse directed away (on the XZ plane) from the entering
-    /// body, plus a vertical leap. The accumulator drains <c>PendingForce</c> as a direct impulse later in the same
-    /// fixed step, so each touch produces exactly one clean knockback.
+    /// <c>Enter</c>, appends a one-shot <c>PendingExternalForce</c> impulse directed away (on the XZ plane) from the
+    /// entering body, plus a vertical leap. The compose system drains it into the standing external-velocity channel
+    /// later in the same fixed step, so each touch produces one clean knockback that braking/drag can't eat.
     /// </summary>
     /// <remarks>
     /// Placed in <see cref="PhysicsProducerGroup"/> before <see cref="PhysicsProducerForceAccumulatorSystem"/> — the
@@ -57,7 +57,7 @@ namespace Vex.Knockback
                 in KnockbackReceiver receiver,
                 in LocalToWorld ltw,
                 ref DynamicBuffer<StatefulTriggerEvent> events,
-                ref DynamicBuffer<PendingForce> pending)
+                ref DynamicBuffer<PendingExternalForce> pending)
             {
                 if (events.Length == 0)
                 {
@@ -95,7 +95,7 @@ namespace Vex.Knockback
                         ? math.normalize(away) * receiver.Strength
                         : float3.zero;
 
-                    pending.Add(new PendingForce
+                    pending.Add(new PendingExternalForce
                     {
                         Linear = new float3(horizontal.x, receiver.Lift, horizontal.z),
                         Angular = float3.zero,

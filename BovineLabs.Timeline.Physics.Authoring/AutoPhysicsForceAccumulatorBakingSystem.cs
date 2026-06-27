@@ -41,6 +41,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 if (!em.HasBuffer<PendingForce>(entity)) ecb.AddBuffer<PendingForce>(entity);
                 if (!em.HasBuffer<PendingVelocity>(entity)) ecb.AddBuffer<PendingVelocity>(entity);
 
+                // External (knockback) channel: inbox buffer + standing velocity, default zero.
+                if (!em.HasBuffer<PendingExternalForce>(entity)) ecb.AddBuffer<PendingExternalForce>(entity);
+                if (!em.HasComponent<ExternalVelocity>(entity)) ecb.AddComponent<ExternalVelocity>(entity);
+
                 if (!em.HasComponent<PendingVelocityReset>(entity))
                 {
                     ecb.AddComponent<PendingVelocityReset>(entity);

@@ -20,6 +20,7 @@ namespace BovineLabs.Timeline.Physics.Forces
         private ComponentTypeHandle<LocalToWorld> _transformHandle;
         private ComponentTypeHandle<PhysicsMass> _massHandle;
         private ComponentTypeHandle<PendingVelocityReset> _resetHandle;
+        private ComponentTypeHandle<ExternalVelocity> _externalHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
         private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
 
@@ -37,6 +38,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             _transformHandle = state.GetComponentTypeHandle<LocalToWorld>(true);
             _massHandle = state.GetComponentTypeHandle<PhysicsMass>(true);
             _resetHandle = state.GetComponentTypeHandle<PendingVelocityReset>();
+            _externalHandle = state.GetComponentTypeHandle<ExternalVelocity>();
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
 
@@ -49,6 +51,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             _transformHandle.Update(ref state);
             _massHandle.Update(ref state);
             _resetHandle.Update(ref state);
+            _externalHandle.Update(ref state);
             _pendingForceHandle.Update(ref state);
             _pendingVelocityHandle.Update(ref state);
 
@@ -58,6 +61,7 @@ namespace BovineLabs.Timeline.Physics.Forces
                 TransformHandle = _transformHandle,
                 MassHandle = _massHandle,
                 ResetHandle = _resetHandle,
+                ExternalHandle = _externalHandle,
                 PendingForceHandle = _pendingForceHandle,
                 PendingVelocityHandle = _pendingVelocityHandle
             }.ScheduleParallel(_query, state.Dependency);
@@ -70,6 +74,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             [ReadOnly] public ComponentTypeHandle<LocalToWorld> TransformHandle;
             [ReadOnly] public ComponentTypeHandle<PhysicsMass> MassHandle;
             public ComponentTypeHandle<PendingVelocityReset> ResetHandle;
+            public ComponentTypeHandle<ExternalVelocity> ExternalHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
@@ -84,6 +89,9 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                 var hasReset = chunk.Has(ref ResetHandle);
                 var resets = hasReset ? chunk.GetNativeArray(ref ResetHandle) : default;
+
+                var hasExternal = chunk.Has(ref ExternalHandle);
+                var externals = hasExternal ? chunk.GetNativeArray(ref ExternalHandle) : default;
 
                 var hasForceBuffer = chunk.Has(ref PendingForceHandle);
                 var forceAccessor = hasForceBuffer ? chunk.GetBufferAccessor(ref PendingForceHandle) : default;
@@ -101,7 +109,16 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                     if (hasReset && chunk.IsComponentEnabled(ref ResetHandle, i))
                     {
-                        ApplyReset(ref velocity, resets[i].Flags);
+                        var flags = resets[i].Flags;
+                        ApplyReset(ref velocity, flags);
+
+                        // Opt-in: a reset flagged External also wipes the knockback channel (parry/super-armor). Done
+                        // here, before the compose system adds it on top, so the hit is fully cancelled this frame.
+                        if (hasExternal && (flags & VelocityResetFlags.External) != 0)
+                        {
+                            externals[i] = default;
+                        }
+
                         resets[i] = default;
                         chunk.SetComponentEnabled(ref ResetHandle, i, false);
                         dirty = true;

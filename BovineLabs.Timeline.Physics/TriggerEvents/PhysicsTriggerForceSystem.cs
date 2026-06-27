@@ -39,6 +39,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private ComponentLookup<Parent> _parentLookup;
         private BufferLookup<Stat> _statLookup;
         private BufferLookup<PendingForce> _pendingForceLookup;
+        private BufferLookup<PendingExternalForce> _pendingExternalForceLookup;
 
         private EntityQuery _query;
 
@@ -53,6 +54,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _parentLookup = state.GetComponentLookup<Parent>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
             _pendingForceLookup = state.GetBufferLookup<PendingForce>();
+            _pendingExternalForceLookup = state.GetBufferLookup<PendingExternalForce>();
 
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsTriggerForceData, PhysicsTriggerFilterData, PhysicsClipGate>()
@@ -70,6 +72,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _parentLookup.Update(ref state);
             _statLookup.Update(ref state);
             _pendingForceLookup.Update(ref state);
+            _pendingExternalForceLookup.Update(ref state);
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerForceData>(true);
@@ -101,7 +104,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             state.Dependency = new ApplyForcesJob
             {
                 Events = events,
-                PendingForceLookup = _pendingForceLookup
+                PendingForceLookup = _pendingForceLookup,
+                PendingExternalForceLookup = _pendingExternalForceLookup
             }.Schedule(state.Dependency);
         }
 
@@ -109,6 +113,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         {
             public Entity Target;
             public PendingForce Force;
+
+            // Impulse hits ride the external (knockback) channel so braking/drag can't eat them; continuous pushes
+            // stay on the intent channel where the designer's drag/clamp are meant to shape them.
+            public bool External;
         }
 
         [BurstCompile]
@@ -279,7 +287,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (math.lengthsq(force) > 1e-5f)
                 {
-                    var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
+                    var isImpulse = cfg.Mode == PhysicsForceMode.Impulse;
+                    var timeScale = isImpulse ? 1f : DeltaTime;
                     Events.Write(new TriggerForceEvent
                     {
                         Target = targetToApply,
@@ -287,7 +296,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         {
                             Linear = force * timeScale,
                             Angular = float3.zero
-                        }
+                        },
+                        External = isImpulse
                     });
                 }
             }
@@ -298,6 +308,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         {
             [ReadOnly] public NativeStream Events;
             public BufferLookup<PendingForce> PendingForceLookup;
+            public BufferLookup<PendingExternalForce> PendingExternalForceLookup;
 
             public void Execute()
             {
@@ -308,7 +319,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     while (reader.RemainingItemCount > 0)
                     {
                         var evt = reader.Read<TriggerForceEvent>();
-                        if (PendingForceLookup.HasBuffer(evt.Target)) PendingForceLookup[evt.Target].Add(evt.Force);
+                        if (evt.External)
+                        {
+                            if (PendingExternalForceLookup.HasBuffer(evt.Target))
+                                PendingExternalForceLookup[evt.Target].Add(new PendingExternalForce
+                                    { Linear = evt.Force.Linear, Angular = evt.Force.Angular });
+                        }
+                        else if (PendingForceLookup.HasBuffer(evt.Target))
+                        {
+                            PendingForceLookup[evt.Target].Add(evt.Force);
+                        }
                     }
 
                     reader.EndForEachIndex();

@@ -16,6 +16,11 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
 
+        [Tooltip("Intent = a normal force your own drag/clamp/reset clips can shape (locomotion, dashes, thrust). " +
+                 "External = a knockback that ignores the body's own braking and decays on its own — use this for " +
+                 "hits/launches that must land even while the body is air-braking.")]
+        public MotionChannel channel = MotionChannel.Intent;
+
         public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
 
         [Header("Fixed Vector")] public Vector3 linearForce = new(0, 0, 0);
@@ -75,6 +80,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 AuthoredData = new PhysicsForceData
                 {
                     Mode = mode,
+                    Channel = channel,
                     DirectionMode = directionMode,
                     Linear = linearForce,
                     Space = space,

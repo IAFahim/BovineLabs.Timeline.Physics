@@ -32,6 +32,13 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsForceMode Mode;
         public PhysicsForceDirectionMode DirectionMode;
 
+        /// <summary>
+        /// Which velocity channel this force lands on. <see cref="MotionChannel.Intent"/> (default) is shaped by the
+        /// body's own drag/clamp/reset; <see cref="MotionChannel.External"/> is knockback that survives braking and
+        /// self-decays. Independent of <see cref="Mode"/> (impulse-vs-continuous).
+        /// </summary>
+        public MotionChannel Channel;
+
         public float3 Linear;
         public Target Space;
 
@@ -100,6 +107,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 Mode = s < 0.5f ? a.Mode : b.Mode,
                 DirectionMode = s < 0.5f ? a.DirectionMode : b.DirectionMode,
+                Channel = s < 0.5f ? a.Channel : b.Channel,
                 Linear = math.lerp(a.Linear, b.Linear, s),
                 Space = s < 0.5f ? a.Space : b.Space,
                 Magnitude = math.lerp(a.Magnitude, b.Magnitude, s),
@@ -123,6 +131,7 @@ namespace BovineLabs.Timeline.Physics
             {
                 Mode = a.Mode,
                 DirectionMode = a.DirectionMode,
+                Channel = a.Channel,
                 Linear = a.Linear + b.Linear,
                 Space = a.Space,
                 Magnitude = a.Magnitude + b.Magnitude,

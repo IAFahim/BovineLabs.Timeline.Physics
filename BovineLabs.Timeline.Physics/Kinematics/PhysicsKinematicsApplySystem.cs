@@ -40,6 +40,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
         private ComponentTypeHandle<PhysicsVelocity> _physicsVelocityHandle;
         private ComponentTypeHandle<PendingVelocityReset> _pendingResetHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
+        private BufferTypeHandle<PendingExternalForce> _pendingExternalForceHandle;
 
         private ComponentTypeHandle<ActiveVelocity> _activeVelocityHandle;
         private ComponentTypeHandle<PhysicsVelocityState> _velocityStateHandle;
@@ -66,6 +67,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _physicsVelocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>(true);
             _pendingResetHandle = state.GetComponentTypeHandle<PendingVelocityReset>();
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
+            _pendingExternalForceHandle = state.GetBufferTypeHandle<PendingExternalForce>();
 
             _activeVelocityHandle = state.GetComponentTypeHandle<ActiveVelocity>(true);
             _velocityStateHandle = state.GetComponentTypeHandle<PhysicsVelocityState>();
@@ -102,6 +104,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _physicsVelocityHandle.Update(ref state);
             _pendingResetHandle.Update(ref state);
             _pendingForceHandle.Update(ref state);
+            _pendingExternalForceHandle.Update(ref state);
 
             _activeVelocityHandle.Update(ref state);
             _velocityStateHandle.Update(ref state);
@@ -117,6 +120,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 VelocityHandle = _physicsVelocityHandle,
                 PendingResetHandle = _pendingResetHandle,
                 PendingForceHandle = _pendingForceHandle,
+                PendingExternalForceHandle = _pendingExternalForceHandle,
                 TargetsLookup = _targetsLookup,
                 LocalTransformLookup = _localTransformLookup,
                 LocalToWorldLookup = _localToWorldLookup,
@@ -163,6 +167,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             [ReadOnly] public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
             public ComponentTypeHandle<PendingVelocityReset> PendingResetHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
+            public BufferTypeHandle<PendingExternalForce> PendingExternalForceHandle;
 
             [ReadOnly] public UnsafeComponentLookup<Targets> TargetsLookup;
             [ReadOnly] public ComponentLookup<LocalTransform> LocalTransformLookup;
@@ -179,6 +184,11 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var actives = chunk.GetNativeArray(ref ActiveHandle);
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
                 var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
+
+                // External channel is auto-baked onto every dynamic body alongside PendingForce; guard anyway so an
+                // opted-out body falls back to Intent rather than dropping the force.
+                var hasExternal = chunk.Has(ref PendingExternalForceHandle);
+                var externalForces = hasExternal ? chunk.GetBufferAccessor(ref PendingExternalForceHandle) : default;
 
                 var hasRandom = chunk.Has(ref RandomHandle);
                 var randoms = hasRandom ? chunk.GetNativeArray(ref RandomHandle) : default;
@@ -233,11 +243,16 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         state.ResetApplied = true;
                     }
 
-                    pendingForces[i].Add(new PendingForce
+                    var linear = linForce * timeScale * multiplier;
+                    var angular = angForce * timeScale * multiplier;
+                    if (config.Channel == MotionChannel.External && hasExternal)
                     {
-                        Linear = linForce * timeScale * multiplier,
-                        Angular = angForce * timeScale * multiplier
-                    });
+                        externalForces[i].Add(new PendingExternalForce { Linear = linear, Angular = angular });
+                    }
+                    else
+                    {
+                        pendingForces[i].Add(new PendingForce { Linear = linear, Angular = angular });
+                    }
 
                     if (config.Mode == PhysicsForceMode.Impulse)
                     {

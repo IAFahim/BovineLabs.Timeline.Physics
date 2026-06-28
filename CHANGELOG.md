@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- **External (knockback) velocity channel.** A second motion channel so braking/drag/clamp/reset can zero a body's locomotion without eating an incoming hit (and vice versa). New `ExternalVelocity` component + `PendingExternalForce` inbox (auto-baked onto every dynamic body alongside the existing pending buffers), `PhysicsExternalVelocityComposeSystem`/`PhysicsExternalVelocityDecomposeSystem` (add-before-solver / subtract-after-solver + decay), and the `external-velocity.decay-rate` ConfigVar (default 8 ≈ a 0.15 s slide).
+- `MotionChannel` enum (`Intent`/`External`) on `PhysicsTriggerForceData`, exposed by `PhysicsTriggerForceClip` (default `Intent`). `PhysicsKnockbackClip` and `PhysicsVortexClip` now default to `External` (survive braking); `PhysicsThrustClip` stays `Intent`.
+- `VelocityResetFlags.External` (and `All`): a velocity reset flagged `External` also wipes the knockback channel and its same-frame inbox — for parry / super-armor cancels.
+- `PhysicsExternalVelocityGizmoSystem` debug drawer (`externalvelocitygizmo.draw-enabled`) visualising the channel for decay-rate tuning.
+- Regression tests covering compose/decompose, knockback surviving a brake, decay-to-rest, and the same-frame External-reset parry.
+
+### Changed
+- Knockback writers (`DirectionalKnockbackSystem` sample, and `PhysicsTriggerForceClip`/`PhysicsKnockbackClip`/`PhysicsVortexClip` when their channel is `External`) deposit into the external channel instead of `PendingForce`, so they are no longer drag-braked. `PhysicsBreakForceSystem` deliberately stays on the intent channel (its impulse is a velocity-relative replacement, not additive). Knockback now decays at the global rate independent of per-body drag.
+- Motion smear (`UpdateSmearVelocitySystem`) adds the external channel back when computing smear, so a knocked-back body smears at its real speed rather than walking speed.
+
 ## [1.0.2] - 2026-06-10
 ### Fixed
 - Velocity Clamp, Gravity Override, Filter Override, Kinematic Override, and Ricochet apply systems never executed: their jobs constructed `ChunkEntityEnumerator` with a hardcoded `useEnabledMask: true` while their queries use `IgnoreComponentEnabledState`, so the (default, all-zero) enabled mask caused zero entities to be iterated. The enumerator now honors the mask validity Unity reports.

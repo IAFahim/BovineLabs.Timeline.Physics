@@ -14,6 +14,12 @@ namespace BovineLabs.Timeline.Physics
     /// (<c>PhysicsExternalVelocityComposeSystem</c>) so collisions respond to the hit, then subtracted straight back
     /// out at the top of the post-solve modifier group (<c>PhysicsExternalVelocityDecomposeSystem</c>) so drag,
     /// override, clamp and reset only ever see locomotion. Fed by the <see cref="PendingExternalForce"/> inbox.
+    /// <para>
+    /// Standing state (baked to zero). On fresh instantiation it is zero; it also self-heals because the decompose
+    /// system continuously decays it to rest within the channel's lifetime (~&lt;1s at the default rate). If you POOL
+    /// and recycle a dynamic body in-place mid-knockback, zero this (and clear the <see cref="PendingExternalForce"/>
+    /// inbox) on reuse to avoid one frame of inherited velocity — e.g. in your InitializeEntity / pool-reset path.
+    /// </para>
     /// </remarks>
     public struct ExternalVelocity : IComponentData
     {

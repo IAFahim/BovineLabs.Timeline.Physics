@@ -21,6 +21,7 @@ namespace BovineLabs.Timeline.Physics.Forces
         private ComponentTypeHandle<PhysicsMass> _massHandle;
         private ComponentTypeHandle<PendingVelocityReset> _resetHandle;
         private ComponentTypeHandle<ExternalVelocity> _externalHandle;
+        private BufferTypeHandle<PendingExternalForce> _externalInboxHandle;
         private BufferTypeHandle<PendingForce> _pendingForceHandle;
         private BufferTypeHandle<PendingVelocity> _pendingVelocityHandle;
 
@@ -39,6 +40,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             _massHandle = state.GetComponentTypeHandle<PhysicsMass>(true);
             _resetHandle = state.GetComponentTypeHandle<PendingVelocityReset>();
             _externalHandle = state.GetComponentTypeHandle<ExternalVelocity>();
+            _externalInboxHandle = state.GetBufferTypeHandle<PendingExternalForce>();
             _pendingForceHandle = state.GetBufferTypeHandle<PendingForce>();
             _pendingVelocityHandle = state.GetBufferTypeHandle<PendingVelocity>();
 
@@ -52,6 +54,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             _massHandle.Update(ref state);
             _resetHandle.Update(ref state);
             _externalHandle.Update(ref state);
+            _externalInboxHandle.Update(ref state);
             _pendingForceHandle.Update(ref state);
             _pendingVelocityHandle.Update(ref state);
 
@@ -62,6 +65,7 @@ namespace BovineLabs.Timeline.Physics.Forces
                 MassHandle = _massHandle,
                 ResetHandle = _resetHandle,
                 ExternalHandle = _externalHandle,
+                ExternalInboxHandle = _externalInboxHandle,
                 PendingForceHandle = _pendingForceHandle,
                 PendingVelocityHandle = _pendingVelocityHandle
             }.ScheduleParallel(_query, state.Dependency);
@@ -75,6 +79,7 @@ namespace BovineLabs.Timeline.Physics.Forces
             [ReadOnly] public ComponentTypeHandle<PhysicsMass> MassHandle;
             public ComponentTypeHandle<PendingVelocityReset> ResetHandle;
             public ComponentTypeHandle<ExternalVelocity> ExternalHandle;
+            public BufferTypeHandle<PendingExternalForce> ExternalInboxHandle;
             public BufferTypeHandle<PendingForce> PendingForceHandle;
             public BufferTypeHandle<PendingVelocity> PendingVelocityHandle;
 
@@ -92,6 +97,9 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                 var hasExternal = chunk.Has(ref ExternalHandle);
                 var externals = hasExternal ? chunk.GetNativeArray(ref ExternalHandle) : default;
+
+                var hasExternalInbox = chunk.Has(ref ExternalInboxHandle);
+                var externalInbox = hasExternalInbox ? chunk.GetBufferAccessor(ref ExternalInboxHandle) : default;
 
                 var hasForceBuffer = chunk.Has(ref PendingForceHandle);
                 var forceAccessor = hasForceBuffer ? chunk.GetBufferAccessor(ref PendingForceHandle) : default;
@@ -112,11 +120,20 @@ namespace BovineLabs.Timeline.Physics.Forces
                         var flags = resets[i].Flags;
                         ApplyReset(ref velocity, flags);
 
-                        // Opt-in: a reset flagged External also wipes the knockback channel (parry/super-armor). Done
-                        // here, before the compose system adds it on top, so the hit is fully cancelled this frame.
-                        if (hasExternal && (flags & VelocityResetFlags.External) != 0)
+                        // Opt-in: a reset flagged External wipes the knockback channel (parry/super-armor). Clear both
+                        // the standing channel AND the not-yet-drained inbox, so a hit landing the SAME frame is also
+                        // cancelled (compose drains the inbox after this; an unclear inbox would resurrect the hit).
+                        if ((flags & VelocityResetFlags.External) != 0)
                         {
-                            externals[i] = default;
+                            if (hasExternal)
+                            {
+                                externals[i] = default;
+                            }
+
+                            if (hasExternalInbox)
+                            {
+                                externalInbox[i].Clear();
+                            }
                         }
 
                         resets[i] = default;

@@ -1,4 +1,6 @@
 using BovineLabs.Testing;
+using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Drags;
 using BovineLabs.Timeline.Physics.Forces;
 using NUnit.Framework;
 using Unity.Core;
@@ -16,6 +18,23 @@ namespace BovineLabs.Timeline.Physics.Tests
     /// </summary>
     public class ExternalVelocityChannelTests : ECSTestsFixture
     {
+        private float _savedDecayRate;
+
+        // The decay-rate ConfigVar is only seeded by ConfigVarManager at runtime init, which does NOT run for this
+        // EditMode asmdef — so pin it explicitly, or the SharedStatic reads 0 (no decay) and tests pass/fail by luck.
+        [SetUp]
+        public void PinDecayRate()
+        {
+            _savedDecayRate = ExternalVelocityConfig.DecayRate.Data;
+            ExternalVelocityConfig.DecayRate.Data = 8f;
+        }
+
+        [TearDown]
+        public void RestoreDecayRate()
+        {
+            ExternalVelocityConfig.DecayRate.Data = _savedDecayRate;
+        }
+
         private Entity CreateBody(float3 intentVelocity)
         {
             var body = Manager.CreateEntity();
@@ -50,6 +69,12 @@ namespace BovineLabs.Timeline.Physics.Tests
         private void RunAccumulator()
         {
             World.GetOrCreateSystem<PhysicsProducerForceAccumulatorSystem>().Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+        }
+
+        private void RunDrag()
+        {
+            World.GetOrCreateSystem<PhysicsDragApplySystem>().Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
         }
 
@@ -119,13 +144,66 @@ namespace BovineLabs.Timeline.Physics.Tests
             var body = CreateBody(float3.zero);
             Manager.SetComponentData(body, new ExternalVelocity { Linear = new float3(0, 0, 10) });
 
+            // Pair compose+decompose each step (the real per-frame cycle): velocity returns to ~0 every frame while
+            // the standing channel fades — so this also proves no intent-velocity drift accumulates.
             for (var i = 0; i < 200; i++)
             {
+                RunCompose();
                 RunDecompose();
             }
 
             Assert.AreEqual(0f, Manager.GetComponentData<ExternalVelocity>(body).Linear.z, 1e-4f,
                 "External channel must fully decay to rest, not leave a permanent drift");
+            Assert.AreEqual(0f, Manager.GetComponentData<PhysicsVelocity>(body).Linear.z, 1e-4f,
+                "Intent velocity must not drift as the channel cycles");
+        }
+
+        [Test]
+        public void Knockback_SurvivesTheRealDragSystem()
+        {
+            // Integration: the real PhysicsDragApplySystem (a heavy brake) runs against the post-decompose velocity.
+            // It must NOT touch the external channel, so the hit re-applies undiminished next compose.
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var body = CreateBody(float3.zero);
+            Manager.AddComponentData(body, new ActiveDrag
+            {
+                Config = new PhysicsDragData { Linear = 10f, Angular = 10f, Strength = default },
+            });
+            Manager.GetBuffer<PendingExternalForce>(body).Add(new PendingExternalForce { Linear = new float3(0, 0, 10) });
+
+            RunCompose();   // hit -> external (10), rides velocity
+            RunDecompose(); // velocity back to intent (0); external decays to ~4.49
+            RunDrag();      // heavy brake on intent only
+
+            var ext = Manager.GetComponentData<ExternalVelocity>(body).Linear.z;
+            Assert.Greater(ext, 3f, "A heavy drag clip must not touch the external channel");
+
+            RunCompose();   // the surviving channel re-applies to velocity
+            var v = Manager.GetComponentData<PhysicsVelocity>(body).Linear.z;
+            Assert.Greater(v, 3f, "Knockback must survive the real drag system, not be braked away");
+        }
+
+        [Test]
+        public void ExternalReset_EatsAHitLandingTheSameFrame()
+        {
+            // Parry/super-armor: a VelocityResetFlags.External on the same frame a hit arrives must cancel BOTH the
+            // standing channel and the fresh inbox impulse (else compose would resurrect the hit after the reset).
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var body = CreateBody(float3.zero);
+            Manager.SetComponentData(body, new ExternalVelocity { Linear = new float3(0, 0, 5) });   // residual
+            Manager.GetBuffer<PendingExternalForce>(body).Add(new PendingExternalForce { Linear = new float3(0, 0, 10) }); // fresh hit
+            Manager.SetComponentData(body, new PendingVelocityReset { Flags = VelocityResetFlags.External });
+            Manager.SetComponentEnabled<PendingVelocityReset>(body, true);
+
+            RunAccumulator(); // consumes the reset: clears standing channel + inbox
+            RunCompose();      // drains inbox (now empty) and re-applies channel (now zero)
+
+            Assert.AreEqual(0f, Manager.GetComponentData<ExternalVelocity>(body).Linear.z, 1e-4f,
+                "Standing channel must be cleared");
+            Assert.AreEqual(0, Manager.GetBuffer<PendingExternalForce>(body).Length,
+                "The same-frame inbox hit must be eaten, not resurrected by compose");
+            Assert.AreEqual(0f, Manager.GetComponentData<PhysicsVelocity>(body).Linear.z, 1e-4f,
+                "No knockback should reach velocity through a parry");
         }
 
         [Test]

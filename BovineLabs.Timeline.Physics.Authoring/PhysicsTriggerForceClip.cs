@@ -19,6 +19,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsTriggerForceType forceType = PhysicsTriggerForceType.Radial;
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
 
+        [Tooltip("Intent = a normal force the target's drag/clamp shape. External = knockback that survives braking " +
+                 "and fades on its own (use for hits the player shouldn't be able to brake out of).")]
+        public MotionChannel channel = MotionChannel.Intent;
+
         [Tooltip("Base magnitude. For radial: Positive pulls in (Implosion), Negative pushes out (Explosion).")]
         public float magnitude = 10f;
 
@@ -80,6 +84,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     EventState = bakedState,
                     ForceType = forceType,
                     Mode = mode,
+                    Channel = channel,
                     Magnitude = magnitude,
                     Direction = math.normalizesafe(direction, new float3(0, 0, 1)),
                     OriginMode = originMode,

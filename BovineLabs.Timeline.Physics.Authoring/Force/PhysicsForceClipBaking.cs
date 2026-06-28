@@ -19,6 +19,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public static void Bake(
             ref BakerCommands commands, BakingContext context,
             PhysicsTriggerForceType forceType, StatefulEventState triggerState, PhysicsForceMode mode,
+            MotionChannel channel,
             float magnitude, float3 direction, PhysicsTriggerPositionMode originMode,
             PhysicsTriggerFalloffCurve falloffCurve, float falloffStartRadius, float falloffEndRadius,
             StatSchemaObject strengthStat, Target readStatFrom, EntityLinkSchema readStatLink,
@@ -47,6 +48,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     EventState = bakedState,
                     ForceType = forceType,
                     Mode = mode,
+                    Channel = channel,
                     Magnitude = magnitude,
                     Direction = math.normalizesafe(direction, new float3(0, 0, 1)),
                     OriginMode = originMode,

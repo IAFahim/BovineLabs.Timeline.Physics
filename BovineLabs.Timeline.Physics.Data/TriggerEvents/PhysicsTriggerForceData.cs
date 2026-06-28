@@ -25,6 +25,10 @@ namespace BovineLabs.Timeline.Physics
         public StatefulEventState EventState;
         public PhysicsTriggerForceType ForceType;
         public PhysicsForceMode Mode;
+
+        /// <summary>Intent (drag-shaped locomotion) or External (knockback that survives braking). Default Intent.</summary>
+        public MotionChannel Channel;
+
         public float Magnitude;
         public float3 Direction;
 

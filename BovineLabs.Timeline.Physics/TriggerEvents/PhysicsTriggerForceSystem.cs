@@ -97,6 +97,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 ParentLookup = _parentLookup,
                 StatLookup = _statLookup,
                 PendingForceLookup = _pendingForceLookup,
+                PendingExternalForceLookup = _pendingExternalForceLookup,
                 TriggerEventsLookup = SystemAPI.GetBufferLookup<StatefulTriggerEvent>(true),
                 CollisionEventsLookup = SystemAPI.GetBufferLookup<StatefulCollisionEvent>(true)
             }.ScheduleParallel(_query, state.Dependency);
@@ -114,8 +115,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public Entity Target;
             public PendingForce Force;
 
-            // Impulse hits ride the external (knockback) channel so braking/drag can't eat them; continuous pushes
-            // stay on the intent channel where the designer's drag/clamp are meant to shape them.
+            // True when the clip's MotionChannel is External (knockback): route to the PendingExternalForce inbox so
+            // braking/drag can't eat it. False = intent channel (PendingForce), the default for authored forces.
             public bool External;
         }
 
@@ -138,6 +139,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             [ReadOnly] public ComponentLookup<Parent> ParentLookup;
             [ReadOnly] public BufferLookup<Stat> StatLookup;
             [ReadOnly] public BufferLookup<PendingForce> PendingForceLookup;
+            [ReadOnly] public BufferLookup<PendingExternalForce> PendingExternalForceLookup;
             [ReadOnly] public BufferLookup<StatefulTriggerEvent> TriggerEventsLookup;
             [ReadOnly] public BufferLookup<StatefulCollisionEvent> CollisionEventsLookup;
 
@@ -211,7 +213,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             private static void LogWarning()
             {
                 Debug.LogWarning(
-                    "PhysicsTriggerForce applied to an entity without a PendingForce buffer. Force ignored.");
+                    "PhysicsTriggerForce target is missing the pending-force buffer for its channel " +
+                    "(PendingForce / PendingExternalForce). Force ignored.");
             }
 
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg,
@@ -229,7 +232,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
-                if (!PendingForceLookup.HasBuffer(targetToApply))
+                // Gate on the buffer this force will ACTUALLY be written to — the inbox the chosen channel drains.
+                var external = cfg.Channel == MotionChannel.External;
+                var hasTargetBuffer = external
+                    ? PendingExternalForceLookup.HasBuffer(targetToApply)
+                    : PendingForceLookup.HasBuffer(targetToApply);
+                if (!hasTargetBuffer)
                 {
                     LogWarning();
                     return;
@@ -287,8 +295,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (math.lengthsq(force) > 1e-5f)
                 {
-                    var isImpulse = cfg.Mode == PhysicsForceMode.Impulse;
-                    var timeScale = isImpulse ? 1f : DeltaTime;
+                    // Mode controls impulse-vs-continuous integration; Channel (independent) controls which velocity
+                    // channel it lands on. A continuous External field and an impulse Intent force are both valid.
+                    var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
                     Events.Write(new TriggerForceEvent
                     {
                         Target = targetToApply,
@@ -297,7 +306,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             Linear = force * timeScale,
                             Angular = float3.zero
                         },
-                        External = isImpulse
+                        External = external
                     });
                 }
             }

@@ -20,6 +20,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
         }
     }
 
+    /// <summary>
+    /// Opts a body out of auto-provisioning by <see cref="AutoPhysicsForceAccumulatorBakingSystem"/>. This covers BOTH
+    /// the intent channel (PendingForce/PendingVelocity) AND the external/knockback channel
+    /// (PendingExternalForce/ExternalVelocity) — a self-managed body receives neither, and knockback writers will skip
+    /// it (their HasBuffer guard). Add the buffers yourself if an opted-out body should still take knockback.
+    /// </summary>
     public struct PhysicsForceAccumulatorOptOut : IComponentData
     {
     }

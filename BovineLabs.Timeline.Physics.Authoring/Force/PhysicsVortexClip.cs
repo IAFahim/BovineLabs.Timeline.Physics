@@ -56,7 +56,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
+            // A vortex pulls/swirls victims — External so the swirl isn't drag-braked (a continuous External field).
             PhysicsForceClipBaking.Bake(ref commands, context, PhysicsTriggerForceType.Vortex, triggerState, mode,
+                MotionChannel.External,
                 magnitude, float3.zero, originMode, falloffCurve, falloffStartRadius, falloffEndRadius, strengthStat,
                 readStatFrom, readStatLink, applyTo, applyToLink, ignoreTarget, requireLinks, hitMode);
             base.Bake(clipEntity, context);

@@ -52,7 +52,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
+            // Thrust is self-propulsion — Intent, so the designer's drag/clamp shape it like any locomotion force.
             PhysicsForceClipBaking.Bake(ref commands, context, PhysicsTriggerForceType.Directional, triggerState, mode,
+                MotionChannel.Intent,
                 magnitude, direction, PhysicsTriggerPositionMode.MatchSelf, PhysicsTriggerFalloffCurve.None, 0f, 0f,
                 strengthStat, readStatFrom, readStatLink, applyTo, applyToLink, ignoreTarget, requireLinks, hitMode);
             base.Bake(clipEntity, context);

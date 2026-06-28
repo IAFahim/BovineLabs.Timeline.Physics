@@ -58,7 +58,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
+            // Knockback is a victim impulse — External so it survives the victim braking.
             PhysicsForceClipBaking.Bake(ref commands, context, PhysicsTriggerForceType.Radial, triggerState, mode,
+                MotionChannel.External,
                 magnitude, float3.zero, originMode, falloffCurve, falloffStartRadius, falloffEndRadius, strengthStat,
                 readStatFrom, readStatLink, applyTo, applyToLink, ignoreTarget, requireLinks, hitMode);
             base.Bake(clipEntity, context);

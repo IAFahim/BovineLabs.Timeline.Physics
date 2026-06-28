@@ -87,6 +87,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddComponentData(trigger, new ClipActive());
             Manager.AddComponentData(trigger, new TrackBinding { Value = trigger });
+            Manager.AddComponentData(trigger, new PhysicsClipGate()); // required by the system query; enabled on add
 
             var events = Manager.AddBuffer<StatefulTriggerEvent>(trigger);
             events.Add(new StatefulTriggerEvent
@@ -137,6 +138,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddComponentData(trigger, new ClipActive());
             Manager.AddComponentData(trigger, new TrackBinding { Value = trigger });
+            Manager.AddComponentData(trigger, new PhysicsClipGate()); // required by the system query; enabled on add
 
             var events = Manager.AddBuffer<StatefulTriggerEvent>(trigger);
             events.Add(new StatefulTriggerEvent
@@ -196,6 +198,7 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Manager.AddComponentData(trigger, new ClipActive());
             Manager.AddComponentData(trigger, new TrackBinding { Value = trigger });
+            Manager.AddComponentData(trigger, new PhysicsClipGate()); // required by the system query; enabled on add
 
             var events = Manager.AddBuffer<StatefulTriggerEvent>(trigger);
             events.Add(new StatefulTriggerEvent { EntityB = shapeA, State = StatefulEventState.Stay });
@@ -209,6 +212,53 @@ namespace BovineLabs.Timeline.Physics.Tests
             return Manager.GetBuffer<PendingForce>(shapeA).Length
                    + Manager.GetBuffer<PendingForce>(shapeB).Length
                    + Manager.GetBuffer<PendingForce>(shapeC).Length;
+        }
+
+        [Test]
+        public void Channel_RoutesToIntentByDefault_AndExternalWhenFlagged()
+        {
+            // Default channel (Intent) lands in PendingForce; Channel=External lands in PendingExternalForce so the
+            // hit rides the knockback channel. Target carries BOTH buffers so routing — not buffer presence — decides.
+            AssertChannelRoutes(MotionChannel.Intent, expectIntent: 1, expectExternal: 0);
+            AssertChannelRoutes(MotionChannel.External, expectIntent: 0, expectExternal: 1);
+        }
+
+        private void AssertChannelRoutes(MotionChannel channel, int expectIntent, int expectExternal)
+        {
+            var target = Manager.CreateEntity();
+            Manager.AddComponentData(target, LocalTransform.FromPosition(new float3(0, 0, 3)));
+            Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.Translate(new float3(0, 0, 3)) });
+            Manager.AddBuffer<PendingForce>(target);
+            Manager.AddBuffer<PendingExternalForce>(target);
+
+            var trigger = Manager.CreateEntity();
+            Manager.AddComponentData(trigger, LocalTransform.FromPosition(float3.zero));
+            Manager.AddComponentData(trigger, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(trigger, new PhysicsTriggerForceData
+            {
+                EventState = StatefulEventState.Stay,
+                ForceType = PhysicsTriggerForceType.Directional,
+                Mode = PhysicsForceMode.Impulse,
+                Channel = channel,
+                Magnitude = 10f,
+                Direction = new float3(0, 0, 1),
+                OriginMode = PhysicsTriggerPositionMode.MatchSelf,
+                FalloffCurve = PhysicsTriggerFalloffCurve.None,
+                ApplyTo = Target.Target,
+            });
+            Manager.AddComponentData(trigger, new PhysicsTriggerFilterData { IgnoreTarget = Target.None });
+            Manager.AddComponentData(trigger, new ClipActive());
+            Manager.AddComponentData(trigger, new TrackBinding { Value = trigger });
+            Manager.AddComponentData(trigger, new PhysicsClipGate());
+            Manager.AddBuffer<StatefulTriggerEvent>(trigger)
+                .Add(new StatefulTriggerEvent { EntityB = target, State = StatefulEventState.Stay });
+
+            World.GetOrCreateSystem<PhysicsTriggerForceSystem>().Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(expectIntent, Manager.GetBuffer<PendingForce>(target).Length, $"{channel}: PendingForce");
+            Assert.AreEqual(expectExternal, Manager.GetBuffer<PendingExternalForce>(target).Length,
+                $"{channel}: PendingExternalForce");
         }
 
         private Entity CreateShape(Entity root, float3 pos)

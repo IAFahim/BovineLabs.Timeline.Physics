@@ -308,7 +308,7 @@ namespace BovineLabs.Timeline.Physics
         public BlobAssetReference<PhysicsTriggerCategoryTierBlob> CategoryTiers; // CategoryPriority / CategoryOrdinal
 
         // ---- WAVE 2: MULTI ----
-        public int MaxTargets; // AllSurvivorsFanout / TopK hard cap (<= 8). 0 → 1 (single-winner)
+        public int MaxTargets; // AllSurvivorsFanout / TopK hard cap (<= 7). 0 → 1 (single-winner)
         public bool WriteHitBuffer; // also emit a capped DynamicBuffer<TriggerQueryHit>
 
         // ---- WAVE 2: VALUE ----

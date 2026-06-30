@@ -355,7 +355,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     CategoryTiers = categoryTierBlob,
 
                     // ---- WAVE 2: MULTI ----
-                    MaxTargets = math.clamp(maxTargets, 1, 8),
+                    MaxTargets = math.clamp(maxTargets, 1, 7),
                     WriteHitBuffer = writeHitBuffer,
 
                     // ---- WAVE 2: VALUE ----

@@ -69,7 +69,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
             var data = new PhysicsTriggerQueryData
             {
                 Selection = selection,
-                MaxTargets = math.clamp(maxTargets, 1, 8),
+                MaxTargets = math.clamp(maxTargets, 1, 7),
                 WriteHitBuffer = writeHitBuffer,
                 ValueMode = PhysicsTriggerQueryValueMode.Constant,
             };

@@ -35,9 +35,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
     [BurstCompile]
     public partial struct PhysicsTriggerQuerySystem : ISystem
     {
-        /// <summary> Hard cap on per-candidate tracked state (DwellSelect / PerTargetRefractory). O(n^2) ok at cap. </summary>
-        private const int MaxTrackedCandidates = 8;
-
         private UnsafeComponentLookup<Targets> _targetsReadLookup;
         private UnsafeComponentLookup<EntityLinkSource> _linkSourceLookup;
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
@@ -471,7 +468,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 in PhysicsTriggerFilterData filter, in Targets targets, ref PhysicsTriggerQueryState queryState,
                 NativeArray<TimerData> timers, NativeArray<TimeTransform> timeTransforms, bool hasTiming, int i)
             {
-                var cap = math.clamp(config.MaxTargets <= 0 ? 1 : config.MaxTargets, 1, 8);
+                var cap = math.clamp(config.MaxTargets <= 0 ? 1 : config.MaxTargets, 1, 7);
                 var raycastsLeft = ctx.RaycastsLeft;
 
                 // Insertion-sorted top-cap by score (TopK). For AllSurvivorsFanout we still cap (drop past cap).
@@ -1049,7 +1046,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     return;
                 }
 
-                if (state.Tracked.Length >= MaxTrackedCandidates)
+                if (state.Tracked.Length >= state.Tracked.Capacity)
                     return; // capped — drop (documented)
 
                 state.Tracked.Add(new EntityCounter { Entity = e, Dwell = 1, Refractory = 0, Seen = 1 });

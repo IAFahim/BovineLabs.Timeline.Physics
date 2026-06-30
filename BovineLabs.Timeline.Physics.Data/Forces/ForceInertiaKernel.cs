@@ -17,7 +17,7 @@ namespace BovineLabs.Timeline.Physics.Data.Forces
             var rotation = new quaternion(math.orthonormalize(new float3x3(transform.Value)));
             var inertiaRot = math.mul(rotation, mass.Transform.rot);
             var localAngular = math.rotate(math.inverse(inertiaRot), totalAngular);
-            result.Angular += math.rotate(inertiaRot, localAngular * mass.InverseInertia);
+            result.Angular += localAngular * mass.InverseInertia;
 
             return result;
         }

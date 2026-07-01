@@ -1,0 +1,36 @@
+{
+    "name": "BovineLabs.Timeline.Physics.Sample.MotionChannelShowcase",
+    "rootNamespace": "",
+    "references": [
+        "BovineLabs.Timeline.Physics.Authoring",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Timeline.Physics.Data",
+        "BovineLabs.Reaction.Data",
+        "BovineLabs.Reaction.Authoring",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Core.Extensions.Authoring",
+        "BovineLabs.Timeline.Authoring",
+        "BovineLabs.Timeline.Core.Authoring",
+        "Unity.Physics",
+        "Unity.Physics.Hybrid",
+        "Unity.Physics.Custom",
+        "Unity.Mathematics",
+        "Unity.Entities",
+        "Unity.Collections",
+        "Unity.Scenes",
+        "Unity.Timeline",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

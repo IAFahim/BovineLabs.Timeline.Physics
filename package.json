@@ -78,6 +78,11 @@
       "displayName": "Knockback Reaction",
       "description": "Data-driven directional knockback: trigger ring -> ConditionEvent -> Reaction -> ActionTimeline force, no custom system.",
       "path": "Sample~/Knockback Reaction"
+    },
+    {
+      "displayName": "Motion Channel Showcase",
+      "description": "Intent-vs-External motion channel comparison: an attacker's knockback trigger either gets eaten by or ignores the victim's own drag clip, depending on the channel.",
+      "path": "Sample~/Motion Channel Showcase"
     }
   ],
   "documentationUrl": "Documentation~/com.bovinelabs.timeline.physics.md",

@@ -27,5 +27,9 @@ namespace BovineLabs.Timeline.Physics
         public bool Fired;
         public uint OriginalBelongsTo;
         public uint OriginalCollidesWith;
+
+        // Set once we've emitted the "shared collider, override skipped" diagnostic for this body, so the
+        // warning fires once instead of every frame the clip is active.
+        public bool WarnedShared;
     }
 }

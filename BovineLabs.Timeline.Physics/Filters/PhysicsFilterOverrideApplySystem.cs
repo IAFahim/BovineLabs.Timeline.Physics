@@ -1,3 +1,4 @@
+using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
@@ -35,6 +36,8 @@ namespace BovineLabs.Timeline.Physics.Filters
                 .WithAll<ActiveFilterOverride>()
                 .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                 .Build();
+
+            state.RequireForUpdate<BLLogger>();
         }
 
         [BurstCompile]
@@ -48,7 +51,8 @@ namespace BovineLabs.Timeline.Physics.Filters
             {
                 ActiveHandle = _activeHandle,
                 StateHandle = _stateHandle,
-                ColliderHandle = _colliderHandle
+                ColliderHandle = _colliderHandle,
+                Logger = SystemAPI.GetSingleton<BLLogger>()
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -58,6 +62,7 @@ namespace BovineLabs.Timeline.Physics.Filters
             [ReadOnly] public ComponentTypeHandle<ActiveFilterOverride> ActiveHandle;
             public ComponentTypeHandle<PhysicsFilterOverrideState> StateHandle;
             public ComponentTypeHandle<PhysicsCollider> ColliderHandle;
+            public BLLogger Logger;
 
             public unsafe void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -78,7 +83,18 @@ namespace BovineLabs.Timeline.Physics.Filters
 
                     if (!collider.IsUnique)
                     {
-                        LogSharedColliderWarning();
+                        // Warn once per body (Burst-visible, unlike the old [BurstDiscard] Debug.LogWarning which
+                        // was compiled out of the job entirely). Do NOT touch state.Fired — nothing was applied,
+                        // so the restore path must not run on exit.
+                        if (!state.WarnedShared)
+                        {
+                            Logger.LogWarning512(
+                                "PhysicsFilterOverride targets a shared collider blob; the override was skipped. " +
+                                "Enable 'Force Unique' on the bound body's collider authoring so the filter can be modified per instance.");
+                            state.WarnedShared = true;
+                            states[i] = state;
+                        }
+
                         continue;
                     }
 
@@ -126,13 +142,6 @@ namespace BovineLabs.Timeline.Physics.Filters
                 }
             }
 
-            [BurstDiscard]
-            private static void LogSharedColliderWarning()
-            {
-                Debug.LogWarning(
-                    "PhysicsFilterOverride targets a shared collider blob; the override was skipped. " +
-                    "Enable 'Force Unique' on the bound body's collider authoring so the filter can be modified per instance.");
-            }
         }
     }
 }

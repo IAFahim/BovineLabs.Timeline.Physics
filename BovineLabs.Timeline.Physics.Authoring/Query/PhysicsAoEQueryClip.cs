@@ -26,8 +26,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("AllSurvivorsFanout (everyone) or TopK (the best N by proximity).")]
         public PhysicsTriggerQuerySelection selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout;
 
-        [Tooltip("Hard cap on winners (1..8). Survivors past the cap are dropped.")] [Range(1, 8)]
-        public int maxTargets = 8;
+        [Tooltip("Hard cap on winners (1..7). Survivors past the cap are dropped.")] [Range(1, 7)]
+        public int maxTargets = 7;
 
         [Tooltip("Maximum query distance. 0 = unlimited.")]
         public float maxDistance;

@@ -36,6 +36,10 @@ namespace BovineLabs.Timeline.Physics
     {
         public bool Fired;
 
+        /// <summary> Set once the "shared collider, resize skipped" diagnostic has fired, so it warns once per body
+        /// instead of every active frame. Kept separate from Fired so the restore branch never runs for a skip. </summary>
+        public bool WarnedShared;
+
         /// <summary> (byte)Unity.Physics.ColliderType captured on enter; 255 = unsupported (convex/mesh/compound). </summary>
         public byte Type;
 

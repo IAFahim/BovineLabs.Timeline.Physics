@@ -1,3 +1,4 @@
+using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;
@@ -43,6 +44,8 @@ namespace BovineLabs.Timeline.Physics.Shapes
                 .WithAll<ActiveShapeResize>()
                 .WithOptions(EntityQueryOptions.IgnoreComponentEnabledState)
                 .Build();
+
+            state.RequireForUpdate<BLLogger>();
         }
 
         [BurstCompile]
@@ -56,7 +59,8 @@ namespace BovineLabs.Timeline.Physics.Shapes
             {
                 ActiveHandle = _activeHandle,
                 StateHandle = _stateHandle,
-                ColliderHandle = _colliderHandle
+                ColliderHandle = _colliderHandle,
+                Logger = SystemAPI.GetSingleton<BLLogger>()
             }.ScheduleParallel(_query, state.Dependency);
         }
 
@@ -68,6 +72,7 @@ namespace BovineLabs.Timeline.Physics.Shapes
             [ReadOnly] public ComponentTypeHandle<ActiveShapeResize> ActiveHandle;
             public ComponentTypeHandle<PhysicsShapeResizeState> StateHandle;
             public ComponentTypeHandle<PhysicsCollider> ColliderHandle;
+            public BLLogger Logger;
 
             public unsafe void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
                 in v128 chunkEnabledMask)
@@ -88,7 +93,17 @@ namespace BovineLabs.Timeline.Physics.Shapes
 
                     if (!collider.IsUnique)
                     {
-                        if (isActive && !state.Fired) LogSharedColliderWarning();
+                        // Warn once per body, Burst-visibly (do NOT set state.Fired — nothing was captured, so the
+                        // restore branch must not run on exit).
+                        if (isActive && !state.WarnedShared)
+                        {
+                            Logger.LogWarning512(
+                                "PhysicsShapeResize targets a shared collider blob; the resize was skipped. Enable 'Force Unique' " +
+                                "on the bound body's collider authoring so the geometry can be modified per instance.");
+                            state.WarnedShared = true;
+                            states[i] = state;
+                        }
+
                         continue;
                     }
 
@@ -98,7 +113,8 @@ namespace BovineLabs.Timeline.Physics.Shapes
                     {
                         if (!Capture(ptr, ref state))
                         {
-                            LogUnsupportedColliderWarning();
+                            Logger.LogWarning512(
+                                "PhysicsShapeResize only supports Sphere/Box/Capsule/Cylinder colliders; convex/mesh/compound were skipped.");
                             state.Type = Unsupported;
                         }
 
@@ -230,21 +246,6 @@ namespace BovineLabs.Timeline.Physics.Shapes
                 }
             }
 
-            [BurstDiscard]
-            private static void LogSharedColliderWarning()
-            {
-                Debug.LogWarning(
-                    "PhysicsShapeResize targets a shared collider blob; the resize was skipped. Enable 'Force Unique' " +
-                    "on the bound body's collider authoring so the geometry can be modified per instance.");
-            }
-
-            [BurstDiscard]
-            private static void LogUnsupportedColliderWarning()
-            {
-                Debug.LogWarning(
-                    "PhysicsShapeResize only supports Sphere/Box/Capsule/Cylinder colliders; convex/mesh/compound " +
-                    "were skipped.");
-            }
         }
     }
 }

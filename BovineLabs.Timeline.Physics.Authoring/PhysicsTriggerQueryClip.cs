@@ -153,9 +153,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public int[] categoryTierOrdinals = Array.Empty<int>();
 
         [Header("Wave 2 — Multi-winner")]
-        [Tooltip("AllSurvivorsFanout / TopK hard cap (1..8). Survivors past the cap are dropped.")]
-        [Range(1, 8)]
-        public int maxTargets = 8;
+        [Tooltip("AllSurvivorsFanout / TopK hard cap (1..7). Survivors past the cap are dropped.")]
+        [Range(1, 7)]
+        public int maxTargets = 7;
 
         [Tooltip("Also emit a capped DynamicBuffer<TriggerQueryHit> on the routed entity.")]
         public bool writeHitBuffer;

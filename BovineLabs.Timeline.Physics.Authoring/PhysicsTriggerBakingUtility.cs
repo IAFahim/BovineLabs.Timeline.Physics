@@ -46,7 +46,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsTriggerDistanceBandBlob>();
-            var array = builder.Allocate(ref root.SquaredThresholds, sorted.Length);
+            var array = builder.Allocate(ref root.Thresholds, sorted.Length);
             for (var i = 0; i < sorted.Length; i++)
             {
                 var d = sorted[i];
@@ -72,7 +72,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             var builder = new BlobBuilder(Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsTriggerDistanceBandBlob>();
-            var array = builder.Allocate(ref root.SquaredThresholds, sorted.Length);
+            var array = builder.Allocate(ref root.Thresholds, sorted.Length);
             for (var i = 0; i < sorted.Length; i++)
                 array[i] = sorted[i];
 

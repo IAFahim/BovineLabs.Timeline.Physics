@@ -132,7 +132,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
             state.Dependency = new AppendVelocityJob
             {
-                DeltaTime = dt,
                 EntityHandle = _entityHandle,
                 ActiveHandle = _activeVelocityHandle,
                 StateTypeHandle = _velocityStateHandle,
@@ -433,7 +432,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
         [BurstCompile]
         private struct AppendVelocityJob : IJobChunk
         {
-            public float DeltaTime;
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveVelocity> ActiveHandle;
             public ComponentTypeHandle<PhysicsVelocityState> StateTypeHandle;
@@ -471,7 +469,12 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     if (!isAdd) continue;
 
                     if (isInstant && state.Fired) continue;
-                    if (!isInstant && DeltaTime <= 0.0001f) continue;
+
+                    // Continuous integrates the render-rate elapsed delta (accumulated by PhysicsVelocityTrackSystem),
+                    // NOT the fixed dt — otherwise the number of fixed steps that observe ActiveVelocity enabled (and
+                    // thus total Δv) varies with frame timing. Mirrors PhysicsForceState's Elapsed/Applied bridge.
+                    var timeScale = isInstant ? 1f : state.ElapsedTime - state.AppliedTime;
+                    if (!isInstant && timeScale <= 1e-6f) continue;
 
                     var targets = TargetsLookup.TryGetComponent(body, out var t) ? t : default;
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
@@ -491,7 +494,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                         state.ResetApplied = true;
                     }
 
-                    var timeScale = isInstant ? 1f : DeltaTime;
                     pendingVelocities[i].Add(new PendingVelocity
                     {
                         Linear = linVel * timeScale * multiplier,
@@ -499,6 +501,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     });
 
                     if (isInstant) state.Fired = true;
+                    else state.AppliedTime = state.ElapsedTime; // consumed this render-frame's elapsed slice
 
                     states[i] = state;
                 }

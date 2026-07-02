@@ -6,6 +6,7 @@ using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Timeline;
 
 namespace BovineLabs.Timeline.Physics.Authoring
@@ -24,11 +25,18 @@ namespace BovineLabs.Timeline.Physics.Authoring
                  "For random sphere/cone scatter use PhysicsScatterForceClip instead.")]
         public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
 
-        [Header("Fixed Vector")] public Vector3 linearForce = new(0, 0, 0);
+        [Header("Fixed Vector")]
+        [Tooltip("Full push vector: direction AND strength baked into one. Used ONLY when Direction Mode = FixedVector. " +
+                 "Ignored by the Toward/Away target modes (they use Magnitude instead).")]
+        public Vector3 linearForce = new(0, 0, 0);
 
         public Target space = Target.Self;
 
-        [Header("Toward Target")] public float magnitude = 10f;
+        [Header("Toward Target")]
+        [Tooltip("Push STRENGTH only (a scalar). Direction comes from the target/velocity at runtime. " +
+                 "Used ONLY when Direction Mode = Toward/AwayFromTarget. Ignored by FixedVector (it uses Linear Force instead).")]
+        [FormerlySerializedAs("magnitude")]
+        public float directionStrength = 10f;
 
         public Target directionTarget = Target.Target;
         public EntityLinkSchema directionTargetLink;
@@ -83,7 +91,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     DirectionMode = resolvedMode,
                     Linear = linearForce,
                     Space = space,
-                    Magnitude = magnitude,
+                    Magnitude = directionStrength,
                     DirectionTarget = directionTarget,
                     DirectionTargetLinkKey = dirLinkKey,
                     LatchDirection = latchDirection,

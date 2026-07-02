@@ -228,17 +228,17 @@ namespace BovineLabs.Timeline.Physics.Tests
         {
             using var builder = new Unity.Entities.BlobBuilder(Unity.Collections.Allocator.Temp);
             ref var root = ref builder.ConstructRoot<PhysicsTriggerDistanceBandBlob>();
-            var arr = builder.Allocate(ref root.SquaredThresholds, 3);
+            var arr = builder.Allocate(ref root.Thresholds, 3);
             arr[0] = 5f;
             arr[1] = 10f;
             arr[2] = 20f;
             var blob = builder.CreateBlobAssetReference<PhysicsTriggerDistanceBandBlob>(
                 Unity.Collections.Allocator.Temp);
 
-            Assert.AreEqual(0, PhysicsTriggerSectorMath.ImpactBand(3f, ref blob.Value.SquaredThresholds), "tap");
-            Assert.AreEqual(1, PhysicsTriggerSectorMath.ImpactBand(7f, ref blob.Value.SquaredThresholds));
-            Assert.AreEqual(2, PhysicsTriggerSectorMath.ImpactBand(15f, ref blob.Value.SquaredThresholds));
-            Assert.AreEqual(3, PhysicsTriggerSectorMath.ImpactBand(99f, ref blob.Value.SquaredThresholds), "slam");
+            Assert.AreEqual(0, PhysicsTriggerSectorMath.ImpactBand(3f, ref blob.Value.Thresholds), "tap");
+            Assert.AreEqual(1, PhysicsTriggerSectorMath.ImpactBand(7f, ref blob.Value.Thresholds));
+            Assert.AreEqual(2, PhysicsTriggerSectorMath.ImpactBand(15f, ref blob.Value.Thresholds));
+            Assert.AreEqual(3, PhysicsTriggerSectorMath.ImpactBand(99f, ref blob.Value.Thresholds), "slam");
             blob.Dispose();
         }
 

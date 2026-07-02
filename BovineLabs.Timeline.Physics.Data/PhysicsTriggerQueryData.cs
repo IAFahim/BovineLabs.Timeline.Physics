@@ -370,10 +370,14 @@ namespace BovineLabs.Timeline.Physics
         public BlobArray<int> Ordinals;
     }
 
-    /// <summary> Ascending SQUARED distance thresholds for <see cref="PhysicsTriggerQueryValueMode.DistanceBand"/>. </summary>
+    /// <summary>
+    /// Ascending band thresholds, pre-transformed at bake to match their comparand: SQUARED for the distance-band
+    /// table (compared against distSq), RAW for the magnitude/impact tables. The field is named neutrally because
+    /// the same blob type backs all three — do not assume the values are squared. See PhysicsTriggerBakingUtility.
+    /// </summary>
     public struct PhysicsTriggerDistanceBandBlob
     {
-        public BlobArray<float> SquaredThresholds;
+        public BlobArray<float> Thresholds;
     }
 
     public struct PhysicsTriggerQueryState : IComponentData

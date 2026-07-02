@@ -9,6 +9,11 @@ namespace BovineLabs.Timeline.Physics
         public uint BelongsToOverride;
         public uint CollidesWithOverride;
         public bool RestoreOnExit;
+
+        // 1 for any authored clip, 0 for the blend framework's empty-slot fill. Without it an authored all-zero
+        // override ("belongs to nothing / collides with nothing" = phase through everything) is byte-identical to
+        // default and DiscreteMixer discards it during a crossfade. Present makes the memcmp distinguish them.
+        public byte Present;
     }
 
     public struct PhysicsFilterOverrideAnimated : IAnimatedComponent<PhysicsFilterOverrideData>

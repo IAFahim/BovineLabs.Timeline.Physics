@@ -222,7 +222,7 @@ public static class PhysicsShowcaseBuilder
         a.directionMode = ForceDir.FixedVector;
         a.space = Space.None;
         a.linearForce = force;
-        a.magnitude = 1f;
+        a.directionStrength = 1f;
         Dirty(c.asset);
         return c;
     }

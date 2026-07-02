@@ -1,3 +1,4 @@
+using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
@@ -59,6 +60,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _query = SystemAPI.QueryBuilder()
                 .WithAll<TrackBinding, PhysicsTriggerForceData, PhysicsTriggerFilterData, PhysicsClipGate>()
                 .Build();
+
+            state.RequireForUpdate<BLLogger>();
         }
 
         [BurstCompile]
@@ -84,6 +87,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             state.Dependency = new GatherJob
             {
                 DeltaTime = SystemAPI.Time.DeltaTime,
+                Logger = SystemAPI.GetSingleton<BLLogger>(),
                 Events = events.AsWriter(),
                 TrackBindingTypeHandle = bindingType,
                 PhysicsTriggerForceDataTypeHandle = configType,
@@ -124,6 +128,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private struct GatherJob : IJobChunk
         {
             public float DeltaTime;
+            public BLLogger Logger;
             public NativeStream.Writer Events;
 
             [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
@@ -209,14 +214,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 Events.EndForEachIndex();
             }
 
-            [BurstDiscard]
-            private static void LogWarning()
-            {
-                Debug.LogWarning(
-                    "PhysicsTriggerForce target is missing the pending-force buffer for its channel " +
-                    "(PendingForce / PendingExternalForce). Force ignored.");
-            }
-
             private void ProcessEvent(Entity self, Entity other, in PhysicsTriggerForceData cfg,
                 in PhysicsTriggerFilterData filter, float3 contactPoint,
                 in Targets targets, float3 selfPos, quaternion selfRot, ref NativeHashSet<Entity> seenRoots)
@@ -239,7 +236,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     : PendingForceLookup.HasBuffer(targetToApply);
                 if (!hasTargetBuffer)
                 {
-                    LogWarning();
+                    // Burst-visible (the old [BurstDiscard] Debug.LogWarning was compiled out of the job entirely).
+                    Logger.LogWarning512(
+                        "PhysicsTriggerForce target is missing the pending-force buffer for its channel " +
+                        "(PendingForce / PendingExternalForce). Force ignored.");
                     return;
                 }
 

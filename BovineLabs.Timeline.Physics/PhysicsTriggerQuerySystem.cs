@@ -545,7 +545,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 bands[insertAt] = band;
                 // Pre-compute the per-survivor value now so collision-data (‡) modes get THIS body's contact.
                 values[insertAt] = ComputeValueFor(in ctx, in config, other, in collision, ctx.SelfPos, ctx.SelfRot,
-                    ctx.SelfVel, sector, band, survivorCount, ref queryState);
+                    ctx.SelfVel, sector, band, survivorCount, ref queryState, ref raycastsLeft);
 
                 while (winners.Length > cap)
                 {
@@ -1115,8 +1115,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         var off = ResolveWinnerPos(winner, selfPos) - selfPos;
                         var sector = ComputeSectorOnly(in config, off, selfRot);
                         var band = ComputeBand(in config, math.lengthsq(off));
+                        // Single winner → at most one on-demand value raycast; seed a fresh per-query budget for it.
+                        var raycastsLeft = ctx.RaycastsLeft;
                         var value = ComputeValueFor(in ctx, in config, winner, in winnerCollision, selfPos, selfRot,
-                            selfVel, sector, band, survivorCount, ref queryState);
+                            selfVel, sector, band, survivorCount, ref queryState, ref raycastsLeft);
 
                         ResolveRouteSlot(in config, sector, band, value, out var routeSlot);
 
@@ -1226,7 +1228,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
             private int ComputeValueFor(in QueryContext ctx, in PhysicsTriggerQueryData config, Entity winner,
                 in CollisionInfo collision, float3 selfPos, quaternion selfRot, float3 selfVel, int sector, int band,
-                int survivorCount, ref PhysicsTriggerQueryState queryState)
+                int survivorCount, ref PhysicsTriggerQueryState queryState, ref int raycastsLeft)
             {
                 switch (config.ValueMode)
                 {
@@ -1287,7 +1289,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             scalar = stats.AsMap().GetValueFloat(config.ScaledMagnitudeStat.Stat, 0f);
 
                         if (!config.MagnitudeBands.IsCreated) return 0;
-                        return PhysicsTriggerSectorMath.Bucket(scalar, ref config.MagnitudeBands.Value.SquaredThresholds);
+                        return PhysicsTriggerSectorMath.Bucket(scalar, ref config.MagnitudeBands.Value.Thresholds);
                     }
 
                     // ---- WAVE 3 ----
@@ -1309,7 +1311,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         if (!collision.HasCollision || !collision.HasDetails || !config.ImpactBands.IsCreated)
                             return 0;
                         return PhysicsTriggerSectorMath.ImpactBand(collision.EstimatedImpulse,
-                            ref config.ImpactBands.Value.SquaredThresholds);
+                            ref config.ImpactBands.Value.Thresholds);
                     }
 
                     case PhysicsTriggerQueryValueMode.TimingWindowGrade:
@@ -1318,9 +1320,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQueryValueMode.OcclusionState:
                     {
-                        // Reuses the SAME LoS ray result as RequireOccluded / MostExposed; budget already counted in
-                        // gating when those modes are active. Here we compute on demand (subject to no budget left → 0).
-                        if (!HasCollisionWorld) return 0;
+                        // This raycast now honors the shared per-query budget (previously it fired unbudgeted, one per
+                        // emitted winner, so MaxRaycastsPerQuery undercounted). Out of budget → treat as visible (0).
+                        if (!HasCollisionWorld || raycastsLeft <= 0) return 0;
+                        raycastsLeft--;
                         var winnerPos = ResolveWinnerPos(winner, selfPos);
                         var clear = TeleportMath.CheckLineOfSight(in CollisionWorld, selfPos, winnerPos,
                             config.LineOfSightOffset, config.ObstacleMask, ctx.Self, winner);
@@ -1396,7 +1399,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if (!config.DistanceBands.IsCreated)
                     return 0;
 
-                return PhysicsTriggerSectorMath.Bucket(distSq, ref config.DistanceBands.Value.SquaredThresholds);
+                return PhysicsTriggerSectorMath.Bucket(distSq, ref config.DistanceBands.Value.Thresholds);
             }
 
             private static float NormalizedClipTime(in TimerData timer, in TimeTransform tt)

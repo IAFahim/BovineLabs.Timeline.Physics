@@ -192,6 +192,11 @@ namespace BovineLabs.Timeline.Physics.Shapes
             // their radius from scale.x; box/cylinder bevel clamped so the geometry setter never rejects it.
             private static unsafe void Apply(Collider* ptr, in PhysicsShapeResizeState s, float3 scale)
             {
+                // The blob under us can be swapped for a different collider type mid-clip (PhysicsShapeSwap). Writing
+                // the captured type's geometry into a blob that is now another type corrupts memory, so bail if the
+                // live type no longer matches what we captured. Restore then simply skips too (nothing safe to undo).
+                if (ptr->Type != (ColliderType)s.Type) return;
+
                 switch ((ColliderType)s.Type)
                 {
                     case ColliderType.Sphere:

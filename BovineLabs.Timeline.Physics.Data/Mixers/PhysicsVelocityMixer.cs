@@ -23,9 +23,9 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
 
         private static bool IsDefault(in PhysicsVelocityData v)
         {
-            return v.Mode == PhysicsVelocityMode.SetContinuous &&
-                   math.all(v.Linear == float3.zero) &&
-                   math.all(v.Angular == float3.zero);
+            // Explicit identity, not structural: an authored clip carries Present=1 (set at bake), so a legitimate
+            // zero-velocity SetContinuous "stop" clip is no longer mistaken for the injected empty-slot default.
+            return v.Present == 0;
         }
 
         public PhysicsVelocityData Add(in PhysicsVelocityData a, in PhysicsVelocityData b)

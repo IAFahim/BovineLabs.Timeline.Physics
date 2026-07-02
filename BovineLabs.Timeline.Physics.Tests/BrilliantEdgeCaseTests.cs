@@ -4,6 +4,7 @@ using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.Physics.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using BovineLabs.Timeline.Physics.Data.Mixers;
 using BovineLabs.Timeline.Physics.Drags;
 using BovineLabs.Timeline.Physics.Forces;
@@ -209,6 +210,50 @@ namespace BovineLabs.Timeline.Physics.Tests
                 "Angular vectors should be added even if spaces differ.");
         }
 
+        // B1: a designer's zero-velocity "stop"/brake clip (SetContinuous, 0) is byte-identical to
+        // default(PhysicsVelocityData). Before the Present marker the mixer treated it as an empty slot, so the brake
+        // lost every crossfade against another clip even when it was the dominant weight. The blend framework hands
+        // the dominant slot as `a` with s = the OTHER slot's weight (< 0.5), so Lerp(stop, other, 0.4) is the exact
+        // discrete pick the bug corrupted.
+        [Test]
+        public void VelocityMixer_DominantZeroStopClip_WinsDiscretePick()
+        {
+            var stop = new PhysicsVelocityData
+            {
+                Mode = PhysicsVelocityMode.SetContinuous, Linear = float3.zero, Present = 1,
+            };
+            var other = new PhysicsVelocityData
+            {
+                Mode = PhysicsVelocityMode.AddContinuous, Linear = new float3(5, 0, 0), Present = 1,
+            };
+
+            var result = new PhysicsVelocityMixer().Lerp(stop, other, 0.4f);
+
+            Assert.AreEqual(PhysicsVelocityMode.SetContinuous, result.Mode,
+                "The dominant zero-velocity stop clip must win the discrete Mode, not be discarded as an empty slot.");
+        }
+
+        // B1 (DiscreteMixer consumer): an all-zero filter override ("belongs to nothing / collides with nothing" =
+        // phase through everything) is byte-identical to default apart from the Present marker. Without it the
+        // dominant phase-through clip loses the crossfade to any non-zero filter clip.
+        [Test]
+        public void FilterOverrideMixer_DominantPhaseThrough_WinsDiscretePick()
+        {
+            var phaseThrough = new PhysicsFilterOverrideData
+            {
+                BelongsToOverride = 0, CollidesWithOverride = 0, Present = 1,
+            };
+            var solid = new PhysicsFilterOverrideData
+            {
+                BelongsToOverride = 5, CollidesWithOverride = 5, Present = 1,
+            };
+
+            var result = new DiscreteMixer<PhysicsFilterOverrideData>().Lerp(phaseThrough, solid, 0.4f);
+
+            Assert.AreEqual(0u, result.BelongsToOverride,
+                "The dominant all-zero phase-through override must win the blend, not be treated as an empty slot.");
+        }
+
         #endregion
 
         #region Force Accumulator Edge Cases
@@ -364,7 +409,7 @@ namespace BovineLabs.Timeline.Physics.Tests
         #region Extreme Values
 
         [Test]
-        public void VelocityOverride_NaNInConfig_PropagatesNaN()
+        public void VelocityOverride_NaNInConfig_IsRejected()
         {
             var target = Manager.CreateEntity();
             Manager.AddComponentData(target, LocalTransform.Identity);
@@ -386,9 +431,11 @@ namespace BovineLabs.Timeline.Physics.Tests
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
 
+            // PhysicsVelocityOverrideSystem.OverrideJob guards `math.isfinite` and skips non-finite writes, so a NaN
+            // in the config must NOT poison the body's velocity — it stays at its prior (zero) value.
             var vel = Manager.GetComponentData<PhysicsVelocity>(target);
-            Assert.IsTrue(float.IsNaN(vel.Linear.y),
-                "NaN should propagate (system should not crash, but output is NaN)");
+            Assert.IsFalse(float.IsNaN(vel.Linear.y), "NaN in config must be rejected, not written to velocity");
+            Assert.AreEqual(0f, vel.Linear.y, "velocity should be unchanged when the override is non-finite");
         }
 
         [Test]

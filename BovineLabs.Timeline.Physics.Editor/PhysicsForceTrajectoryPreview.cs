@@ -191,7 +191,7 @@ namespace BovineLabs.Timeline.Physics.Editor
         {
             var mag = force.directionMode == PhysicsForceDirectionMode.FixedVector
                 ? ((Vector3)force.linearForce).magnitude
-                : force.magnitude;
+                : force.directionStrength;
             var modeTag = force.mode == PhysicsForceMode.Impulse ? "impulse" : "continuous";
             var label = $"{force.directionMode} · {modeTag} · mag {mag:0.#} · {force.space} space";
             if (force.latchDirection) label += " · latched";

@@ -144,21 +144,9 @@ namespace BovineLabs.Timeline.Physics.Editor
         private static void DrawNonFixed(PhysicsForceClip force, PhysicsBodyAuthoring body, Vector3 origin, float size)
         {
             var arrowLen = size * 1.5f;
-            var basis = force.space == Target.Self ? body.transform.rotation : Quaternion.identity;
 
             switch (force.directionMode)
             {
-                case PhysicsForceDirectionMode.RandomSphere:
-                    Handles.color = ArcColor;
-                    Handles.DrawWireDisc(origin, Vector3.up, arrowLen);
-                    Handles.DrawWireDisc(origin, Vector3.right, arrowLen);
-                    Handles.DrawWireDisc(origin, Vector3.forward, arrowLen);
-                    break;
-
-                case PhysicsForceDirectionMode.RandomCone:
-                    DrawCone(force, basis, origin, arrowLen);
-                    break;
-
                 case PhysicsForceDirectionMode.AlongVelocity:
                 case PhysicsForceDirectionMode.AgainstVelocity:
                 {
@@ -188,30 +176,6 @@ namespace BovineLabs.Timeline.Physics.Editor
 
             Handles.color = MutedColor;
             Label(origin + Vector3.up * size * 0.25f, DataLabel(force));
-        }
-
-        private static void DrawCone(PhysicsForceClip force, Quaternion basis, Vector3 origin, float len)
-        {
-            DrawConeRay(basis, force.coneAzimuthCenter, force.coneElevationCenter, origin, len, LaunchColor);
-
-            var az = force.coneAzimuthHalfRange;
-            var el = force.coneElevationHalfRange;
-            DrawConeRay(basis, force.coneAzimuthCenter + az, force.coneElevationCenter + el, origin, len, ArcColor);
-            DrawConeRay(basis, force.coneAzimuthCenter - az, force.coneElevationCenter + el, origin, len, ArcColor);
-            DrawConeRay(basis, force.coneAzimuthCenter + az, force.coneElevationCenter - el, origin, len, ArcColor);
-            DrawConeRay(basis, force.coneAzimuthCenter - az, force.coneElevationCenter - el, origin, len, ArcColor);
-        }
-
-        private static void DrawConeRay(Quaternion basis, float azDeg, float elDeg, Vector3 origin, float len,
-            Color color)
-        {
-            var az = azDeg * Mathf.Deg2Rad;
-            var el = elDeg * Mathf.Deg2Rad;
-            var cosEl = Mathf.Cos(el);
-            var local = new Vector3(cosEl * Mathf.Sin(az), Mathf.Sin(el), cosEl * Mathf.Cos(az));
-            var dir = basis * local;
-            Handles.color = color;
-            Handles.DrawAAPolyLine(4f, origin, origin + dir * len);
         }
 
         private static void DrawArrow(Vector3 origin, Vector3 vector, Color color, float size)

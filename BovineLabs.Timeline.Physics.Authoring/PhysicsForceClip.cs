@@ -5,7 +5,6 @@ using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Timeline;
 
@@ -21,6 +20,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
                  "hits/launches that must land even while the body is air-braking.")]
         public MotionChannel channel = MotionChannel.Intent;
 
+        [Tooltip("Directed push only (fixed vector / toward-away target / along-against velocity). " +
+                 "For random sphere/cone scatter use PhysicsScatterForceClip instead.")]
         public PhysicsForceDirectionMode directionMode = PhysicsForceDirectionMode.FixedVector;
 
         [Header("Fixed Vector")] public Vector3 linearForce = new(0, 0, 0);
@@ -32,21 +33,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Target directionTarget = Target.Target;
         public EntityLinkSchema directionTargetLink;
 
-        [Header("Random Cone (degrees)")]
-        [Tooltip("Azimuth 0 points along +Z of the Space frame; 180 points behind it.")]
-        public float coneAzimuthCenter;
-
-        [Range(0f, 180f)] public float coneAzimuthHalfRange = 30f;
-
-        public float coneElevationCenter;
-
-        [Range(0f, 89f)] public float coneElevationHalfRange = 15f;
-
-        [Header("Randomness")]
-        [Tooltip("Offsets this body's random stream. 0 is valid; entity identity already decorrelates bodies.")]
-        public uint seed;
-
-        [Tooltip("Sample random/velocity-relative directions once per clip activation and hold them. " +
+        [Header("Direction Latch")]
+        [Tooltip("Sample velocity-relative directions once per clip activation and hold them. " +
                  "Disable to re-evaluate every fire.")]
         public bool latchDirection = true;
 
@@ -67,6 +55,17 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
+
+            // Scatter was split into PhysicsScatterForceClip; a directed-force clip left on a random mode has no cone
+            // params, so fall back to a fixed vector rather than bake a degenerate zero-cone.
+            var resolvedMode = directionMode;
+            if (resolvedMode is PhysicsForceDirectionMode.RandomSphere or PhysicsForceDirectionMode.RandomCone)
+            {
+                Debug.LogWarning($"[{nameof(PhysicsForceClip)}] {name}: '{directionMode}' scatter moved to " +
+                    $"PhysicsScatterForceClip; baking as FixedVector. Recreate this clip as a Scatter Force clip.");
+                resolvedMode = PhysicsForceDirectionMode.FixedVector;
+            }
+
             ushort readStatKey = 0;
             if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
                 readStatKey = k1;
@@ -81,17 +80,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     Mode = mode,
                     Channel = channel,
-                    DirectionMode = directionMode,
+                    DirectionMode = resolvedMode,
                     Linear = linearForce,
                     Space = space,
                     Magnitude = magnitude,
                     DirectionTarget = directionTarget,
                     DirectionTargetLinkKey = dirLinkKey,
-                    ConeAzimuthCenter = math.radians(coneAzimuthCenter),
-                    ConeAzimuthHalfRange = math.radians(coneAzimuthHalfRange),
-                    ConeElevationCenter = math.radians(coneElevationCenter),
-                    ConeElevationHalfRange = math.radians(coneElevationHalfRange),
-                    Seed = seed,
                     LatchDirection = latchDirection,
                     ResetVelocityOnFire = resetVelocityOnFire,
                     Angular = angularForce,

@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Properties;
 
@@ -11,15 +12,20 @@ namespace BovineLabs.Timeline.Physics
         public bool ZeroGravity;
     }
 
-    public struct PhysicsKinematicOverrideAnimated : IAnimatedComponent<PhysicsKinematicOverrideData>
+    public struct PhysicsKinematicOverrideAnimated : IAnimatedComponent<PhysicsKinematicOverrideData>, IPreparable
     {
         public PhysicsKinematicOverrideData AuthoredData;
         [CreateProperty] public PhysicsKinematicOverrideData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveKinematicOverride : IComponentData, IEnableableComponent
+    public struct ActiveKinematicOverride : IActive<PhysicsKinematicOverrideData>
     {
-        public PhysicsKinematicOverrideData Config;
+        public PhysicsKinematicOverrideData Config { get; set; }
     }
 
     public struct PhysicsKinematicOverrideState : IComponentData

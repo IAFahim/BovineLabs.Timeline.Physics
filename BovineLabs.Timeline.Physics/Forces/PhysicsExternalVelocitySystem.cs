@@ -16,8 +16,6 @@ namespace BovineLabs.Timeline.Physics.Forces
     [Configurable]
     public static class ExternalVelocityConfig
     {
-        // ponytail: one global decay rate. A per-body decay component is the upgrade path if a designer ever needs a
-        // heavy knockback to slide longer than a light one — until then this single knob is the whole tuning surface.
         [ConfigVar("external-velocity.decay-rate", 8f,
             "Per-second exponential decay rate of the external (knockback) velocity channel. Higher = the hit fades " +
             "faster (more impulse-like); lower = the body slides further before recovering. ~8 ≈ a 0.15s slide.")]
@@ -128,8 +126,6 @@ namespace BovineLabs.Timeline.Physics.Forces
 
                             inbox.Clear();
 
-                            // Convert impulse -> velocity delta with the exact mass/inertia kernel intent forces use,
-                            // by applying the impulse to a zero velocity and taking the resulting delta.
                             var mass = hasMass
                                 ? masses[i]
                                 : PhysicsMass.CreateKinematic(MassProperties.UnitSphere);
@@ -141,7 +137,6 @@ namespace BovineLabs.Timeline.Physics.Forces
                         }
                     }
 
-                    // Ride the external channel on top of intent for the solver. Removed again post-solve.
                     if (math.lengthsq(external.Linear) > 0f || math.lengthsq(external.Angular) > 0f)
                     {
                         var velocity = velocities[i];
@@ -177,8 +172,6 @@ namespace BovineLabs.Timeline.Physics.Forces
         {
             JobChunkWorkerBeginEndExtensions.EarlyJobInit<DecomposeJob>();
 
-            // Match the compose query exactly (it requires LocalToWorld). Decompose doesn't read the transform, but
-            // keeping the body sets identical makes "subtract what was never added" structurally impossible.
             _query = SystemAPI.QueryBuilder()
                 .WithAllRW<PhysicsVelocity, ExternalVelocity>()
                 .WithAll<LocalToWorld>()
@@ -196,8 +189,6 @@ namespace BovineLabs.Timeline.Physics.Forces
             _velocityHandle.Update(ref state);
             _externalHandle.Update(ref state);
 
-            // decay = e^(-rate*dt): frame-rate independent, deterministic per dt. Floor the rate to a small positive
-            // value so a misconfigured rate <= 0 can never freeze a knockback into the channel forever.
             var dt = SystemAPI.Time.DeltaTime;
             var rate = math.max(1e-3f, ExternalVelocityConfig.DecayRate.Data);
             var decay = dt > 0f ? math.exp(-rate * dt) : 1f;
@@ -217,7 +208,6 @@ namespace BovineLabs.Timeline.Physics.Forces
             public ComponentTypeHandle<ExternalVelocity> ExternalHandle;
             public float Decay;
 
-            // Below this the channel is treated as spent and snapped to zero so it can't leave a permanent drift.
             private const float RestEpsilonSq = 1e-6f;
 
             public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
@@ -235,13 +225,6 @@ namespace BovineLabs.Timeline.Physics.Forces
                         continue;
                     }
 
-                    // Subtract exactly what compose added (decay happens AFTER, so the two always cancel).
-                    // ponytail: deliberate punt — we subtract the full pre-solve channel even if the solver clamped it
-                    // on a contact (knockback into a wall), so a hard wall hit leaves a small away-from-surface residue
-                    // on the intent channel that decays out within the channel's lifetime. Attributing the post-solve
-                    // delta back to the right channel needs un-mixable collision-impulse provenance; the forward-only
-                    // model stays deterministic precisely by not attempting it. Upgrade (clamp along channel dir) only
-                    // if knockback-into-static becomes a felt problem.
                     var velocity = velocities[i];
                     velocity.Linear -= external.Linear;
                     velocity.Angular -= external.Angular;

@@ -11,4 +11,13 @@ namespace BovineLabs.Timeline.Physics.Data.Kernels
     {
         void ResetToAuthored();
     }
+
+    /// <summary>
+    /// Track state that accumulates render-rate clip-active time for a fixed-step consumer
+    /// (the ElapsedTime/AppliedTime determinism bridge — see PhysicsForceState).
+    /// </summary>
+    public interface IElapsedTimeState
+    {
+        float ElapsedTime { get; set; }
+    }
 }

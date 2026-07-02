@@ -110,6 +110,31 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         }
     }
 
+    /// <summary>
+    /// Accumulates render-rate clip-active time on the bound body, per blend entry. Keyed by the per-body blend
+    /// result, so overlapping clips on one body count once (unlike per-clip chunk iteration, which double-counts).
+    /// </summary>
+    [BurstCompile]
+    public struct AdvanceElapsedTimeJob<TData, TState> : IJobParallelHashMapDefer
+        where TData : unmanaged
+        where TState : unmanaged, IComponentData, IElapsedTimeState
+    {
+        [ReadOnly] public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly BlendData;
+
+        [NativeDisableParallelForRestriction] public ComponentLookup<TState> StateLookup;
+        public float DeltaTime;
+
+        public void ExecuteNext(int entryIndex, int jobIndex)
+        {
+            this.Read(BlendData, entryIndex, out var entity, out MixData<TData> _);
+            if (!StateLookup.HasComponent(entity)) return;
+
+            var s = StateLookup[entity];
+            s.ElapsedTime += DeltaTime;
+            StateLookup[entity] = s;
+        }
+    }
+
     [BurstCompile]
     public struct WriteActiveJob<TData, TActive, TMixer> : IJobParallelHashMapDefer
         where TData : unmanaged

@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Properties;
 
@@ -25,15 +26,20 @@ namespace BovineLabs.Timeline.Physics
         public StatStrengthConfig Strength;
     }
 
-    public struct PhysicsRicochetAnimated : IAnimatedComponent<PhysicsRicochetData>
+    public struct PhysicsRicochetAnimated : IAnimatedComponent<PhysicsRicochetData>, IPreparable
     {
         public PhysicsRicochetData AuthoredData;
         [CreateProperty] public PhysicsRicochetData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveRicochet : IComponentData, IEnableableComponent
+    public struct ActiveRicochet : IActive<PhysicsRicochetData>
     {
-        public PhysicsRicochetData Config;
+        public PhysicsRicochetData Config { get; set; }
     }
 
     public struct PhysicsRicochetState : IComponentData

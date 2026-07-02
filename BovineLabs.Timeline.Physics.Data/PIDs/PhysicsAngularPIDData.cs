@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -18,15 +19,20 @@ namespace BovineLabs.Timeline.Physics
         public StatStrengthConfig StrengthStat;
     }
 
-    public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>
+    public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>, IPreparable
     {
         public PhysicsAngularPIDData AuthoredData;
         [CreateProperty] public PhysicsAngularPIDData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveAngularPid : IComponentData, IEnableableComponent
+    public struct ActiveAngularPid : IActive<PhysicsAngularPIDData>
     {
-        public PhysicsAngularPIDData Config;
+        public PhysicsAngularPIDData Config { get; set; }
     }
 
     public struct PhysicsAngularPIDState : IComponentData

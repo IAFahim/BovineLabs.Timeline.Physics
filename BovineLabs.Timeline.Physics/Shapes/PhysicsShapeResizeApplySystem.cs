@@ -15,10 +15,6 @@ using SphereCollider = Unity.Physics.SphereCollider;
 
 namespace BovineLabs.Timeline.Physics.Shapes
 {
-    // Mirrors PhysicsFilterOverrideApplySystem but mutates the collider GEOMETRY (size) instead of the filter.
-    // Captures the original primitive geometry on enter, sets absolute (= original * scale) each frame so it is
-    // idempotent and crossfade-safe, and restores the original on exit. Sphere/Box/Capsule/Cylinder supported;
-    // convex/mesh/compound are skipped with a warning (no cheap exact resize).
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
@@ -93,8 +89,6 @@ namespace BovineLabs.Timeline.Physics.Shapes
 
                     if (!collider.IsUnique)
                     {
-                        // Warn once per body, Burst-visibly (do NOT set state.Fired — nothing was captured, so the
-                        // restore branch must not run on exit).
                         if (isActive && !state.WarnedShared)
                         {
                             Logger.LogWarning512(
@@ -129,7 +123,7 @@ namespace BovineLabs.Timeline.Physics.Shapes
                     else if (!isActive && state.Fired)
                     {
                         if (state.Type != Unsupported && actives[i].Config.RestoreOnExit)
-                            Apply(ptr, in state, new float3(1f)); // absolute restore to the captured original
+                            Apply(ptr, in state, new float3(1f));
 
                         state.Fired = false;
                         states[i] = state;
@@ -137,7 +131,6 @@ namespace BovineLabs.Timeline.Physics.Shapes
                 }
             }
 
-            // Read the primitive geometry into the packed state. Returns false for unsupported types.
             private static unsafe bool Capture(Collider* ptr, ref PhysicsShapeResizeState s)
             {
                 switch (ptr->Type)
@@ -156,7 +149,7 @@ namespace BovineLabs.Timeline.Physics.Shapes
                         var g = ((BoxCollider*)ptr)->Geometry;
                         s.OrigCenter = g.Center;
                         s.OrigB = g.Size;
-                        s.OrigRadius = g.BevelRadius; // box stores bevel here
+                        s.OrigRadius = g.BevelRadius;
                         s.OrigOrient = g.Orientation;
                         s.Type = (byte)ColliderType.Box;
                         return true;
@@ -188,13 +181,8 @@ namespace BovineLabs.Timeline.Physics.Shapes
                 }
             }
 
-            // Set absolute geometry = captured original * scale (scale (1,1,1) restores). Radius-based shapes take
-            // their radius from scale.x; box/cylinder bevel clamped so the geometry setter never rejects it.
             private static unsafe void Apply(Collider* ptr, in PhysicsShapeResizeState s, float3 scale)
             {
-                // The blob under us can be swapped for a different collider type mid-clip (PhysicsShapeSwap). Writing
-                // the captured type's geometry into a blob that is now another type corrupts memory, so bail if the
-                // live type no longer matches what we captured. Restore then simply skips too (nothing safe to undo).
                 if (ptr->Type != (ColliderType)s.Type) return;
 
                 switch ((ColliderType)s.Type)

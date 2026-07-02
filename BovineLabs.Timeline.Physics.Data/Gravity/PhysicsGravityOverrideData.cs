@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -11,15 +12,20 @@ namespace BovineLabs.Timeline.Physics
         public bool RestoreOnExit;
     }
 
-    public struct PhysicsGravityOverrideAnimated : IAnimatedComponent<PhysicsGravityOverrideData>
+    public struct PhysicsGravityOverrideAnimated : IAnimatedComponent<PhysicsGravityOverrideData>, IPreparable
     {
         public PhysicsGravityOverrideData AuthoredData;
         [CreateProperty] public PhysicsGravityOverrideData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveGravityOverride : IComponentData, IEnableableComponent
+    public struct ActiveGravityOverride : IActive<PhysicsGravityOverrideData>
     {
-        public PhysicsGravityOverrideData Config;
+        public PhysicsGravityOverrideData Config { get; set; }
     }
 
     public struct PhysicsGravityOverrideState : IComponentData

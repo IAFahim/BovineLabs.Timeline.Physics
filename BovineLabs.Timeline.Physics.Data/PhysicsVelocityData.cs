@@ -35,7 +35,7 @@ namespace BovineLabs.Timeline.Physics.Data
         public byte Present;
     }
 
-    public struct PhysicsVelocityState : IComponentData
+    public struct PhysicsVelocityState : IComponentData, IElapsedTimeState
     {
         public bool Fired;
         public bool ResetApplied;
@@ -45,6 +45,12 @@ namespace BovineLabs.Timeline.Physics.Data
         // instead of the fixed dt makes total Δv framerate-independent. Mirrors PhysicsForceState.
         public float ElapsedTime;
         public float AppliedTime;
+
+        float IElapsedTimeState.ElapsedTime
+        {
+            get => ElapsedTime;
+            set => ElapsedTime = value;
+        }
     }
 
     public struct PhysicsVelocityAnimated : IAnimatedComponent<PhysicsVelocityData>, IPreparable

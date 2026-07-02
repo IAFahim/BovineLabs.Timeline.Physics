@@ -83,9 +83,6 @@ namespace BovineLabs.Timeline.Physics.Filters
 
                     if (!collider.IsUnique)
                     {
-                        // Warn once per body (Burst-visible, unlike the old [BurstDiscard] Debug.LogWarning which
-                        // was compiled out of the job entirely). Do NOT touch state.Fired — nothing was applied,
-                        // so the restore path must not run on exit.
                         if (!state.WarnedShared)
                         {
                             Logger.LogWarning512(

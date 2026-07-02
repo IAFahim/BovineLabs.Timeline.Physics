@@ -88,6 +88,9 @@ namespace BovineLabs.Timeline.Physics.Tests
             Manager.AddComponentData(clip, config);
             Manager.AddComponentData(clip, new PhysicsTriggerFilterData { IgnoreTarget = Target.None });
             Manager.AddComponentData(clip, new PhysicsTriggerQueryState());
+            // The query system requires an enabled PhysicsClipGate (the fixed-step activation gate); enableable
+            // components added via AddComponentData start enabled, and FirstFrame/LastFrame default to 0.
+            Manager.AddComponentData(clip, new PhysicsClipGate());
             Manager.AddBuffer<StatefulTriggerEvent>(clip);
             return clip;
         }

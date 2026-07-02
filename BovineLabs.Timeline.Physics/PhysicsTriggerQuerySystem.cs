@@ -153,9 +153,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         {
             public Entity Routed;
             public Entity Winner;
-            public Entity Self; // for MirrorIntoWinner (single-threaded write); Null = no mirror
+            public Entity Self;
             public bool WriteSlot;
-            public bool ClearHitBuffer; // first event for this query clears the hit buffer
+            public bool ClearHitBuffer;
             public bool WriteHit;
             public PhysicsTriggerRouteSlot Slot;
             public PhysicsTriggerWriteMode WriteMode;
@@ -242,8 +242,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             NormalizedClipTimeAt(timers[i].Time - timers[i].DeltaTime, timeTransforms[i]);
                     }
 
-                    // FrameWindowGate: a hard whole-query gate on clip-normalized time. Crossing-aware over the
-                    // timer's [previous, current] interval so a low-FPS step that jumps the whole window still opens it.
                     var windowLo = math.min(prevNormalizedTime, normalizedTime);
                     var windowHi = math.max(prevNormalizedTime, normalizedTime);
                     var windowOpen = !FlagSet(config.Gates, PhysicsTriggerGateFlags.FrameWindowGate) ||
@@ -319,8 +317,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 public bool IsLastFrame;
                 public bool WindowOpen;
                 public int RaycastsLeft;
-                public float NormalizedTime; // clip-local [0,1] for TimingWindowGrade
-                public float ElapsedTime; // world elapsed time for TauntOverride expiry
+                public float NormalizedTime;
+                public float ElapsedTime;
             }
 
             /// <summary>
@@ -329,9 +327,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             /// </summary>
             private struct CollisionInfo
             {
-                public bool HasCollision; // a StatefulCollisionEvent for this candidate this frame
-                public float3 Normal; // contact normal (valid whenever HasCollision)
-                public bool HasDetails; // CalculateDetails was enabled → EstimatedImpulse is meaningful
+                public bool HasCollision;
+                public float3 Normal;
+                public bool HasDetails;
                 public float EstimatedImpulse;
             }
 
@@ -344,10 +342,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 public CollisionInfo Collision;
             }
 
-            // ----------------------------------------------------------------------------------------------
-            // SINGLE-WINNER path (Nearest .. DwellSelect)
-            // ----------------------------------------------------------------------------------------------
-
             private void ProcessSingle(in QueryContext ctx, in PhysicsTriggerQueryData config,
                 in PhysicsTriggerFilterData filter, in Targets targets, ref PhysicsTriggerQueryState queryState,
                 NativeArray<TimerData> timers, NativeArray<TimeTransform> timeTransforms, bool hasTiming, int i)
@@ -357,7 +351,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var survivorCount = 0;
                 var raycastsLeft = ctx.RaycastsLeft;
 
-                // TabCycle needs the FULL survivor set ordered by a stable key (R5 note); collected only for it.
                 var isTabCycle = config.Selection == PhysicsTriggerQuerySelection.TabCycle;
                 var survivors = new FixedList64Bytes<Entity>();
                 var survivorKeys = new FixedList128Bytes<float>();
@@ -377,7 +370,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 ref survivorCount, ref raycastsLeft, isTabCycle, ref survivors, ref survivorKeys);
                 }
 
-                // STABILITY — StickyWinner.
                 var winner = best.Entity;
                 if (incumbent.Entity != Entity.Null && config.SwitchMargin != 0)
                 {
@@ -386,24 +378,18 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         winner = incumbent.Entity;
                 }
 
-                // SELECTION — TabCycle: pick the successor of LastWinner in the stable (angle, index) ordering,
-                // advancing on the re-fire edge. NOTE: the cycle breaks (restarts from the head) if the survivor
-                // set changes mid-cycle, because the prior ordering is recomputed each frame from live survivors.
                 if (isTabCycle)
                     winner = TabCycleSuccessor(in queryState, ref survivors, ref survivorKeys);
 
-                // STABILITY — PerTargetRefractory: a winner still in refractory can't win again this acquisition.
                 if (winner != Entity.Null && config.PerTargetRefractoryFrames > 0 &&
                     IsInRefractory(in queryState, winner))
                     winner = Entity.Null;
 
-                // STABILITY — DwellToAcquire: a candidate must have survived gating N consecutive frames to win.
                 if (winner != Entity.Null && config.DwellToAcquireFrames > 0 &&
                     !PhysicsTriggerSectorMath.DwellAcquired((ushort)math.min(GetDwell(winner, in queryState),
                         ushort.MaxValue), config.DwellToAcquireFrames))
                     winner = Entity.Null;
 
-                // The winner's collision data (for ‡ value modes) — known when the winner is this frame's best/incumbent.
                 var winnerCollision = winner == best.Entity ? best.Collision :
                     winner == incumbent.Entity ? incumbent.Collision : default;
 
@@ -440,7 +426,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     (score == best.Score && IsLowerEntity(other, best.Entity)))
                     best = candidate;
 
-                // TabCycle: record the survivor with its stable angle key (capped — drops past capacity, documented).
                 if (collectSurvivors && survivors.Length < survivors.Capacity)
                 {
                     survivors.Add(other);
@@ -460,10 +445,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 return info;
             }
 
-            // ----------------------------------------------------------------------------------------------
-            // MULTI-WINNER path (AllSurvivorsFanout, TopK)
-            // ----------------------------------------------------------------------------------------------
-
             private void ProcessMulti(in QueryContext ctx, in PhysicsTriggerQueryData config,
                 in PhysicsTriggerFilterData filter, in Targets targets, ref PhysicsTriggerQueryState queryState,
                 NativeArray<TimerData> timers, NativeArray<TimeTransform> timeTransforms, bool hasTiming, int i)
@@ -471,7 +452,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var cap = math.clamp(config.MaxTargets <= 0 ? 1 : config.MaxTargets, 1, 7);
                 var raycastsLeft = ctx.RaycastsLeft;
 
-                // Insertion-sorted top-cap by score (TopK). For AllSurvivorsFanout we still cap (drop past cap).
                 var winners = new FixedList64Bytes<Entity>();
                 var scores = new FixedList128Bytes<float>();
                 var sectors = new FixedList128Bytes<int>();
@@ -512,12 +492,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 survivorCount++;
                 MarkTracked(ref queryState, other);
-                centroidSum += otherLtw.Position; // AggregateCentroid: Σpos over ALL survivors (pre-cap)
+                centroidSum += otherLtw.Position;
 
                 var score = ScoreCandidate(in ctx, other, in collision, in config, in targets, offset, distSq,
                     alignment, otherLtw, in queryState, ref raycastsLeft);
 
-                // Insertion sort descending by score; cap at `cap` (drop the lowest past cap — documented).
                 var insertAt = winners.Length;
                 for (var k = 0; k < winners.Length; k++)
                     if (score > scores[k])
@@ -527,7 +506,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     }
 
                 if (insertAt >= cap)
-                    return; // worse than everything we keep; dropped past cap
+                    return;
 
                 winners.InsertRangeWithBeginEnd(insertAt, insertAt + 1);
                 scores.InsertRangeWithBeginEnd(insertAt, insertAt + 1);
@@ -543,7 +522,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 scores[insertAt] = score;
                 sectors[insertAt] = sector;
                 bands[insertAt] = band;
-                // Pre-compute the per-survivor value now so collision-data (‡) modes get THIS body's contact.
                 values[insertAt] = ComputeValueFor(in ctx, in config, other, in collision, ctx.SelfPos, ctx.SelfRot,
                     ctx.SelfVel, sector, band, survivorCount, ref queryState, ref raycastsLeft);
 
@@ -565,10 +543,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var isTopK = config.Selection == PhysicsTriggerQuerySelection.TopK;
                 var firstHit = true;
 
-                // AggregateCentroid: the centroid's DirectionSector overrides every survivor's value (the vortex
-                // pulls toward the swarm centre). A synthesized anchor entity isn't feasible in a Burst job (no
-                // structural changes), so we emit the centroid SECTOR as the shared value and still route each
-                // survivor into the slot — documented choice.
                 var centroidSector = int.MinValue;
                 if (survivorCount > 0)
                 {
@@ -580,32 +554,24 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 {
                     var w = winners[k];
 
-                    // PerTargetRefractory.
                     if (config.PerTargetRefractoryFrames > 0 && IsInRefractory(in queryState, w))
                         continue;
 
-                    // value: TopK = rank; AllSurvivorsFanout = the per-winner precomputed value.
                     var value = isTopK ? k : values[k];
 
-                    // AggregateCentroid value override: emit the centroid bearing as the shared value.
                     if (config.ValueMode == PhysicsTriggerQueryValueMode.AggregateCentroid && centroidSector != int.MinValue)
                         value = centroidSector;
 
-                    // TopK routes into an indexed slot offset; AllSurvivors uses the fixed route slot.
                     var slot = config.RouteSlot;
 
-                    // Per-entity found EDGE: only fire foundCondition for a survivor that wasn't in last frame's
-                    // set (mirrors the single-winner winner != LastWinner edge). The hit buffer still snapshots ALL
-                    // current survivors below, regardless of edge.
                     var isNewThisFrame = !ContainsEntity(in queryState.LastWinnerSet, w);
                     var fireFound = isNewThisFrame ? config.FoundCondition : ConditionKey.Null;
 
-                    // RedirectToLinkedRole §: route through THIS survivor's outbound EntityLink (pet → master).
                     var routeTo = config.RouteTo;
                     var routeLinkKey = config.RouteLinkKey;
                     if (config.RouteMode == PhysicsTriggerRouteMode.LinkedRole)
                     {
-                        routeTo = Target.Target; // Target == the survivor (other) in TryResolveLinkedTarget
+                        routeTo = Target.Target;
                         routeLinkKey = config.RedirectLinkKey;
                     }
 
@@ -634,7 +600,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     firstHit = false;
                 }
 
-                // Multi-winner lost edge: bodies in last frame's set that are gone now fire the lost condition.
                 if (!config.LostCondition.Equals(ConditionKey.Null))
                     for (var k = 0; k < queryState.LastWinnerSet.Length; k++)
                     {
@@ -654,7 +619,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             });
                     }
 
-                // Persist the new winner set (capped at FixedList64Bytes capacity).
                 queryState.LastWinnerSet.Clear();
                 for (var k = 0; k < winners.Length && queryState.LastWinnerSet.Length < queryState.LastWinnerSet.Capacity; k++)
                     queryState.LastWinnerSet.Add(winners[k]);
@@ -670,10 +634,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 return false;
             }
 
-            // ----------------------------------------------------------------------------------------------
-            // GATING (shared by single + multi)
-            // ----------------------------------------------------------------------------------------------
-
             private bool GateCandidate(in QueryContext ctx, Entity other, StatefulEventState eventState,
                 in CollisionInfo collision, in PhysicsTriggerQueryData config, in PhysicsTriggerFilterData filter,
                 in Targets targets, ref int raycastsLeft, out float3 offset, out float distSq, out float alignment,
@@ -688,7 +648,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if (!StatefulEventMatching.Matches(eventState, config.EventState, ctx.IsFirstFrame, ctx.IsLastFrame))
                     return false;
 
-                // GATING ExcludeRoles — broader than ignoreTarget; skip any routed-role entity.
                 if (config.ExcludeRoles != PhysicsTriggerRoleMask.None &&
                     IsExcludedRole(other, ctx.Self, in targets, config.ExcludeRoles))
                     return false;
@@ -711,8 +670,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 alignment = distSq > 1e-8f ? math.dot(ctx.Forward, offset * math.rsqrt(distSq)) : 1f;
                 if (alignment < ctx.MinAlignment) return false;
-
-                // ---- WAVE 2 gates ----
 
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.ApproachGate))
                 {
@@ -737,8 +694,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var d = lenSq > 1e-8f
                         ? math.dot(otherFwd, toSelf * math.rsqrt(lenSq))
                         : 1f;
-                    // back-turned: candidate's forward points AWAY from self → dot(fwd, toSelf) < -cos.
-                    // face-to-face: candidate's forward points TOWARD self → dot(fwd, toSelf) > cos.
                     var pass = config.FacingFaceToFace
                         ? d > config.FacingCosThreshold
                         : d < -config.FacingCosThreshold;
@@ -757,8 +712,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var hasMass = MassLookup.TryGetComponent(other, out var mass);
                     if (!hasMass)
                     {
-                        if (!config.MassIncludeStatic) return false; // static → no PhysicsMass
-                        // static treated as InverseMass 0
+                        if (!config.MassIncludeStatic) return false;
                         if (0f < config.MassInvMin || 0f > config.MassInvMax) return false;
                     }
                     else if (mass.InverseMass < config.MassInvMin || mass.InverseMass > config.MassInvMax)
@@ -769,7 +723,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.FactionGate))
                 {
-                    // External binding: games assign FactionMember. Missing component → treated as faction 0.
                     var faction = FactionLookup.TryGetComponent(other, out var fm) ? fm.Faction : 0;
                     if (faction is >= 0 and < 32)
                     {
@@ -777,15 +730,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     }
                     else if (config.FactionAllowMask != 0)
                     {
-                        return false; // out-of-range faction can't match a non-empty mask
+                        return false;
                     }
                 }
 
-                // LoS family — compute ONE ray, route to gate (RequireOccluded inverts) and reuse below for value.
                 if ((config.RequireLineOfSight || FlagSet(config.Gates, PhysicsTriggerGateFlags.RequireOccluded)) &&
                     HasCollisionWorld)
                 {
-                    if (raycastsLeft <= 0) return false; // budget exhausted → fail closed
+                    if (raycastsLeft <= 0) return false;
                     raycastsLeft--;
                     var clear = TeleportMath.CheckLineOfSight(in CollisionWorld, ctx.SelfPos, otherLtw.Position,
                         config.LineOfSightOffset, config.ObstacleMask, ctx.Self, other);
@@ -794,31 +746,21 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     if (FlagSet(config.Gates, PhysicsTriggerGateFlags.RequireOccluded) && clear) return false;
                 }
 
-                // ---- WAVE 3 gates ----
-
-                // ZoneStateGate † — require (or, inverted, exclude) the enableable TriggerQueryZoneTag.
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.ZoneStateGate))
                 {
-                    // TODO external zone binding: games enable/disable TriggerQueryZoneTag on their bodies.
                     var tagged = ZoneTagLookup.HasComponent(other) && ZoneTagLookup.IsComponentEnabled(other);
                     if (tagged == config.ZoneStateInvert) return false;
                 }
 
-                // LightExposureGate † — gate by an external illumination value vs a threshold.
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.LightExposureGate))
                 {
-                    // TODO external light system binding: a downstream system writes TriggerQueryExposure.Value.
                     var exposure = ExposureLookup.TryGetComponent(other, out var ex) ? ex.Value : 0f;
                     var bright = exposure >= config.LightExposureThreshold;
                     if (bright == config.LightExposureInvert) return false;
                 }
 
-                // SurfaceMaterialGate ‡ — gate by the collision contact filter bits. Passthrough on a pure trigger.
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.SurfaceMaterialGate))
                 {
-                    // ‡ collision-stream data. No collision event this frame → no-op (passthrough). The contact
-                    // material proxy here is the candidate collider's BelongsTo (no per-contact material in the
-                    // stateful event). TODO bind a real contact-material channel when one is available.
                     if (collision.HasCollision && config.SurfaceMaterialMask != 0)
                     {
                         var belongsTo = 0u;
@@ -828,25 +770,22 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     }
                 }
 
-                // DraftCorridorGate — keep only candidates in the rear slipstream capsule behind the LEADER (other).
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.DraftCorridorGate))
                 {
                     var leaderFwd = math.rotate(ResolveRotation(other), new float3(0f, 0f, 1f));
-                    // Project self's offset onto -leaderForward (behind the leader) and bound the perpendicular.
                     var toSelf = ctx.SelfPos - otherLtw.Position;
-                    var behind = math.dot(toSelf, -leaderFwd); // > 0 → self is behind the leader
+                    var behind = math.dot(toSelf, -leaderFwd);
                     if (behind < 0f || behind > config.DraftCorridorLength) return false;
-                    var perp = toSelf + leaderFwd * behind; // remove the along-axis component
+                    var perp = toSelf + leaderFwd * behind;
                     if (math.lengthsq(perp) > config.DraftCorridorRadius * config.DraftCorridorRadius) return false;
                 }
 
-                // PassLaneCone — a second cone whose axis is (refPos - selfPos); keep candidates inside it.
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.PassLaneCone))
                 {
                     if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.PassLaneRefTarget,
                             config.PassLaneRefLinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
                         !LtwLookup.TryGetComponent(refE, out var refLtw))
-                        return false; // no reference → can't form the lane
+                        return false;
                     var axis = refLtw.Position - ctx.SelfPos;
                     var axisLenSq = math.lengthsq(axis);
                     if (axisLenSq < 1e-8f || distSq < 1e-8f) return false;
@@ -854,16 +793,15 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     if (cos < config.PassLaneConeCos) return false;
                 }
 
-                // LedgeGate — short down-ray from the candidate; exclude bodies standing on ground (counts budget).
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.LedgeGate) && HasCollisionWorld)
                 {
-                    if (raycastsLeft <= 0) return false; // budget exhausted → fail closed
+                    if (raycastsLeft <= 0) return false;
                     raycastsLeft--;
                     var from = otherLtw.Position;
                     var to = from + new float3(0f, -math.max(config.LedgeRayDepth, Epsilon), 0f);
                     var hitGround = !TeleportMath.CheckLineOfSight(in CollisionWorld, from, to, 0f,
                         config.ObstacleMask, ctx.Self, other);
-                    if (hitGround) return false; // ground within depth → NOT over a void
+                    if (hitGround) return false;
                 }
 
                 return true;
@@ -880,10 +818,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if ((mask & PhysicsTriggerRoleMask.Target) != 0 && other == targets.Target) return true;
                 return false;
             }
-
-            // ----------------------------------------------------------------------------------------------
-            // SELECTION scoring (shared)
-            // ----------------------------------------------------------------------------------------------
 
             private float ScoreCandidate(in QueryContext ctx, Entity other, in CollisionInfo collision,
                 in PhysicsTriggerQueryData config, in Targets targets, float3 offset, float distSq, float alignment,
@@ -913,7 +847,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.WeakestTarget:
                     {
-                        // score = -statValue; a body with NO stat component never wins unless alone.
                         if (!TryReadStatRaw(in config, other, out var v))
                             return float.NegativeInfinity;
                         return -v;
@@ -922,7 +855,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     case PhysicsTriggerQuerySelection.CategoryPriority:
                     {
                         var ord = ReadCategoryOrdinal(in config, other);
-                        // tie-break by proximity (geometric) folded into the fractional part.
                         var prox = 1f / (1f + distSq);
                         return ord + prox * 0.001f;
                     }
@@ -936,7 +868,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.MostExposed:
                     {
-                        // Graded LoS openness — can't early out. Obey budget; no ray left → least exposed.
                         if (!HasCollisionWorld || raycastsLeft <= 0)
                             return 0f;
                         raycastsLeft--;
@@ -953,7 +884,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.HeaviestMover:
                     {
-                        // score = mass^a * |v|^b. Shares PhysicsMass (mass = 1/InverseMass) + PhysicsVelocity reads.
                         var mass = 0f;
                         if (MassLookup.TryGetComponent(other, out var pm) && pm.InverseMass > PhysicsTriggerSectorMath.Epsilon)
                             mass = 1f / pm.InverseMass;
@@ -964,11 +894,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.MostBlocking:
                     {
-                        // score = -perpendicular distance to the self→referenceTarget segment (closest to the line wins).
                         if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.BlockingRefTarget,
                                 config.BlockingRefLinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
                             !LtwLookup.TryGetComponent(refE, out var refLtw))
-                            return float.NegativeInfinity; // no reference segment → never the blocker
+                            return float.NegativeInfinity;
                         var perp = PhysicsTriggerSectorMath.PerpendicularDistance(otherLtw.Position, ctx.SelfPos,
                             refLtw.Position - ctx.SelfPos);
                         return -perp;
@@ -976,21 +905,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.TauntOverride:
                     {
-                        // † A candidate with an unexpired taunt instantly wins, locked. +inf so it dominates the
-                        // reduction; ties broken by entity index. TODO game taunt binding (set UntilTime to world time).
                         if (TauntLookup.TryGetComponent(other, out var taunt) && taunt.UntilTime > ctx.ElapsedTime)
                             return float.PositiveInfinity;
-                        return -distSq; // un-taunted bodies fall back to nearest
+                        return -distSq;
                     }
 
                     case PhysicsTriggerQuerySelection.TabCycle:
-                        // TabCycle does its successor pick in ProcessSingle from the collected survivor ordering;
-                        // the score reduction is unused for the pick (nearest is a harmless default).
                         return -distSq;
 
                     case PhysicsTriggerQuerySelection.AllSurvivorsFanout:
                     case PhysicsTriggerQuerySelection.TopK:
-                        // Multi modes sort by proximity by default (rank meaningful, nearest first).
                         return -distSq;
 
                     default:
@@ -1021,10 +945,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 return PhysicsTriggerSectorMath.CategoryOrdinal(belongsTo, ref tiers.Masks, ref tiers.Ordinals, 0);
             }
 
-            // ----------------------------------------------------------------------------------------------
-            // Tracked per-candidate state (dwell + refractory)
-            // ----------------------------------------------------------------------------------------------
-
             private static int FindTracked(in PhysicsTriggerQueryState state, Entity e)
             {
                 for (var k = 0; k < state.Tracked.Length; k++)
@@ -1047,7 +967,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 }
 
                 if (state.Tracked.Length >= state.Tracked.Capacity)
-                    return; // capped — drop (documented)
+                    return;
 
                 state.Tracked.Add(new EntityCounter { Entity = e, Dwell = 1, Refractory = 0, Seen = 1 });
             }
@@ -1082,21 +1002,17 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var c = state.Tracked[k];
                     if (c.Seen == 0 && c.Refractory == 0)
                     {
-                        state.Tracked.RemoveAt(k); // gone and no pending refractory → forget
+                        state.Tracked.RemoveAt(k);
                         continue;
                     }
 
                     if (c.Seen == 0)
-                        c.Dwell = 0; // absent but still cooling down — reset dwell, keep refractory
+                        c.Dwell = 0;
 
                     c.Seen = 0;
                     state.Tracked[k] = c;
                 }
             }
-
-            // ----------------------------------------------------------------------------------------------
-            // WINNER / VALUE / ROUTE (single-winner)
-            // ----------------------------------------------------------------------------------------------
 
             private void ProcessWinner(in QueryContext ctx, Entity self, Entity winner, in CollisionInfo winnerCollision,
                 in PhysicsTriggerQueryData config, in Targets targets, int survivorCount,
@@ -1115,21 +1031,17 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         var off = ResolveWinnerPos(winner, selfPos) - selfPos;
                         var sector = ComputeSectorOnly(in config, off, selfRot);
                         var band = ComputeBand(in config, math.lengthsq(off));
-                        // Single winner → at most one on-demand value raycast; seed a fresh per-query budget for it.
                         var raycastsLeft = ctx.RaycastsLeft;
                         var value = ComputeValueFor(in ctx, in config, winner, in winnerCollision, selfPos, selfRot,
                             selfVel, sector, band, survivorCount, ref queryState, ref raycastsLeft);
 
                         ResolveRouteSlot(in config, sector, band, value, out var routeSlot);
 
-                        // RedirectToLinkedRole §: route through the WINNER's outbound EntityLink (pet → master).
                         var routeTo = config.RouteTo;
                         var routeLinkKey = config.RouteLinkKey;
                         if (config.RouteMode == PhysicsTriggerRouteMode.LinkedRole)
                         {
-                            // Resolve the winner itself, then chase its outbound link; the ApplyJob still does the
-                            // cross-entity Targets write single-threaded (serialization point preserved).
-                            routeTo = Target.Target; // Target resolves to the winner (other) in TryResolveLinkedTarget
+                            routeTo = Target.Target;
                             routeLinkKey = config.RedirectLinkKey;
                         }
 
@@ -1139,7 +1051,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             {
                                 Routed = routed,
                                 Winner = winner,
-                                // MirrorIntoWinner: ApplyJob also writes `self` into the winner's slot (RW Targets).
                                 Self = config.MirrorIntoWinner ? self : Entity.Null,
                                 WriteSlot = true,
                                 Slot = routeSlot,
@@ -1218,7 +1129,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             {
                 if (config.RouteMode == PhysicsTriggerRouteMode.ByValue)
                 {
-                    // Map the computed value onto a slot deterministically: 0→Custom,1→Owner,2→Source,3→Target.
                     slot = (PhysicsTriggerRouteSlot)(((value % 4) + 4) % 4);
                     return;
                 }
@@ -1292,11 +1202,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         return PhysicsTriggerSectorMath.Bucket(scalar, ref config.MagnitudeBands.Value.Thresholds);
                     }
 
-                    // ---- WAVE 3 ----
-
                     case PhysicsTriggerQueryValueMode.ContactNormalSector:
                     {
-                        // ‡ No collision normal this frame → sentinel == SectorCount (never a false face 0).
                         if (!collision.HasCollision) return config.SectorCount;
                         var fwd = config.SectorReference == PhysicsTriggerSectorReference.World
                             ? new float3(0f, 0f, 1f)
@@ -1307,7 +1214,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQueryValueMode.ImpactBand:
                     {
-                        // ‡ No collision details this frame → band 0 (no impact registered).
                         if (!collision.HasCollision || !collision.HasDetails || !config.ImpactBands.IsCreated)
                             return 0;
                         return PhysicsTriggerSectorMath.ImpactBand(collision.EstimatedImpulse,
@@ -1320,19 +1226,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQueryValueMode.OcclusionState:
                     {
-                        // This raycast now honors the shared per-query budget (previously it fired unbudgeted, one per
-                        // emitted winner, so MaxRaycastsPerQuery undercounted). Out of budget → treat as visible (0).
                         if (!HasCollisionWorld || raycastsLeft <= 0) return 0;
                         raycastsLeft--;
                         var winnerPos = ResolveWinnerPos(winner, selfPos);
                         var clear = TeleportMath.CheckLineOfSight(in CollisionWorld, selfPos, winnerPos,
                             config.LineOfSightOffset, config.ObstacleMask, ctx.Self, winner);
-                        return clear ? 0 : 1; // 0 = visible, 1 = hidden (occluded)
+                        return clear ? 0 : 1;
                     }
 
                     case PhysicsTriggerQueryValueMode.DeflectionBounce:
                     {
-                        // ‡ Reflect self-velocity across the contact normal → sector. No normal → sentinel.
                         if (!collision.HasCollision) return config.SectorCount;
                         var fwd = config.SectorReference == PhysicsTriggerSectorReference.World
                             ? new float3(0f, 0f, 1f)
@@ -1343,7 +1246,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     }
 
                     case PhysicsTriggerQueryValueMode.AggregateCentroid:
-                        // MULTI-only; the centroid bearing is supplied by EmitMulti. Single-winner → Constant.
                         return config.FoundValue;
 
                     default:
@@ -1443,7 +1345,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             {
                 if (survivors.Length == 0) return Entity.Null;
 
-                // Insertion sort by (key asc, entity index asc) — stable, deterministic, O(n^2) at the small cap.
                 for (var a = 1; a < survivors.Length; a++)
                 {
                     var e = survivors[a];
@@ -1468,7 +1369,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         break;
                     }
 
-                // LastWinner gone → head; present → next (wrap).
                 var pick = lastIdx < 0 ? 0 : (lastIdx + 1) % survivors.Length;
                 return survivors[pick];
             }
@@ -1504,7 +1404,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 TargetsLookup[evt.Routed] = targets;
                         }
 
-                        // MirrorIntoWinner — single-threaded cross-entity write (serialization point).
                         if (evt.Self != Entity.Null && evt.Winner != Entity.Null &&
                             TargetsLookup.HasComponent(evt.Winner))
                         {

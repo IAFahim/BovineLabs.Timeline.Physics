@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -11,15 +12,20 @@ namespace BovineLabs.Timeline.Physics
         public float MaxAngularSpeed;
     }
 
-    public struct PhysicsVelocityClampAnimated : IAnimatedComponent<PhysicsVelocityClampData>
+    public struct PhysicsVelocityClampAnimated : IAnimatedComponent<PhysicsVelocityClampData>, IPreparable
     {
         public PhysicsVelocityClampData AuthoredData;
         [CreateProperty] public PhysicsVelocityClampData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveVelocityClamp : IComponentData, IEnableableComponent
+    public struct ActiveVelocityClamp : IActive<PhysicsVelocityClampData>
     {
-        public PhysicsVelocityClampData Config;
+        public PhysicsVelocityClampData Config { get; set; }
     }
 
     public struct PhysicsVelocityClampState : IComponentData

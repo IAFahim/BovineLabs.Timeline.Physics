@@ -1,6 +1,7 @@
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -69,15 +70,20 @@ namespace BovineLabs.Timeline.Physics
         public bool Fired;
     }
 
-    public struct PhysicsTeleportAnimated : IAnimatedComponent<PhysicsTeleportData>
+    public struct PhysicsTeleportAnimated : IAnimatedComponent<PhysicsTeleportData>, IPreparable
     {
         public PhysicsTeleportData AuthoredData;
         [CreateProperty] public PhysicsTeleportData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveTeleport : IComponentData, IEnableableComponent
+    public struct ActiveTeleport : IActive<PhysicsTeleportData>
     {
-        public PhysicsTeleportData Config;
+        public PhysicsTeleportData Config { get; set; }
     }
 
     public readonly struct PhysicsTeleportMixer : IMixer<PhysicsTeleportData>

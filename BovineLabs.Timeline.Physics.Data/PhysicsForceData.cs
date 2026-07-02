@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -62,7 +63,7 @@ namespace BovineLabs.Timeline.Physics
         public StatStrengthConfig Strength;
     }
 
-    public struct PhysicsForceState : IComponentData
+    public struct PhysicsForceState : IComponentData, IElapsedTimeState
     {
         public bool Fired;
         public bool ResetApplied;
@@ -81,6 +82,12 @@ namespace BovineLabs.Timeline.Physics
 
         /// <summary>The portion of <see cref="ElapsedTime"/> already converted to impulse by the consumer.</summary>
         public float AppliedTime;
+
+        float IElapsedTimeState.ElapsedTime
+        {
+            get => ElapsedTime;
+            set => ElapsedTime = value;
+        }
     }
 
     public struct PhysicsForceRandom : IComponentData
@@ -88,15 +95,20 @@ namespace BovineLabs.Timeline.Physics
         public Random Value;
     }
 
-    public struct PhysicsForceAnimated : IAnimatedComponent<PhysicsForceData>
+    public struct PhysicsForceAnimated : IAnimatedComponent<PhysicsForceData>, IPreparable
     {
         public PhysicsForceData AuthoredData;
         [CreateProperty] public PhysicsForceData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveForce : IComponentData, IEnableableComponent
+    public struct ActiveForce : IActive<PhysicsForceData>
     {
-        public PhysicsForceData Config;
+        public PhysicsForceData Config { get; set; }
     }
 
     public readonly struct PhysicsForceMixer : IMixer<PhysicsForceData>

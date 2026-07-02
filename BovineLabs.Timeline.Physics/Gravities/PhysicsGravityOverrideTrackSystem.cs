@@ -1,10 +1,6 @@
-using BovineLabs.Core.Jobs;
-using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Kernels;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.Gravities
@@ -16,124 +12,29 @@ namespace BovineLabs.Timeline.Physics.Gravities
     [BurstCompile]
     public partial struct PhysicsGravityOverrideTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated> _blendImpl;
-        private ComponentLookup<ActiveGravityOverride> _activeLookup;
-        private ComponentLookup<PhysicsGravityOverrideState> _stateLookup;
-
-        private EntityQuery _resetQuery;
-        private EntityQuery _prepareQuery;
-        private EntityQuery _disableStaleQuery;
+        private TrackBlendStateDriver<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated, ActiveGravityOverride,
+            PhysicsGravityOverrideMixer, PhysicsGravityOverrideState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveGravityOverride>();
-            _stateLookup = state.GetComponentLookup<PhysicsGravityOverrideState>();
-
-            _resetQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsGravityOverrideAnimated, ClipActive>()
-                .WithNone<ClipActivePrevious>()
-                .Build();
-
-            _prepareQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsGravityOverrideAnimated>()
-                .WithAll<ClipActive>()
-                .Build();
-
-            _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, ClipActivePrevious, PhysicsGravityOverrideAnimated>()
-                .WithNone<ClipActive>()
-                .Build();
+            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+                new PhysicsGravityOverrideState { Fired = false, AddedComponent = false, OriginalGravityScale = 1f });
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-            _blendImpl.OnDestroy(ref state);
+            _driver.OnDestroy(ref state);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
-            _stateLookup.Update(ref state);
-
-            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-
-            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateTrackJob<PhysicsGravityOverrideState, ActiveGravityOverride>
-            {
-                TrackBindingTypeHandle = bindingType,
-                StateLookup = _stateLookup,
-                ActiveLookup = _activeLookup,
-                ResetValue = new PhysicsGravityOverrideState
-                    { Fired = false, AddedComponent = false, OriginalGravityScale = 1f }
-            }.ScheduleParallel(_resetQuery, state.Dependency);
-
-            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsGravityOverrideAnimated>();
-            state.Dependency = new PrepareJob
-            {
-                AnimatedTypeHandle = animatedType
-            }.ScheduleParallel(_prepareQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
-
-            state.Dependency = new DisableAbsentTrackJob<PhysicsGravityOverrideData, ActiveGravityOverride>
-            {
-                TrackBindingTypeHandle = bindingType,
-                BlendData = blendData,
-                ActiveLookup = _activeLookup
-            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            state.Dependency = new WriteActiveJob
-            {
-                BlendData = blendData,
-                ActiveLookup = _activeLookup,
-                ECB = ecbWrite
-            }.ScheduleParallel(blendData, 64, state.Dependency);
-        }
-
-        [BurstCompile]
-        private struct PrepareJob : IJobChunk
-        {
-            public ComponentTypeHandle<PhysicsGravityOverrideAnimated> AnimatedTypeHandle;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var animated = animateds[i];
-                    animated.Value = animated.AuthoredData;
-                    animateds[i] = animated;
-                }
-            }
-        }
-
-        [BurstCompile]
-        private struct WriteActiveJob : IJobParallelHashMapDefer
-        {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsGravityOverrideData>>.ReadOnly BlendData;
-            [ReadOnly] public ComponentLookup<ActiveGravityOverride> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void ExecuteNext(int entryIndex, int jobIndex)
-            {
-                this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
-
-                ECB.SetComponentEnabled<ActiveGravityOverride>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveGravityOverride
-                {
-                    Config = JobHelpers.Blend<PhysicsGravityOverrideData, PhysicsGravityOverrideMixer>(ref mixData,
-                        default)
-                });
-            }
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged)
+                .AsParallelWriter();
+            _driver.OnUpdate(ref state, ecb);
         }
     }
 }

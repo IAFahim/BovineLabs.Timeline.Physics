@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Properties;
 
@@ -16,15 +17,20 @@ namespace BovineLabs.Timeline.Physics
         public byte Present;
     }
 
-    public struct PhysicsFilterOverrideAnimated : IAnimatedComponent<PhysicsFilterOverrideData>
+    public struct PhysicsFilterOverrideAnimated : IAnimatedComponent<PhysicsFilterOverrideData>, IPreparable
     {
         public PhysicsFilterOverrideData AuthoredData;
         [CreateProperty] public PhysicsFilterOverrideData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveFilterOverride : IComponentData, IEnableableComponent
+    public struct ActiveFilterOverride : IActive<PhysicsFilterOverrideData>
     {
-        public PhysicsFilterOverrideData Config;
+        public PhysicsFilterOverrideData Config { get; set; }
     }
 
     public struct PhysicsFilterOverrideState : IComponentData

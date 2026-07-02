@@ -8,10 +8,6 @@ using Unity.Physics;
 
 namespace BovineLabs.Timeline.Physics.Shapes
 {
-    // Mirror of PhysicsShapeResizeApplySystem but SWAPS the whole collider blob reference (box -> sphere etc.)
-    // instead of mutating geometry. Re-pointing PhysicsCollider.Value is share-safe (no Force Unique needed) and the
-    // baked replacement blob is owned by the subscene, so nothing is allocated/disposed at runtime. Captures the
-    // original blob on enter and restores it on exit.
     [Configurable]
     [UpdateInGroup(typeof(PhysicsModifierGroup))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
@@ -93,7 +89,6 @@ namespace BovineLabs.Timeline.Physics.Shapes
                     else if (isActive && state.Fired)
                     {
                         var config = actives[i].Config;
-                        // Idempotent + crossfade-safe; only write (bumping the physics-rebuild version) when changed.
                         if (config.NewCollider.IsCreated && !collider.Value.Equals(config.NewCollider))
                         {
                             collider.Value = config.NewCollider;

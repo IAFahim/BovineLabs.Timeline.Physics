@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -32,15 +33,20 @@ namespace BovineLabs.Timeline.Physics
         public StatStrengthConfig StrengthStat;
     }
 
-    public struct PhysicsSplineFollowAnimated : IAnimatedComponent<PhysicsSplineFollowData>
+    public struct PhysicsSplineFollowAnimated : IAnimatedComponent<PhysicsSplineFollowData>, IPreparable
     {
         public PhysicsSplineFollowData AuthoredData;
         [CreateProperty] public PhysicsSplineFollowData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveSplineFollow : IComponentData, IEnableableComponent
+    public struct ActiveSplineFollow : IActive<PhysicsSplineFollowData>
     {
-        public PhysicsSplineFollowData Config;
+        public PhysicsSplineFollowData Config { get; set; }
     }
 
     public struct PhysicsSplineFollowState : IComponentData

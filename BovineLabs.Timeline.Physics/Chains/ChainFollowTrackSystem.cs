@@ -20,8 +20,6 @@ namespace BovineLabs.Timeline.Physics.Chains
         {
             _driver.OnCreate(ref state);
 
-            // ponytail: skip when idle — see PhysicsVelocityTrackSystem; the generic
-            // PrepareAnimatedJob schedule SIGSEGVs in an IL2CPP player.
             state.RequireForUpdate<ChainFollowAnimated>();
         }
 

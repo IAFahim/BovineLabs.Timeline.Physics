@@ -18,7 +18,9 @@ namespace BovineLabs.Timeline.Physics.Tests
             var target = Manager.CreateEntity();
             Manager.AddComponentData(target, LocalTransform.Identity);
             Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
-            Manager.AddComponentData(target, new PhysicsVelocityState { Fired = false });
+            // AddContinuous integrates against clip-active time (ElapsedTime - AppliedTime), mirroring
+            // PhysicsForceState — the track system accumulates ElapsedTime at render rate.
+            Manager.AddComponentData(target, new PhysicsVelocityState { Fired = false, ElapsedTime = 0.1f });
             Manager.AddBuffer<PendingVelocity>(target);
 
             Manager.AddComponentData(target, new ActiveVelocity

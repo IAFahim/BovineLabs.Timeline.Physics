@@ -1,10 +1,6 @@
-using BovineLabs.Core.Jobs;
-using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.Physics.Infrastructure;
+using BovineLabs.Timeline.Physics.Kernels;
 using Unity.Burst;
-using Unity.Burst.Intrinsics;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.VelocityClamps
@@ -16,122 +12,29 @@ namespace BovineLabs.Timeline.Physics.VelocityClamps
     [BurstCompile]
     public partial struct PhysicsVelocityClampTrackSystem : ISystem
     {
-        private TrackBlendImpl<PhysicsVelocityClampData, PhysicsVelocityClampAnimated> _blendImpl;
-        private ComponentLookup<ActiveVelocityClamp> _activeLookup;
-        private ComponentLookup<PhysicsVelocityClampState> _stateLookup;
-
-        private EntityQuery _resetQuery;
-        private EntityQuery _prepareQuery;
-        private EntityQuery _disableStaleQuery;
+        private TrackBlendStateDriver<PhysicsVelocityClampData, PhysicsVelocityClampAnimated, ActiveVelocityClamp,
+            PhysicsVelocityClampMixer, PhysicsVelocityClampState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _blendImpl.OnCreate(ref state);
-            _activeLookup = state.GetComponentLookup<ActiveVelocityClamp>();
-            _stateLookup = state.GetComponentLookup<PhysicsVelocityClampState>();
-
-            _resetQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, PhysicsVelocityClampAnimated, ClipActive>()
-                .WithNone<ClipActivePrevious>()
-                .Build();
-
-            _prepareQuery = SystemAPI.QueryBuilder()
-                .WithAllRW<PhysicsVelocityClampAnimated>()
-                .WithAll<ClipActive>()
-                .Build();
-
-            _disableStaleQuery = SystemAPI.QueryBuilder()
-                .WithAll<TrackBinding, ClipActivePrevious, PhysicsVelocityClampAnimated>()
-                .WithNone<ClipActive>()
-                .Build();
+            _driver.OnCreate(ref state, RearmPolicy.EveryActivation,
+                new PhysicsVelocityClampState { Fired = false });
         }
 
         [BurstCompile]
         public void OnDestroy(ref SystemState state)
         {
-            _blendImpl.OnDestroy(ref state);
+            _driver.OnDestroy(ref state);
         }
 
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            _activeLookup.Update(ref state);
-            _stateLookup.Update(ref state);
-
-            var ecbSystem = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
-
-            var ecbWrite = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged).AsParallelWriter();
-
-            var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
-            state.Dependency = new ResetStateAlwaysTrackJob<PhysicsVelocityClampState>
-            {
-                TrackBindingTypeHandle = bindingType,
-                StateLookup = _stateLookup,
-                ResetValue = new PhysicsVelocityClampState { Fired = false }
-            }.ScheduleParallel(_resetQuery, state.Dependency);
-
-            var animatedType = SystemAPI.GetComponentTypeHandle<PhysicsVelocityClampAnimated>();
-            state.Dependency = new PrepareJob
-            {
-                AnimatedTypeHandle = animatedType
-            }.ScheduleParallel(_prepareQuery, state.Dependency);
-
-            var blendData = _blendImpl.Update(ref state);
-
-            state.Dependency = new DisableAbsentTrackJob<PhysicsVelocityClampData, ActiveVelocityClamp>
-            {
-                TrackBindingTypeHandle = bindingType,
-                BlendData = blendData,
-                ActiveLookup = _activeLookup
-            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
-
-            state.Dependency = new WriteActiveJob
-            {
-                BlendData = blendData,
-                ActiveLookup = _activeLookup,
-                ECB = ecbWrite
-            }.ScheduleParallel(blendData, 64, state.Dependency);
-        }
-
-        [BurstCompile]
-        private struct PrepareJob : IJobChunk
-        {
-            public ComponentTypeHandle<PhysicsVelocityClampAnimated> AnimatedTypeHandle;
-
-            public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
-                in v128 chunkEnabledMask)
-            {
-                var animateds = chunk.GetNativeArray(ref AnimatedTypeHandle);
-                var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
-                while (enumerator.NextEntityIndex(out var i))
-                {
-                    var animated = animateds[i];
-                    animated.Value = animated.AuthoredData;
-                    animateds[i] = animated;
-                }
-            }
-        }
-
-        [BurstCompile]
-        private struct WriteActiveJob : IJobParallelHashMapDefer
-        {
-            [ReadOnly] public NativeParallelHashMap<Entity, MixData<PhysicsVelocityClampData>>.ReadOnly BlendData;
-            [ReadOnly] public ComponentLookup<ActiveVelocityClamp> ActiveLookup;
-            public EntityCommandBuffer.ParallelWriter ECB;
-
-            public void ExecuteNext(int entryIndex, int jobIndex)
-            {
-                this.Read(BlendData, entryIndex, out var entity, out var mixData);
-                if (!ActiveLookup.HasComponent(entity)) return;
-
-                ECB.SetComponentEnabled<ActiveVelocityClamp>(entryIndex, entity, true);
-                ECB.SetComponent(entryIndex, entity, new ActiveVelocityClamp
-                {
-                    Config = JobHelpers.Blend<PhysicsVelocityClampData, PhysicsVelocityClampMixer>(ref mixData,
-                        new PhysicsVelocityClampData { MaxLinearSpeed = -1f, MaxAngularSpeed = -1f })
-                });
-            }
+            var ecb = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged)
+                .AsParallelWriter();
+            _driver.OnUpdate(ref state, ecb);
         }
     }
 }

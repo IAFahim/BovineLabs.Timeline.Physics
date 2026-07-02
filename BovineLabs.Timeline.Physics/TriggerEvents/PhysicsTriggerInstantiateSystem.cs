@@ -297,9 +297,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 var instance = ECB.Instantiate(chunkIndex, prefab);
                 var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
-                // AddComponent (not SetComponent): a registered payload prefab may lack TargetsAuthoring, and
-                // SetComponent throws at ECB playback if the component is absent. AddComponent ensures it exists and
-                // sets the value either way, so the payload always carries the routed Owner/Source/Target.
                 ECB.AddComponent(chunkIndex, instance, new Targets
                 {
                     Owner = targets.Owner == Entity.Null ? self : targets.Owner,

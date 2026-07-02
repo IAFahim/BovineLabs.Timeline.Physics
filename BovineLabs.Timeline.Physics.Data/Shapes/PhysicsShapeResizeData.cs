@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -16,15 +17,20 @@ namespace BovineLabs.Timeline.Physics
         public bool RestoreOnExit;
     }
 
-    public struct PhysicsShapeResizeAnimated : IAnimatedComponent<PhysicsShapeResizeData>
+    public struct PhysicsShapeResizeAnimated : IAnimatedComponent<PhysicsShapeResizeData>, IPreparable
     {
         public PhysicsShapeResizeData AuthoredData;
         [CreateProperty] public PhysicsShapeResizeData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveShapeResize : IComponentData, IEnableableComponent
+    public struct ActiveShapeResize : IActive<PhysicsShapeResizeData>
     {
-        public PhysicsShapeResizeData Config;
+        public PhysicsShapeResizeData Config { get; set; }
     }
 
     /// <summary>

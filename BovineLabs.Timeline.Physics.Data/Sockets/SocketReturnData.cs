@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -17,15 +18,20 @@ namespace BovineLabs.Timeline.Physics.Sockets
         public float AttachAngle;
     }
 
-    public struct SocketReturnAnimated : IAnimatedComponent<SocketReturnData>
+    public struct SocketReturnAnimated : IAnimatedComponent<SocketReturnData>, IPreparable
     {
         public SocketReturnData AuthoredData;
         [CreateProperty] public SocketReturnData Value { get; set; }
+
+        public void ResetToAuthored()
+        {
+            Value = AuthoredData;
+        }
     }
 
-    public struct ActiveSocketReturn : IComponentData, IEnableableComponent
+    public struct ActiveSocketReturn : IActive<SocketReturnData>
     {
-        public SocketReturnData Config;
+        public SocketReturnData Config { get; set; }
     }
 
     public struct SocketReturnState : IComponentData

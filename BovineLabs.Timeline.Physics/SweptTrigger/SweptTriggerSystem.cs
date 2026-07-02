@@ -108,8 +108,6 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
 
                     dist.Dispose();
 
-                    // Seed the sweep from the continuously-tracked previous pose (valid once Initialized), NOT from
-                    // WasActive — otherwise the first active frame sweeps zero distance and tunnels.
                     var startPos = state.Initialized == 1 ? state.PrevPosition : curPos;
                     var startRot = state.Initialized == 1 ? state.PrevRotation : curRot;
 

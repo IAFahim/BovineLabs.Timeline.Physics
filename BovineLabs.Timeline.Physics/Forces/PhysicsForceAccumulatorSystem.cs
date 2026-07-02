@@ -120,9 +120,6 @@ namespace BovineLabs.Timeline.Physics.Forces
                         var flags = resets[i].Flags;
                         ApplyReset(ref velocity, flags);
 
-                        // Opt-in: a reset flagged External wipes the knockback channel (parry/super-armor). Clear both
-                        // the standing channel AND the not-yet-drained inbox, so a hit landing the SAME frame is also
-                        // cancelled (compose drains the inbox after this; an unclear inbox would resurrect the hit).
                         if ((flags & VelocityResetFlags.External) != 0)
                         {
                             if (hasExternal)

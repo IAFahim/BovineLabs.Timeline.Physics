@@ -119,8 +119,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public Entity Target;
             public PendingForce Force;
 
-            // True when the clip's MotionChannel is External (knockback): route to the PendingExternalForce inbox so
-            // braking/drag can't eat it. False = intent channel (PendingForce), the default for authored forces.
             public bool External;
         }
 
@@ -229,14 +227,12 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
-                // Gate on the buffer this force will ACTUALLY be written to — the inbox the chosen channel drains.
                 var external = cfg.Channel == MotionChannel.External;
                 var hasTargetBuffer = external
                     ? PendingExternalForceLookup.HasBuffer(targetToApply)
                     : PendingForceLookup.HasBuffer(targetToApply);
                 if (!hasTargetBuffer)
                 {
-                    // Burst-visible (the old [BurstDiscard] Debug.LogWarning was compiled out of the job entirely).
                     Logger.LogWarning512(
                         "PhysicsTriggerForce target is missing the pending-force buffer for its channel " +
                         "(PendingForce / PendingExternalForce). Force ignored.");
@@ -295,8 +291,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (math.lengthsq(force) > 1e-5f)
                 {
-                    // Mode controls impulse-vs-continuous integration; Channel (independent) controls which velocity
-                    // channel it lands on. A continuous External field and an impulse Intent force are both valid.
                     var timeScale = cfg.Mode == PhysicsForceMode.Impulse ? 1f : DeltaTime;
                     Events.Write(new TriggerForceEvent
                     {

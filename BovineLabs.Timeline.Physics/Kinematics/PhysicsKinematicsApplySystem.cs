@@ -184,8 +184,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 var states = chunk.GetNativeArray(ref StateTypeHandle);
                 var pendingForces = chunk.GetBufferAccessor(ref PendingForceHandle);
 
-                // External channel is auto-baked onto every dynamic body alongside PendingForce; guard anyway so an
-                // opted-out body falls back to Intent rather than dropping the force.
                 var hasExternal = chunk.Has(ref PendingExternalForceHandle);
                 var externalForces = hasExternal ? chunk.GetBufferAccessor(ref PendingExternalForceHandle) : default;
 
@@ -205,11 +203,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var config = actives[i].Config;
                     var state = states[i];
 
-                    // Impulse: one-shot latch. Continuous: integrate against the CLIP-active time the (render-rate)
-                    // track accumulated (state.ElapsedTime), applying only the unapplied delta — so the total
-                    // impulse = force × active-duration regardless of how many fixed steps land in the window.
-                    // Using the fixed-step DeltaTime here instead made continuous non-deterministic (the fixed-step
-                    // group ticks a variable number of times per rendered frame), while impulse stayed reliable.
                     float timeScale;
                     if (config.Mode == PhysicsForceMode.Impulse)
                     {
@@ -228,9 +221,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                     if (math.abs(multiplier) < 1e-5f)
                     {
-                        // Continuous: a gated-off interval must contribute zero impulse. Advance
-                        // AppliedTime so the skipped seconds are discarded, not banked into a spike
-                        // when the gate reopens. (Impulse gates on state.Fired, so leave it to retry.)
                         if (config.Mode != PhysicsForceMode.Impulse)
                         {
                             state.AppliedTime = state.ElapsedTime;
@@ -243,7 +233,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     if (!TryResolveLinearForce(chunk, i, body, in config, in targets, hasRandom, randoms,
                             hasVelocity, velocities, ref state, out var linForce))
                     {
-                        // Same rule: don't bank time across a frame where the direction couldn't resolve.
                         if (config.Mode != PhysicsForceMode.Impulse)
                         {
                             state.AppliedTime = state.ElapsedTime;
@@ -470,9 +459,6 @@ namespace BovineLabs.Timeline.Physics.Kinematics
 
                     if (isInstant && state.Fired) continue;
 
-                    // Continuous integrates the render-rate elapsed delta (accumulated by PhysicsVelocityTrackSystem),
-                    // NOT the fixed dt — otherwise the number of fixed steps that observe ActiveVelocity enabled (and
-                    // thus total Δv) varies with frame timing. Mirrors PhysicsForceState's Elapsed/Applied bridge.
                     var timeScale = isInstant ? 1f : state.ElapsedTime - state.AppliedTime;
                     if (!isInstant && timeScale <= 1e-6f) continue;
 
@@ -501,7 +487,7 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     });
 
                     if (isInstant) state.Fired = true;
-                    else state.AppliedTime = state.ElapsedTime; // consumed this render-frame's elapsed slice
+                    else state.AppliedTime = state.ElapsedTime;
 
                     states[i] = state;
                 }

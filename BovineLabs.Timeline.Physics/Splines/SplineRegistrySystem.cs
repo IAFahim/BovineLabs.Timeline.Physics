@@ -34,11 +34,6 @@ namespace BovineLabs.Timeline.Physics.Splines
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            // Splines are baked and immutable at runtime, so the map only needs rebuilding when a spline entity is
-            // added or removed — a structural change the order version tracks. Skipping the every-fixed-step clear +
-            // refill removes this system's only per-frame cost.
-            // ponytail: order-version gate; if runtime blob-ref reassignment (no structural change) is ever added,
-            // switch to an explicit dirty flag or SplineBlob change filter.
             var version = _query.GetCombinedComponentOrderVersion(false);
             if (_built && version == _lastOrderVersion)
                 return;

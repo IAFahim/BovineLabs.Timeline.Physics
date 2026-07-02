@@ -7,6 +7,23 @@ using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics.Kernels
 {
+    /// <summary>
+    /// When the per-body state re-arms. This used to be an implicit choice of which reset job a hand-rolled
+    /// system happened to copy; making it a parameter keeps the fire-once vs capture-restore lifecycle reviewable.
+    /// </summary>
+    public enum RearmPolicy : byte
+    {
+        /// <summary>No per-body state to reset (stateless tracks).</summary>
+        None,
+
+        /// <summary>Reset on every clip activation, even mid-span — adjacent fire-once clips each fire.</summary>
+        EveryActivation,
+
+        /// <summary>Reset only at a true span start (Active disabled) — capture-restore overrides keep their
+        /// captured original across touching clips instead of re-capturing the overridden value.</summary>
+        SpanStart,
+    }
+
     public struct TrackBlendDriver<TData, TAnimated, TActive, TMixer>
         where TData : unmanaged
         where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
@@ -19,7 +36,6 @@ namespace BovineLabs.Timeline.Physics.Kernels
         private ComponentTypeHandle<TrackBinding> _bindingHandle;
         private EntityQuery _prepareQuery;
         private EntityQuery _disableStaleQuery;
-        private EntityQuery _ecbQuery;
 
         public ComponentLookup<TActive> ActiveLookup => _activeLookup;
         public ComponentTypeHandle<TrackBinding> BindingHandle => _bindingHandle;
@@ -45,8 +61,7 @@ namespace BovineLabs.Timeline.Physics.Kernels
                 _disableStaleQuery = state.GetEntityQuery(stale);
             }
 
-            _ecbQuery = state.GetEntityQuery(
-                ComponentType.ReadOnly<BeginSimulationEntityCommandBufferSystem.Singleton>());
+            state.RequireForUpdate<TAnimated>();
         }
 
         public void OnDestroy(ref SystemState state)
@@ -61,7 +76,8 @@ namespace BovineLabs.Timeline.Physics.Kernels
             _bindingHandle.Update(ref state);
         }
 
-        public void OnUpdate(ref SystemState state, EntityCommandBuffer.ParallelWriter ecb)
+        public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly OnUpdate(
+            ref SystemState state, EntityCommandBuffer.ParallelWriter ecb)
         {
             UpdateLookups(ref state);
 
@@ -85,6 +101,78 @@ namespace BovineLabs.Timeline.Physics.Kernels
                 ActiveLookup = _activeLookup,
                 ECB = ecb
             }.ScheduleParallel(blendData, 64, state.Dependency);
+
+            return blendData;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="TrackBlendDriver{TData,TAnimated,TActive,TMixer}"/> plus per-body state reset. This is the
+    /// full lifecycle every physics track system shares; a system shell is the driver field, an OnCreate call
+    /// with its <see cref="RearmPolicy"/>, and an OnUpdate call.
+    /// </summary>
+    public struct TrackBlendStateDriver<TData, TAnimated, TActive, TMixer, TState>
+        where TData : unmanaged
+        where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
+        where TActive : unmanaged, IActive<TData>
+        where TMixer : unmanaged, IMixer<TData>
+        where TState : unmanaged, IComponentData
+    {
+        private TrackBlendDriver<TData, TAnimated, TActive, TMixer> _driver;
+        private ComponentLookup<TState> _stateLookup;
+        private EntityQuery _resetQuery;
+        private RearmPolicy _policy;
+        private TState _resetValue;
+
+        public ComponentLookup<TState> StateLookup => _stateLookup;
+
+        public void OnCreate(ref SystemState state, RearmPolicy policy, TState resetValue = default)
+        {
+            _driver.OnCreate(ref state);
+            _stateLookup = state.GetComponentLookup<TState>();
+            _policy = policy;
+            _resetValue = resetValue;
+
+            using var reset = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TrackBinding, TAnimated, ClipActive>()
+                .WithNone<ClipActivePrevious>();
+            _resetQuery = state.GetEntityQuery(reset);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            _driver.OnDestroy(ref state);
+        }
+
+        public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly OnUpdate(
+            ref SystemState state, EntityCommandBuffer.ParallelWriter ecb)
+        {
+            _stateLookup.Update(ref state);
+            _driver.UpdateLookups(ref state);
+
+            switch (_policy)
+            {
+                case RearmPolicy.EveryActivation:
+                    state.Dependency = new ResetStateAlwaysTrackJob<TState>
+                    {
+                        TrackBindingTypeHandle = _driver.BindingHandle,
+                        StateLookup = _stateLookup,
+                        ResetValue = _resetValue
+                    }.ScheduleParallel(_resetQuery, state.Dependency);
+                    break;
+
+                case RearmPolicy.SpanStart:
+                    state.Dependency = new ResetStateTrackJob<TState, TActive>
+                    {
+                        TrackBindingTypeHandle = _driver.BindingHandle,
+                        StateLookup = _stateLookup,
+                        ActiveLookup = _driver.ActiveLookup,
+                        ResetValue = _resetValue
+                    }.ScheduleParallel(_resetQuery, state.Dependency);
+                    break;
+            }
+
+            return _driver.OnUpdate(ref state, ecb);
         }
     }
 }

@@ -227,11 +227,32 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
-                    if (math.abs(multiplier) < 1e-5f) continue;
+                    if (math.abs(multiplier) < 1e-5f)
+                    {
+                        // Continuous: a gated-off interval must contribute zero impulse. Advance
+                        // AppliedTime so the skipped seconds are discarded, not banked into a spike
+                        // when the gate reopens. (Impulse gates on state.Fired, so leave it to retry.)
+                        if (config.Mode != PhysicsForceMode.Impulse)
+                        {
+                            state.AppliedTime = state.ElapsedTime;
+                            states[i] = state;
+                        }
+
+                        continue;
+                    }
 
                     if (!TryResolveLinearForce(chunk, i, body, in config, in targets, hasRandom, randoms,
                             hasVelocity, velocities, ref state, out var linForce))
+                    {
+                        // Same rule: don't bank time across a frame where the direction couldn't resolve.
+                        if (config.Mode != PhysicsForceMode.Impulse)
+                        {
+                            state.AppliedTime = state.ElapsedTime;
+                        }
+
+                        states[i] = state;
                         continue;
+                    }
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Angular, body, in TargetsLookup,
                         in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var angForce);

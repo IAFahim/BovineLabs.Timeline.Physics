@@ -1,5 +1,4 @@
 using BovineLabs.Timeline.EntityLinks;
-using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Kernels;
 using Unity.Burst;
 using Unity.Entities;

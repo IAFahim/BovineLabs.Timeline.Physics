@@ -4,7 +4,6 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
-using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Forces;
 using BovineLabs.Timeline.Physics.Infrastructure;

@@ -6,7 +6,6 @@ using Unity.Burst.Intrinsics;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Physics;
-using UnityEngine;
 using Collider = Unity.Physics.Collider;
 
 namespace BovineLabs.Timeline.Physics.Filters

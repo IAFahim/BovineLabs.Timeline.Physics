@@ -11,7 +11,6 @@ using BovineLabs.Timeline.Data.Schedular;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.Kinematics;
-using BovineLabs.Timeline.Physics.Stats;
 using BovineLabs.Timeline.Physics.Teleports;
 using Unity.Burst;
 using Unity.Burst.Intrinsics;

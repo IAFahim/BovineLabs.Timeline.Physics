@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Mathematics;
 using Unity.Properties;
@@ -9,7 +10,7 @@ namespace BovineLabs.Timeline.Physics.Data
     {
         public float Linear;
         public float Angular;
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
     }
 
     public struct PhysicsDragAnimated : IAnimatedComponent<PhysicsDragData>, IPreparable

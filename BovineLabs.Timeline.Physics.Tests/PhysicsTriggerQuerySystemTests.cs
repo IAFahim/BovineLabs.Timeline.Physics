@@ -6,6 +6,7 @@ using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.TriggerEvents;
 using NUnit.Framework;
 using Unity.Collections;
@@ -125,7 +126,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Nearest,
-                RouteTo = Target.Self
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self }
             });
 
             var far = CreateCandidate(new float3(0, 0, 5));
@@ -145,7 +146,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Farthest,
-                RouteTo = Target.Self
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self }
             });
 
             var far = CreateCandidate(new float3(0, 0, 5));
@@ -165,7 +166,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.MostAligned,
-                RouteTo = Target.Self
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self }
             });
 
             var ahead = CreateCandidate(new float3(0, 0, 5));
@@ -185,7 +186,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Nearest,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 MaxDistance = 3f
             });
 
@@ -216,7 +217,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Nearest,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 MaxAngle = math.radians(30f)
             });
 
@@ -240,7 +241,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Nearest,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 ExcludeRoles = PhysicsTriggerRoleMask.Owner
             });
 
@@ -262,7 +263,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 MaxTargets = 8,
                 WriteHitBuffer = true,
                 ValueMode = PhysicsTriggerQueryValueMode.DirectionSector,
@@ -300,7 +301,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 MaxTargets = 2,
                 WriteHitBuffer = true
             });
@@ -321,7 +322,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             {
                 EventState = StatefulEventState.Stay,
                 Selection = PhysicsTriggerQuerySelection.Nearest,
-                RouteTo = Target.Self,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
                 ClearOnLost = true
             });
             Manager.AddComponent<ClipActivePrevious>(clip);

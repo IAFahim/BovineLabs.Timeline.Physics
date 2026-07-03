@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Properties;
@@ -15,15 +16,12 @@ namespace BovineLabs.Timeline.Physics
         public uint TerminalHitMask;
 
         public ushort HitConditionKey;
-        public Target HitRouteTo;
-        public ushort HitRouteLinkKey;
+        public EntityLinkRef HitRouteTo;
 
-        public Target RayOrigin;
-        public ushort RayOriginLinkKey;
-        public Target RayDirection;
-        public ushort RayDirectionLinkKey;
+        public EntityLinkRef RayOrigin;
+        public EntityLinkRef RayDirection;
 
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
     }
 
     public struct PhysicsRicochetAnimated : IAnimatedComponent<PhysicsRicochetData>, IPreparable

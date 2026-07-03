@@ -12,19 +12,19 @@ namespace BovineLabs.Timeline.Physics.Stats
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Resolve(
-            in StatStrengthConfig config,
+            in StatSource config,
             Entity self,
             in Targets targets,
             in UnsafeComponentLookup<EntityLinkSource> linkSources,
             in UnsafeBufferLookup<EntityLinkEntry> linkEntries,
             in BufferLookup<Stat> statLookup)
         {
-            if (!config.IsEnabled())
+            if (config.Stat.Value == 0)
                 return 1f;
 
-            var statEntity = config.LinkKey == 0
-                ? targets.Get(config.ReadFrom, self)
-                : EntityLinkResolver.TryResolve(self, targets, config.ReadFrom, config.LinkKey,
+            var statEntity = config.Link.LinkKey == 0
+                ? targets.Get(config.Link.ReadRootFrom, self)
+                : EntityLinkResolver.TryResolve(self, targets, config.Link.ReadRootFrom, config.Link.LinkKey,
                     linkSources, linkEntries, out var linked)
                     ? linked
                     : Entity.Null;

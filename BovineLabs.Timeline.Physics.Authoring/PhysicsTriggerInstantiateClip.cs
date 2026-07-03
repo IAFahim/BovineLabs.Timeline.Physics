@@ -5,6 +5,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -15,6 +16,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public sealed class PhysicsTriggerInstantiateClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema assignParentLink;
+
         public ObjectDefinition objectDefinition;
         public StatefulEventState triggerState = StatefulEventState.Enter;
 
@@ -26,7 +29,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public Vector3 rotationOffset;
 
         public Target assignParent = Target.None;
-        public EntityLinkSchema assignParentLink;
 
         [Header("Target Override")]
         [Tooltip("Resolves link on collided entity. Assigns to spawned entity Targets.Target.")]
@@ -56,8 +58,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
             context.Baker.DependsOn(objectDefinition);
 
-            if (assignParentLink == null ||
-                !EntityLinkAuthoringUtility.TryGetKey(assignParentLink, out var parentKey)) parentKey = 0;
             if (targetLinkOverride == null ||
                 !EntityLinkAuthoringUtility.TryGetKey(targetLinkOverride, out var targetKey)) targetKey = 0;
 
@@ -74,8 +74,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     PositionOffsetSpace = positionOffsetSpace,
                     RotationMode = rotationMode,
                     RotationOffsetEuler = math.radians(rotationOffset),
-                    AssignParent = assignParent,
-                    AssignParentLinkKey = parentKey,
+                    AssignParent = EntityLinkAuthoringUtility.BakeRef(context.Baker, assignParentLink, assignParent),
                     TargetLinkKey = targetKey
                 },
                 FilterData = new PhysicsTriggerFilterData

@@ -271,9 +271,9 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         spawnTarget = resolvedTarget;
 
                 var parent = Entity.Null;
-                if (cfg.AssignParent != Target.None)
+                if (cfg.AssignParent.ReadRootFrom != Target.None)
                     PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        cfg.AssignParent, cfg.AssignParentLinkKey, self, other, targets,
+                        cfg.AssignParent.ReadRootFrom, cfg.AssignParent.LinkKey, self, other, targets,
                         LinkSources, Links, out parent);
 
                 var selfLtw = LocalToWorldLookup[self];

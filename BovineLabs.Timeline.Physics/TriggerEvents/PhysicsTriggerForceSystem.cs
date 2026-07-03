@@ -224,7 +224,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     return;
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        cfg.ApplyTo, cfg.ApplyToLinkKey, self, other, targets, LinkSources,
+                        cfg.ApplyTo.ReadRootFrom, cfg.ApplyTo.LinkKey, self, other, targets, LinkSources,
                         Links, out var targetToApply)) return;
 
                 var external = cfg.Channel == MotionChannel.External;

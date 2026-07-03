@@ -567,8 +567,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var isNewThisFrame = !ContainsEntity(in queryState.LastWinnerSet, w);
                     var fireFound = isNewThisFrame ? config.FoundCondition : ConditionKey.Null;
 
-                    var routeTo = config.RouteTo;
-                    var routeLinkKey = config.RouteLinkKey;
+                    var routeTo = config.RouteTo.ReadRootFrom;
+                    var routeLinkKey = config.RouteTo.LinkKey;
                     if (config.RouteMode == PhysicsTriggerRouteMode.LinkedRole)
                     {
                         routeTo = Target.Target;
@@ -607,7 +607,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         if (prev == Entity.Null || ContainsEntity(in winners, prev))
                             continue;
 
-                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey,
+                        if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo.ReadRootFrom, config.RouteTo.LinkKey,
                                 ctx.Self, prev, targets, LinkSources, Links, out var lostRouted))
                             Events.Write(new TriggerQueryEvent
                             {
@@ -782,8 +782,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.PassLaneCone))
                 {
-                    if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.PassLaneRefTarget,
-                            config.PassLaneRefLinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
+                    if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.PassLaneRefTarget.ReadRootFrom,
+                            config.PassLaneRefTarget.LinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
                         !LtwLookup.TryGetComponent(refE, out var refLtw))
                         return false;
                     var axis = refLtw.Position - ctx.SelfPos;
@@ -894,8 +894,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     case PhysicsTriggerQuerySelection.MostBlocking:
                     {
-                        if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.BlockingRefTarget,
-                                config.BlockingRefLinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
+                        if (!PhysicsTriggerResolution.TryResolveLinkedTarget(config.BlockingRefTarget.ReadRootFrom,
+                                config.BlockingRefTarget.LinkKey, ctx.Self, other, targets, LinkSources, Links, out var refE) ||
                             !LtwLookup.TryGetComponent(refE, out var refLtw))
                             return float.NegativeInfinity;
                         var perp = PhysicsTriggerSectorMath.PerpendicularDistance(otherLtw.Position, ctx.SelfPos,
@@ -930,7 +930,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             private bool TryReadStatRaw(in PhysicsTriggerQueryData config, Entity other, out float value)
             {
                 value = 0f;
-                if (!config.ThreatStat.IsEnabled()) return false;
+                if (config.ThreatStat.Stat.Value == 0) return false;
                 if (!StatLookup.TryGetBuffer(other, out var stats)) return false;
                 value = stats.AsMap().GetValueFloat(config.ThreatStat.Stat, 0f);
                 return true;
@@ -1037,8 +1037,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                         ResolveRouteSlot(in config, sector, band, value, out var routeSlot);
 
-                        var routeTo = config.RouteTo;
-                        var routeLinkKey = config.RouteLinkKey;
+                        var routeTo = config.RouteTo.ReadRootFrom;
+                        var routeLinkKey = config.RouteTo.LinkKey;
                         if (config.RouteMode == PhysicsTriggerRouteMode.LinkedRole)
                         {
                             routeTo = Target.Target;
@@ -1085,7 +1085,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         return;
                 }
 
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey,
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo.ReadRootFrom, config.RouteTo.LinkKey,
                         self, queryState.LastWinner, targets, LinkSources, Links, out var lostRouted))
                     Events.Write(new TriggerQueryEvent
                     {
@@ -1194,7 +1194,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     case PhysicsTriggerQueryValueMode.ScaledMagnitude:
                     {
                         var scalar = 0f;
-                        if (config.ScaledMagnitudeStat.IsEnabled() &&
+                        if (config.ScaledMagnitudeStat.Stat.Value != 0 &&
                             StatLookup.TryGetBuffer(winner, out var stats))
                             scalar = stats.AsMap().GetValueFloat(config.ScaledMagnitudeStat.Stat, 0f);
 

@@ -204,7 +204,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
                 if (config.FailureCondition == ConditionKey.Null) return;
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
-                        config.FailureRouteTo, config.FailureRouteLinkKey,
+                        config.FailureRouteTo.ReadRootFrom, config.FailureRouteTo.LinkKey,
                         selfEntity, targetEntity, targets, LinkSources, Links,
                         out var routeTarget))
                     return;

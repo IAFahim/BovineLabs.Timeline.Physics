@@ -310,14 +310,14 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             {
                 linForce = float3.zero;
                 var targetEntity = body;
-                if (config.DirectionTarget != Target.None)
+                if (config.DirectionTarget.ReadRootFrom != Target.None)
                 {
-                    var baseTarget = targets.Get(config.DirectionTarget, body);
+                    var baseTarget = targets.Get(config.DirectionTarget.ReadRootFrom, body);
                     if (baseTarget != Entity.Null)
                     {
                         targetEntity = baseTarget;
-                        if (config.DirectionTargetLinkKey != 0 &&
-                            EntityLinkResolver.TryResolve(baseTarget, config.DirectionTargetLinkKey,
+                        if (config.DirectionTarget.LinkKey != 0 &&
+                            EntityLinkResolver.TryResolve(baseTarget, config.DirectionTarget.LinkKey,
                                 LinkSources, Links, out var linked))
                             targetEntity = linked;
                     }

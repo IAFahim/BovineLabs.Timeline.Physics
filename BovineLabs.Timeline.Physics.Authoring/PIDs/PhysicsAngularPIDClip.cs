@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -13,6 +14,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
 {
     public class PhysicsAngularPIDClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema readStatLink;
+
         [Header("Gains")] public bool uniformAxes = true;
 
         public PidTuning tuning = new()
@@ -37,7 +40,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         [Header("Stat Multiplier (Optional)")] public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -45,9 +47,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
 
             var builder = new PhysicsAngularPIDBuilder
             {
@@ -58,11 +57,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
                     TargetMode = targetMode,
                     TargetRotation = quaternion.Euler(math.radians(targetRotationEuler)),
                     Strength = strength,
-                    StrengthStat = new StatStrengthConfig
+                    StrengthStat = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }
             };

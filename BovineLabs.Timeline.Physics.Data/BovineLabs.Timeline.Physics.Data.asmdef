@@ -8,6 +8,7 @@
     "BovineLabs.Reaction.Data",
     "BovineLabs.Timeline",
     "BovineLabs.Timeline.Data",
+    "BovineLabs.Timeline.EntityLinks.Data",
     "Unity.Burst",
     "Unity.Collections",
     "Unity.Entities",

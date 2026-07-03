@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -27,7 +28,7 @@ namespace BovineLabs.Timeline.Physics.Data
 
         public VelocityResetFlags ResetVelocityOnFire;
 
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
 
         // 1 for any authored clip, 0 for the default-fill the blend framework injects into empty slots. Lets the
         // mixer tell an authored "stop" clip (SetContinuous, zero velocity) apart from an empty slot — otherwise

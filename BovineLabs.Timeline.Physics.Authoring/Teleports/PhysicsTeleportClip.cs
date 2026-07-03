@@ -5,6 +5,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,10 +17,15 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 {
     public sealed class PhysicsTeleportClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema entityToTeleportLink;
+        public EntityLinkSchema teleportRelativeToLink;
+        public EntityLinkSchema azimuthTargetLink;
+        public EntityLinkSchema facingTargetLink;
+        public EntityLinkSchema readStatLink;
+        public EntityLinkSchema failureRouteLink;
+
         [Header("Teleport Target")] [Tooltip("The entity to actually teleport.")]
         public Target entityToTeleport = Target.Owner;
-
-        public EntityLinkSchema entityToTeleportLink;
 
         [Header("Landing Sphere")] [Tooltip("Distance from the sphere origin to land at.")]
         public float radius = 3f;
@@ -27,14 +33,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         [Tooltip("Whose position defines the sphere origin (landing patch center).")]
         public Target teleportRelativeTo = Target.Self;
 
-        public EntityLinkSchema teleportRelativeToLink;
-
         [Header("Landing Direction")]
         [Tooltip(
             "What azimuth 0° points toward. Default (Target) means: azCenter=0 lands in the direction of this entity.")]
         public Target azimuthTarget = Target.Target;
-
-        public EntityLinkSchema azimuthTargetLink;
 
         [Tooltip(
             "Frame defining azimuth 0° around the landing patch origin. SelfToTarget: 0° points toward the azimuth target. " +
@@ -63,8 +65,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         [Tooltip("Which entity it faces. Separate from Landing Direction so these can differ.")]
         public Target facingTarget = Target.Target;
 
-        public EntityLinkSchema facingTargetLink;
-
         [Header("Clearance")] [Tooltip("Sphere radius for obstacle clearance checks at each candidate.")] [Min(0.1f)]
         public float clearanceRadius = 0.5f;
 
@@ -92,7 +92,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         [Header("On Failure")]
         [Tooltip("Condition event fired when teleport fails (no valid position or LOS blocked).")]
@@ -100,7 +99,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 
         public int failureValue = 1;
         public Target failureRouteTo = Target.Self;
-        public EntityLinkSchema failureRouteLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.None;
@@ -108,19 +106,12 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            var teleportTargetLinkKey = ResolveLinkKey(entityToTeleportLink);
-            var teleportLinkKey = ResolveLinkKey(teleportRelativeToLink);
-            var azimuthTargetLinkKey = ResolveLinkKey(azimuthTargetLink);
-            var readStatKey = ResolveLinkKey(readStatLink);
-            var failureLinkKey = ResolveLinkKey(failureRouteLink);
-            var facingTargetLinkKey = ResolveLinkKey(facingTargetLink);
 
             var builder = new PhysicsTeleportBuilder
             {
                 AuthoredData = new PhysicsTeleportData
                 {
-                    EntityToTeleport = entityToTeleport,
-                    EntityToTeleportLinkKey = teleportTargetLinkKey,
+                    EntityToTeleport = EntityLinkAuthoringUtility.BakeRef(context.Baker, entityToTeleportLink, entityToTeleport),
 
                     Radius = radius,
 
@@ -129,17 +120,14 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                     ElevationCenter = math.radians(elevationCenter),
                     ElevationHalfRange = math.radians(elevationHalfRange),
 
-                    TeleportRelativeTo = teleportRelativeTo,
-                    TeleportRelativeToLinkKey = teleportLinkKey,
+                    TeleportRelativeTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, teleportRelativeToLink, teleportRelativeTo),
 
-                    AzimuthTarget = azimuthTarget,
-                    AzimuthTargetLinkKey = azimuthTargetLinkKey,
+                    AzimuthTarget = EntityLinkAuthoringUtility.BakeRef(context.Baker, azimuthTargetLink, azimuthTarget),
 
                     ReferenceFrame = referenceFrame,
 
                     FacingMode = facingMode,
-                    FacingTarget = facingTarget,
-                    FacingTargetLinkKey = facingTargetLinkKey,
+                    FacingTarget = EntityLinkAuthoringUtility.BakeRef(context.Baker, facingTargetLink, facingTarget),
 
                     ClearanceRadius = clearanceRadius,
                     MaxCandidates = maxCandidates,
@@ -152,25 +140,18 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
 
                     FailureCondition = failureCondition ? failureCondition.Key : ConditionKey.Null,
                     FailureValue = failureValue,
-                    FailureRouteTo = failureRouteTo,
-                    FailureRouteLinkKey = failureLinkKey,
+                    FailureRouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, failureRouteLink, failureRouteTo),
 
-                    Strength = new StatStrengthConfig
+                    Strength = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }
             };
             builder.ApplyTo(ref commands);
 
             base.Bake(clipEntity, context);
-        }
-
-        private static ushort ResolveLinkKey(EntityLinkSchema link)
-        {
-            return link != null && EntityLinkAuthoringUtility.TryGetKey(link, out var key) ? key : (ushort)0;
         }
     }
 }

@@ -3,6 +3,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using BovineLabs.Timeline.Physics.Data.Mixers;
@@ -155,7 +156,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 Magnitude = 10f,
                 ForceType = PhysicsTriggerForceType.Directional,
                 Direction = new float3(0, 0, 1),
-                ApplyTo = Target.Target
+                ApplyTo = new EntityLinkRef { ReadRootFrom = Target.Target }
             });
 
             Manager.AddComponentData(triggerEntity, new PhysicsTriggerFilterData
@@ -364,7 +365,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 {
                     Mode = PhysicsVelocityMode.SetContinuous,
                     Linear = new float3(0, 5, 0),
-                    Strength = new StatStrengthConfig { Stat = 999, ReadFrom = Target.Self }
+                    Strength = new StatSource { Stat = 999, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
                 }
             });
 

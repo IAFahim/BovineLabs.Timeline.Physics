@@ -1,5 +1,6 @@
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 
 namespace BovineLabs.Timeline.Physics
@@ -24,9 +25,8 @@ namespace BovineLabs.Timeline.Physics
 
         public float Elevation;
 
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
 
-        public Target ApplyTo;
-        public ushort ApplyToLinkKey;
+        public EntityLinkRef ApplyTo;
     }
 }

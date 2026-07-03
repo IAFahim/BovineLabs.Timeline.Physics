@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using UnityEngine;
@@ -13,6 +14,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public class PhysicsForceClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema directionTargetLink;
+        public EntityLinkSchema readStatLink;
+
         [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
 
@@ -39,7 +43,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public float directionStrength = 10f;
 
         public Target directionTarget = Target.Target;
-        public EntityLinkSchema directionTargetLink;
 
         [Header("Direction Latch")]
         [Tooltip("Sample velocity-relative directions once per clip activation and hold them. " +
@@ -55,7 +58,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -74,14 +76,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 resolvedMode = PhysicsForceDirectionMode.FixedVector;
             }
 
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
-
-            ushort dirLinkKey = 0;
-            if (directionTargetLink != null && EntityLinkAuthoringUtility.TryGetKey(directionTargetLink, out var k2))
-                dirLinkKey = k2;
-
             var builder = new PhysicsForceBuilder
             {
                 AuthoredData = new PhysicsForceData
@@ -92,16 +86,14 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Linear = linearForce,
                     Space = space,
                     Magnitude = directionStrength,
-                    DirectionTarget = directionTarget,
-                    DirectionTargetLinkKey = dirLinkKey,
+                    DirectionTarget = EntityLinkAuthoringUtility.BakeRef(context.Baker, directionTargetLink, directionTarget),
                     LatchDirection = latchDirection,
                     ResetVelocityOnFire = resetVelocityOnFire,
                     Angular = angularForce,
-                    Strength = new StatStrengthConfig
+                    Strength = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }
             };

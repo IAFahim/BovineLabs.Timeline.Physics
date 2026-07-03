@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -20,6 +21,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
     /// </summary>
     public class PhysicsScatterForceClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema readStatLink;
+
         [Tooltip("Impulse mode applies force exactly once per clip activation and ignores Looping.")]
         public PhysicsForceMode mode = PhysicsForceMode.Impulse;
 
@@ -61,7 +64,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public StatSchemaObject strengthStat;
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         public override double duration => 1;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -69,10 +71,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
 
             var builder = new PhysicsForceBuilder
             {
@@ -91,11 +89,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     LatchDirection = latchDirection,
                     ResetVelocityOnFire = resetVelocityOnFire,
                     Angular = angularForce,
-                    Strength = new StatStrengthConfig
+                    Strength = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey,
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     },
                 },
             };

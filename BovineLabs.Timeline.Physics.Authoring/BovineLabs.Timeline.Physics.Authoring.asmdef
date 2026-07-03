@@ -25,6 +25,7 @@
     "Unity.Burst",
     "Unity.Splines",
     "BovineLabs.Timeline.EntityLinks.Authoring",
+    "BovineLabs.Timeline.EntityLinks.Data",
     "BovineLabs.Essence.Authoring",
     "BovineLabs.Essence.Data"
   ],

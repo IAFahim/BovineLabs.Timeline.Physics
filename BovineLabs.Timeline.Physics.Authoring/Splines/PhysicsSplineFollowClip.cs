@@ -3,6 +3,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -13,6 +14,8 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
 {
     public class PhysicsSplineFollowClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema readStatLink;
+
         [Header("Path")]
         [Tooltip("Which path to follow. A SplinePathAuthoring GameObject must register this same schema.")]
         public SplineSchema spline;
@@ -45,7 +48,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
         public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         public override double duration => 2;
         public ClipCaps clipCaps => ClipCaps.Blending | ClipCaps.Looping;
@@ -53,9 +55,6 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-
-            ushort statLinkKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k)) statLinkKey = k;
 
             var builder = new PhysicsSplineFollowBuilder
             {
@@ -69,11 +68,10 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
                     Lead = lead,
                     Tuning = tuning,
                     Strength = strength,
-                    StrengthStat = new StatStrengthConfig
+                    StrengthStat = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = statLinkKey
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }
             };

@@ -4,6 +4,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Mathematics;
 
@@ -26,14 +27,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
             Target applyTo, EntityLinkSchema applyToLink,
             Target ignoreTarget, EntityLinkSchema[] requireLinks, PhysicsTriggerHitMode hitMode)
         {
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
-
-            ushort applyToKey = 0;
-            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2))
-                applyToKey = k2;
-
             // Continuous forces accumulate every frame the clip is active, so they must match on Stay.
             var bakedState = triggerState;
             if (mode == PhysicsForceMode.Continuous && bakedState != StatefulEventState.Stay)
@@ -55,14 +48,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     FalloffCurve = falloffCurve,
                     FalloffStartRadius = falloffStartRadius,
                     FalloffEndRadius = falloffEndRadius,
-                    Strength = new StatStrengthConfig
+                    Strength = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey,
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     },
-                    ApplyTo = applyTo,
-                    ApplyToLinkKey = applyToKey,
+                    ApplyTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, applyToLink, applyTo),
                 },
                 FilterData = new PhysicsTriggerFilterData
                 {

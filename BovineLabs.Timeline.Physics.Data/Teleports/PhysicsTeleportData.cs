@@ -1,6 +1,7 @@
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -26,8 +27,7 @@ namespace BovineLabs.Timeline.Physics
 
     public struct PhysicsTeleportData
     {
-        public Target EntityToTeleport;
-        public ushort EntityToTeleportLinkKey;
+        public EntityLinkRef EntityToTeleport;
 
         public float Radius;
 
@@ -36,17 +36,14 @@ namespace BovineLabs.Timeline.Physics
         public float ElevationCenter;
         public float ElevationHalfRange;
 
-        public Target TeleportRelativeTo;
-        public ushort TeleportRelativeToLinkKey;
+        public EntityLinkRef TeleportRelativeTo;
 
-        public Target AzimuthTarget;
-        public ushort AzimuthTargetLinkKey;
+        public EntityLinkRef AzimuthTarget;
 
         public TeleportReferenceFrame ReferenceFrame;
 
         public TeleportFacingMode FacingMode;
-        public Target FacingTarget;
-        public ushort FacingTargetLinkKey;
+        public EntityLinkRef FacingTarget;
 
         public float ClearanceRadius;
         public int MaxCandidates;
@@ -59,10 +56,9 @@ namespace BovineLabs.Timeline.Physics
 
         public ConditionKey FailureCondition;
         public int FailureValue;
-        public Target FailureRouteTo;
-        public ushort FailureRouteLinkKey;
+        public EntityLinkRef FailureRouteTo;
 
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
     }
 
     public struct PhysicsTeleportState : IComponentData
@@ -93,7 +89,6 @@ namespace BovineLabs.Timeline.Physics
             return new PhysicsTeleportData
             {
                 EntityToTeleport = s < 0.5f ? a.EntityToTeleport : b.EntityToTeleport,
-                EntityToTeleportLinkKey = s < 0.5f ? a.EntityToTeleportLinkKey : b.EntityToTeleportLinkKey,
 
                 Radius = math.lerp(a.Radius, b.Radius, s),
                 AzimuthCenter = math.lerp(a.AzimuthCenter, b.AzimuthCenter, s),
@@ -102,16 +97,13 @@ namespace BovineLabs.Timeline.Physics
                 ElevationHalfRange = math.lerp(a.ElevationHalfRange, b.ElevationHalfRange, s),
 
                 TeleportRelativeTo = s < 0.5f ? a.TeleportRelativeTo : b.TeleportRelativeTo,
-                TeleportRelativeToLinkKey = s < 0.5f ? a.TeleportRelativeToLinkKey : b.TeleportRelativeToLinkKey,
 
                 AzimuthTarget = s < 0.5f ? a.AzimuthTarget : b.AzimuthTarget,
-                AzimuthTargetLinkKey = s < 0.5f ? a.AzimuthTargetLinkKey : b.AzimuthTargetLinkKey,
 
                 ReferenceFrame = s < 0.5f ? a.ReferenceFrame : b.ReferenceFrame,
 
                 FacingMode = s < 0.5f ? a.FacingMode : b.FacingMode,
                 FacingTarget = s < 0.5f ? a.FacingTarget : b.FacingTarget,
-                FacingTargetLinkKey = s < 0.5f ? a.FacingTargetLinkKey : b.FacingTargetLinkKey,
 
                 ClearanceRadius = math.lerp(a.ClearanceRadius, b.ClearanceRadius, s),
                 MaxCandidates = s < 0.5f ? a.MaxCandidates : b.MaxCandidates,
@@ -125,7 +117,6 @@ namespace BovineLabs.Timeline.Physics
                 FailureCondition = s < 0.5f ? a.FailureCondition : b.FailureCondition,
                 FailureValue = s < 0.5f ? a.FailureValue : b.FailureValue,
                 FailureRouteTo = s < 0.5f ? a.FailureRouteTo : b.FailureRouteTo,
-                FailureRouteLinkKey = s < 0.5f ? a.FailureRouteLinkKey : b.FailureRouteLinkKey,
 
                 Strength = s < 0.5f ? a.Strength : b.Strength
             };
@@ -136,7 +127,6 @@ namespace BovineLabs.Timeline.Physics
             return new PhysicsTeleportData
             {
                 EntityToTeleport = a.EntityToTeleport,
-                EntityToTeleportLinkKey = a.EntityToTeleportLinkKey,
 
                 Radius = a.Radius + b.Radius,
                 AzimuthCenter = a.AzimuthCenter + b.AzimuthCenter,
@@ -145,16 +135,13 @@ namespace BovineLabs.Timeline.Physics
                 ElevationHalfRange = a.ElevationHalfRange + b.ElevationHalfRange,
 
                 TeleportRelativeTo = a.TeleportRelativeTo,
-                TeleportRelativeToLinkKey = a.TeleportRelativeToLinkKey,
 
                 AzimuthTarget = a.AzimuthTarget,
-                AzimuthTargetLinkKey = a.AzimuthTargetLinkKey,
 
                 ReferenceFrame = a.ReferenceFrame,
 
                 FacingMode = a.FacingMode,
                 FacingTarget = a.FacingTarget,
-                FacingTargetLinkKey = a.FacingTargetLinkKey,
 
                 ClearanceRadius = a.ClearanceRadius + b.ClearanceRadius,
                 MaxCandidates = a.MaxCandidates,
@@ -168,7 +155,6 @@ namespace BovineLabs.Timeline.Physics
                 FailureCondition = a.FailureCondition,
                 FailureValue = a.FailureValue,
                 FailureRouteTo = a.FailureRouteTo,
-                FailureRouteLinkKey = a.FailureRouteLinkKey,
 
                 Strength = a.Strength
             };

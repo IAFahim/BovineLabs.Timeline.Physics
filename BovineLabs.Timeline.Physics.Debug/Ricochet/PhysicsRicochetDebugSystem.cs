@@ -185,11 +185,11 @@ namespace BovineLabs.Timeline.Physics.Debug
                 var origin = float3.zero;
                 var direction = math.forward();
 
-                var originEntity = ResolveTarget(entity, d.RayOrigin, targets);
+                var originEntity = ResolveTarget(entity, d.RayOrigin.ReadRootFrom, targets);
                 if (originEntity != Entity.Null && TransformLookup.HasComponent(originEntity))
                     origin = GetAntiJitterPosition(originEntity, TransformLookup[originEntity].Position);
 
-                var dirEntity = ResolveTarget(entity, d.RayDirection, targets);
+                var dirEntity = ResolveTarget(entity, d.RayDirection.ReadRootFrom, targets);
                 if (dirEntity != Entity.Null && TransformLookup.HasComponent(dirEntity))
                     direction = math.rotate(TransformLookup[dirEntity].Rotation, math.forward());
 
@@ -240,7 +240,7 @@ namespace BovineLabs.Timeline.Physics.Debug
 
                         if (d.HitConditionKey != 0)
                         {
-                            var routeTarget = ResolveTarget(entity, d.HitRouteTo, targets);
+                            var routeTarget = ResolveTarget(entity, d.HitRouteTo.ReadRootFrom, targets);
                             if (routeTarget != Entity.Null &&
                                 TransformLookup.TryGetComponent(routeTarget, out var routeLtw))
                             {

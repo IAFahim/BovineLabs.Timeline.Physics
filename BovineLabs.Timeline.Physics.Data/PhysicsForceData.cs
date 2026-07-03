@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -44,8 +45,7 @@ namespace BovineLabs.Timeline.Physics
         public Target Space;
 
         public float Magnitude;
-        public Target DirectionTarget;
-        public ushort DirectionTargetLinkKey;
+        public EntityLinkRef DirectionTarget;
 
         public float ConeAzimuthCenter;
 
@@ -60,7 +60,7 @@ namespace BovineLabs.Timeline.Physics
         public VelocityResetFlags ResetVelocityOnFire;
 
         public float3 Angular;
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
     }
 
     public struct PhysicsForceState : IComponentData, IElapsedTimeState
@@ -124,7 +124,6 @@ namespace BovineLabs.Timeline.Physics
                 Space = s < 0.5f ? a.Space : b.Space,
                 Magnitude = math.lerp(a.Magnitude, b.Magnitude, s),
                 DirectionTarget = s < 0.5f ? a.DirectionTarget : b.DirectionTarget,
-                DirectionTargetLinkKey = s < 0.5f ? a.DirectionTargetLinkKey : b.DirectionTargetLinkKey,
                 ConeAzimuthCenter = math.lerp(a.ConeAzimuthCenter, b.ConeAzimuthCenter, s),
                 ConeAzimuthHalfRange = math.lerp(a.ConeAzimuthHalfRange, b.ConeAzimuthHalfRange, s),
                 ConeElevationCenter = math.lerp(a.ConeElevationCenter, b.ConeElevationCenter, s),
@@ -148,7 +147,6 @@ namespace BovineLabs.Timeline.Physics
                 Space = a.Space,
                 Magnitude = a.Magnitude + b.Magnitude,
                 DirectionTarget = a.DirectionTarget,
-                DirectionTargetLinkKey = a.DirectionTargetLinkKey,
                 ConeAzimuthCenter = a.ConeAzimuthCenter + b.ConeAzimuthCenter,
                 ConeAzimuthHalfRange = a.ConeAzimuthHalfRange + b.ConeAzimuthHalfRange,
                 ConeElevationCenter = a.ConeElevationCenter + b.ConeElevationCenter,

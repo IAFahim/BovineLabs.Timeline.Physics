@@ -157,12 +157,12 @@ namespace BovineLabs.Timeline.Physics.Debug
             private void DrawTargetArrow(Entity body, in PhysicsForceData cfg, float3 selfPos)
             {
                 var targetEntity = body;
-                if (cfg.DirectionTarget != Target.None &&
+                if (cfg.DirectionTarget.ReadRootFrom != Target.None &&
                     TargetsLookup.TryGetComponent(body, out var targets))
                 {
-                    // ponytail: resolves only the base Target, not the link override (DirectionTargetLinkKey).
+                    // ponytail: resolves only the base Target, not the link override (DirectionTarget.LinkKey).
                     // Add link resolution if a gizmo needs to follow a remapped link target.
-                    var t = targets.Get(cfg.DirectionTarget, body);
+                    var t = targets.Get(cfg.DirectionTarget.ReadRootFrom, body);
                     if (t != Entity.Null) targetEntity = t;
                 }
 

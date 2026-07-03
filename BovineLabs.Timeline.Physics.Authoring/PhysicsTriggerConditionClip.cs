@@ -20,8 +20,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public PhysicsCategoryTags collidesWith;
         public ConditionEventObject condition;
         public int value = 1;
-        public Target routeTo = Target.Target;
         public EntityLinkSchema routeLink;
+        public Target routeTo = Target.Target;
 
         [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
@@ -38,8 +38,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            if (routeLink == null || !EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             var builder = new PhysicsTriggerConditionBuilder
@@ -50,8 +48,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     CollidesWithMask = collidesWith.Value,
                     Condition = condition ? condition.Key : ConditionKey.Null,
                     Value = value,
-                    RouteTo = routeTo,
-                    RouteLinkKey = linkKey
+                    RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo)
                 },
                 FilterData = new PhysicsTriggerFilterData
                 {

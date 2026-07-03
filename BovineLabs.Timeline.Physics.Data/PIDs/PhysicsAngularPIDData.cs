@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -16,7 +17,7 @@ namespace BovineLabs.Timeline.Physics
         public quaternion TargetRotation;
 
         public float Strength;
-        public StatStrengthConfig StrengthStat;
+        public StatSource StrengthStat;
     }
 
     public struct PhysicsAngularPIDAnimated : IAnimatedComponent<PhysicsAngularPIDData>, IPreparable

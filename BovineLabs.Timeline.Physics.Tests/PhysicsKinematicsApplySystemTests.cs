@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Kinematics;
 using NUnit.Framework;
@@ -118,7 +119,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 {
                     Mode = PhysicsForceMode.Continuous,
                     DirectionMode = PhysicsForceDirectionMode.AwayFromTarget,
-                    DirectionTarget = Target.Target,
+                    DirectionTarget = new EntityLinkRef { ReadRootFrom = Target.Target },
                     Magnitude = 10f,
                     Strength = default
                 }

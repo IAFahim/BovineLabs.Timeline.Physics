@@ -1,5 +1,6 @@
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -38,9 +39,8 @@ namespace BovineLabs.Timeline.Physics
         public float FalloffStartRadius;
         public float FalloffEndRadius;
 
-        public StatStrengthConfig Strength;
+        public StatSource Strength;
 
-        public Target ApplyTo;
-        public ushort ApplyToLinkKey;
+        public EntityLinkRef ApplyTo;
     }
 }

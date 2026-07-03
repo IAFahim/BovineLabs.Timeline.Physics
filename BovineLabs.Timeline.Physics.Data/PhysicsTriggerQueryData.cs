@@ -3,6 +3,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -253,9 +254,7 @@ namespace BovineLabs.Timeline.Physics
 
         public PhysicsTriggerQuerySelection Selection;
 
-        public Target RouteTo;
-
-        public ushort RouteLinkKey;
+        public EntityLinkRef RouteTo;
 
         public bool ClearOnLost;
 
@@ -299,7 +298,7 @@ namespace BovineLabs.Timeline.Physics
         public uint FactionAllowMask; // FactionGate: allowed (1 << faction) bits
 
         // ---- WAVE 2: SELECTION ----
-        public StatStrengthConfig ThreatStat; // HighestThreat / WeakestTarget Essence stat read
+        public StatSource ThreatStat; // HighestThreat / WeakestTarget Essence stat read
         public float ThreatWeightDist; // HighestThreat: proximity weight
         public float ThreatWeightAlign; // HighestThreat: alignment weight
         public float ThreatWeightStat; // HighestThreat: stat weight
@@ -312,7 +311,7 @@ namespace BovineLabs.Timeline.Physics
         public bool WriteHitBuffer; // also emit a capped DynamicBuffer<TriggerQueryHit>
 
         // ---- WAVE 2: VALUE ----
-        public StatStrengthConfig ScaledMagnitudeStat; // ScaledMagnitude Essence stat read
+        public StatSource ScaledMagnitudeStat; // ScaledMagnitude Essence stat read
         public BlobAssetReference<PhysicsTriggerDistanceBandBlob> MagnitudeBands; // ScaledMagnitude quantize table
         public float ApproachBandWidth; // ApproachVelocityBand: m/s per band step
         public bool OverlapThresholdCross; // OverlapCount: emit only on threshold cross
@@ -333,8 +332,7 @@ namespace BovineLabs.Timeline.Physics
         public float DraftCorridorRadius; // DraftCorridorGate: max perpendicular distance from the leader's back line
         public float LedgeRayDepth; // LedgeGate: down-ray length; a hit within this depth = ground (excluded)
         public float PassLaneConeCos; // PassLaneCone: cos half-angle of the second cone toward the reference target
-        public Target PassLaneRefTarget; // PassLaneCone: which Targets slot / role is the reference the cone points at
-        public ushort PassLaneRefLinkKey; // PassLaneCone: optional EntityLink on the reference target
+        public EntityLinkRef PassLaneRefTarget; // PassLaneCone: which Targets slot / role is the reference the cone points at, + optional EntityLink
         public bool ZoneStateInvert; // ZoneStateGate: false = require the tag enabled, true = exclude if enabled
         public uint SurfaceMaterialMask; // SurfaceMaterialGate: allowed contact-material/custom-tag bits (collision filter)
         public float LightExposureThreshold; // LightExposureGate: keep candidates with Exposure.Value within the band
@@ -343,8 +341,7 @@ namespace BovineLabs.Timeline.Physics
         // ---- WAVE 3: SELECTION ----
         public float HeaviestMassExp; // HeaviestMover: mass exponent a (1 = mass term linear)
         public float HeaviestSpeedExp; // HeaviestMover: speed exponent b (0 = ignore speed → pure mass)
-        public Target BlockingRefTarget; // MostBlocking: the reference endpoint of the self→ref segment
-        public ushort BlockingRefLinkKey; // MostBlocking: optional EntityLink on the reference endpoint
+        public EntityLinkRef BlockingRefTarget; // MostBlocking: the reference endpoint of the self→ref segment, + optional EntityLink
 
         // ---- WAVE 3: VALUE ----
         public BlobAssetReference<PhysicsTriggerDistanceBandBlob> ImpactBands; // ImpactBand: ascending impulse thresholds

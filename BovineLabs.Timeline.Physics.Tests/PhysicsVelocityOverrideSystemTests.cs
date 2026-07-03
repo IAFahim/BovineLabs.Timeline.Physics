@@ -3,6 +3,7 @@ using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Data.Builders;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.VelocityOverrides;
 using NUnit.Framework;
@@ -164,7 +165,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                     Linear = new float3(10, 0, 0),
                     Angular = float3.zero,
                     Space = Target.None,
-                    Strength = new StatStrengthConfig { Stat = 12345, ReadFrom = Target.Self }
+                    Strength = new StatSource { Stat = 12345, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
                 }
             });
 

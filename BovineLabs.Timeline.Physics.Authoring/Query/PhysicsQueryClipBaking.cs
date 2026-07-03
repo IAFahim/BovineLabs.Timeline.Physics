@@ -41,18 +41,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         public static PhysicsTriggerQueryBuilder Build(BakingContext context, in Common c, PhysicsTriggerQueryData data)
         {
-            ushort routeKey = 0;
-            if (c.RouteLink != null && EntityLinkAuthoringUtility.TryGetKey(c.RouteLink, out var k))
-                routeKey = k;
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, c.RequireLinks);
 
             data.EventState = c.TriggerState;
             data.CollidesWithMask = c.CollidesWith.Value;
             data.MaxDistance = c.MaxDistance;
             data.MaxAngle = math.radians(c.MaxAngleDegrees);
-            data.RouteTo = c.RouteTo;
-            data.RouteLinkKey = routeKey;
+            data.RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, c.RouteLink, c.RouteTo);
             data.RouteSlot = c.RouteSlot;
             data.WriteMode = c.WriteMode;
             data.ClearOnLost = c.ClearOnLost;

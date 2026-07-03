@@ -5,6 +5,7 @@ using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -15,6 +16,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public sealed class PhysicsBreakForceClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema readStatLink;
+        public EntityLinkSchema applyToLink;
+
         public StatefulEventState triggerState = StatefulEventState.Enter;
         public PhysicsBreakMode mode = PhysicsBreakMode.Brake;
 
@@ -38,12 +42,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public StatSchemaObject strengthStat;
 
         public Target readStatFrom = Target.Self;
-        public EntityLinkSchema readStatLink;
 
         [Header("Apply To")] [Tooltip("Whom to push. Target = the contacting body (the arrow).")]
         public Target applyTo = Target.Target;
-
-        public EntityLinkSchema applyToLink;
 
         [Header("Filtering")] [Tooltip("Ignore collisions with this target (and any colliders sharing its root).")]
         public Target ignoreTarget = Target.Owner;
@@ -60,13 +61,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
 
-            ushort readStatKey = 0;
-            if (readStatLink != null && EntityLinkAuthoringUtility.TryGetKey(readStatLink, out var k1))
-                readStatKey = k1;
-
-            ushort applyToKey = 0;
-            if (applyToLink != null && EntityLinkAuthoringUtility.TryGetKey(applyToLink, out var k2)) applyToKey = k2;
-
             var filterBlob = PhysicsTriggerBakingUtility.BakeFilterBlob(context.Baker, requireLinks);
 
             var builder = new PhysicsBreakForceBuilder
@@ -79,14 +73,12 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Restitution = restitution,
                     Azimuth = math.radians(azimuth),
                     Elevation = math.radians(elevation),
-                    Strength = new StatStrengthConfig
+                    Strength = new StatSource
                     {
                         Stat = strengthStat != null ? strengthStat.Key : default,
-                        ReadFrom = readStatFrom,
-                        LinkKey = readStatKey
+                        Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     },
-                    ApplyTo = applyTo,
-                    ApplyToLinkKey = applyToKey
+                    ApplyTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, applyToLink, applyTo)
                 },
                 FilterData = new PhysicsTriggerFilterData
                 {

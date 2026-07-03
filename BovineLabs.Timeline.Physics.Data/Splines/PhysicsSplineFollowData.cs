@@ -1,4 +1,5 @@
 using BovineLabs.Timeline.Data;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -30,7 +31,7 @@ namespace BovineLabs.Timeline.Physics
         public float Lead;
         public PidTuning Tuning;
         public float Strength;
-        public StatStrengthConfig StrengthStat;
+        public StatSource StrengthStat;
     }
 
     public struct PhysicsSplineFollowAnimated : IAnimatedComponent<PhysicsSplineFollowData>, IPreparable

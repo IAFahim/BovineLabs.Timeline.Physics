@@ -1,6 +1,7 @@
 using BovineLabs.Core.ObjectManagement;
 using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -18,8 +19,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsTriggerRotationMode RotationMode;
         public float3 RotationOffsetEuler;
 
-        public Target AssignParent;
-        public ushort AssignParentLinkKey;
+        public EntityLinkRef AssignParent;
         public ushort TargetLinkKey;
     }
 }

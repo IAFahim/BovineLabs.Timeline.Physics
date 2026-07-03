@@ -155,7 +155,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
 
             private float3 ResolveOrigin(in PhysicsRicochetData config, Entity entity, in Targets targets)
             {
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin, config.RayOriginLinkKey,
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayOrigin.ReadRootFrom, config.RayOrigin.LinkKey,
                         entity, Entity.Null, targets, LinkSources, Links, out var originEntity) &&
                     LtwLookup.HasComponent(originEntity))
                     return LtwLookup[originEntity].Position;
@@ -165,7 +165,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
 
             private float3 ResolveDirection(in PhysicsRicochetData config, Entity entity, in Targets targets)
             {
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection, config.RayDirectionLinkKey,
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RayDirection.ReadRootFrom, config.RayDirection.LinkKey,
                         entity, Entity.Null, targets, LinkSources, Links, out var dirEntity) &&
                     LtwLookup.HasComponent(dirEntity))
                     return math.rotate(LtwLookup[dirEntity].Rotation, math.forward());
@@ -213,7 +213,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
                 var hitEntity = stepResult.HitEntity;
                 var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;
 
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo, config.HitRouteLinkKey, entity,
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.HitRouteTo.ReadRootFrom, config.HitRouteTo.LinkKey, entity,
                         hitEntity, hitTargets, LinkSources, Links, out var target) &&
                     Writers.TryGet(target, out var writer))
                     writer.Trigger(config.HitConditionKey, bounceCount);

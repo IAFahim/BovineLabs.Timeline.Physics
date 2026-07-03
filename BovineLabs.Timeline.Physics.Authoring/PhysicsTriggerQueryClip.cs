@@ -7,6 +7,7 @@ using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Builders;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -18,6 +19,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
 {
     public sealed class PhysicsTriggerQueryClip : DOTSClip, ITimelineClipAsset
     {
+        public EntityLinkSchema routeLink;
+        public EntityLinkSchema passLaneRefLink;
+        public EntityLinkSchema blockingRefLink;
+
         public StatefulEventState triggerState = StatefulEventState.Stay;
         public PhysicsCategoryTags collidesWith;
 
@@ -40,8 +45,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Header("Routing")]
         [Tooltip("Whose Targets slot receives the winner. Self routes to the bound entity itself.")]
         public Target routeTo = Target.Self;
-
-        public EntityLinkSchema routeLink;
 
         [Tooltip("Which slot on the routed entity the winner is written into.")]
         public PhysicsTriggerRouteSlot routeSlot = PhysicsTriggerRouteSlot.Custom;
@@ -209,8 +212,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("PassLaneCone: which role is the cone's reference (axis = refPos - selfPos).")]
         public Target passLaneRefTarget = Target.Target;
 
-        public EntityLinkSchema passLaneRefLink;
-
         [Tooltip("ZoneStateGate: invert (exclude tagged candidates instead of requiring the tag).")]
         public bool zoneStateInvert;
 
@@ -232,8 +233,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
 
         [Tooltip("MostBlocking: the far endpoint of the self→reference segment (perpendicular distance scored).")]
         public Target blockingRefTarget = Target.Target;
-
-        public EntityLinkSchema blockingRefLink;
 
         [Header("Wave 3 — Value")]
         [Tooltip("ImpactBand: ascending collision-impulse thresholds → band int.")]
@@ -266,11 +265,6 @@ namespace BovineLabs.Timeline.Physics.Authoring
         public override void Bake(Entity clipEntity, BakingContext context)
         {
             var commands = new BakerCommands(context.Baker, clipEntity);
-            if (routeLink == null || !EntityLinkAuthoringUtility.TryGetKey(routeLink, out var linkKey)) linkKey = 0;
-            if (passLaneRefLink == null || !EntityLinkAuthoringUtility.TryGetKey(passLaneRefLink, out var passLaneKey))
-                passLaneKey = 0;
-            if (blockingRefLink == null || !EntityLinkAuthoringUtility.TryGetKey(blockingRefLink, out var blockingKey))
-                blockingKey = 0;
             if (redirectLink == null || !EntityLinkAuthoringUtility.TryGetKey(redirectLink, out var redirectKey))
                 redirectKey = 0;
 
@@ -301,8 +295,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     ObstacleMask = obstacles.Value,
                     LineOfSightOffset = lineOfSightOffset,
                     Selection = selection,
-                    RouteTo = routeTo,
-                    RouteLinkKey = linkKey,
+                    RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                     ClearOnLost = clearOnLost,
                     FoundCondition = foundCondition ? foundCondition.Key : ConditionKey.Null,
                     FoundValue = foundValue,
@@ -341,11 +334,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     FactionAllowMask = (uint)factionAllowMask,
 
                     // ---- WAVE 2: SELECTION ----
-                    ThreatStat = new StatStrengthConfig
+                    ThreatStat = new StatSource
                     {
                         Stat = threatStat != null ? threatStat.Key : default,
-                        ReadFrom = Target.Self,
-                        LinkKey = 0
+                        Link = new EntityLinkRef { ReadRootFrom = Target.Self },
                     },
                     ThreatWeightDist = threatWeightDist,
                     ThreatWeightAlign = threatWeightAlign,
@@ -359,11 +351,10 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     WriteHitBuffer = writeHitBuffer,
 
                     // ---- WAVE 2: VALUE ----
-                    ScaledMagnitudeStat = new StatStrengthConfig
+                    ScaledMagnitudeStat = new StatSource
                     {
                         Stat = scaledMagnitudeStat != null ? scaledMagnitudeStat.Key : default,
-                        ReadFrom = Target.Self,
-                        LinkKey = 0
+                        Link = new EntityLinkRef { ReadRootFrom = Target.Self },
                     },
                     MagnitudeBands = magnitudeBandBlob,
                     ApproachBandWidth = approachBandWidth,
@@ -383,8 +374,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     DraftCorridorRadius = math.max(draftCorridorRadius, 0f),
                     LedgeRayDepth = math.max(ledgeRayDepth, 0f),
                     PassLaneConeCos = passLaneConeCos,
-                    PassLaneRefTarget = passLaneRefTarget,
-                    PassLaneRefLinkKey = passLaneKey,
+                    PassLaneRefTarget = EntityLinkAuthoringUtility.BakeRef(context.Baker, passLaneRefLink, passLaneRefTarget),
                     ZoneStateInvert = zoneStateInvert,
                     SurfaceMaterialMask = surfaceMaterials.Value,
                     LightExposureThreshold = lightExposureThreshold,
@@ -393,8 +383,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     // ---- WAVE 3: SELECTION ----
                     HeaviestMassExp = heaviestMassExp,
                     HeaviestSpeedExp = heaviestSpeedExp,
-                    BlockingRefTarget = blockingRefTarget,
-                    BlockingRefLinkKey = blockingKey,
+                    BlockingRefTarget = EntityLinkAuthoringUtility.BakeRef(context.Baker, blockingRefLink, blockingRefTarget),
 
                     // ---- WAVE 3: VALUE ----
                     ImpactBands = impactBandBlob,

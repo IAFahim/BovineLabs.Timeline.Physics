@@ -19,7 +19,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
             in UnsafeBufferLookup<EntityLinkEntry> links)
         {
             var teleportedEntity = TeleportMath.ResolveTargetEntity(
-                self, data.EntityToTeleport, data.EntityToTeleportLinkKey, targets, linkSources, links);
+                self, data.EntityToTeleport.ReadRootFrom, data.EntityToTeleport.LinkKey, targets, linkSources, links);
 
             LocalToWorld teleportedLtw = default;
             var hasTeleported = teleportedEntity != Entity.Null &&
@@ -29,21 +29,21 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var teleportedRotation = hasTeleported ? Orientation(teleportedLtw) : quaternion.identity;
 
             var landingEntity = TeleportMath.ResolveTargetEntity(
-                self, data.TeleportRelativeTo, data.TeleportRelativeToLinkKey, targets, linkSources, links);
+                self, data.TeleportRelativeTo.ReadRootFrom, data.TeleportRelativeTo.LinkKey, targets, linkSources, links);
 
             var landingPosition = transforms.TryGetComponent(landingEntity, out var landingLtw)
                 ? landingLtw.Position
                 : teleportedPosition;
 
             var azimuthEntity = TeleportMath.ResolveTargetEntity(
-                self, data.AzimuthTarget, data.AzimuthTargetLinkKey, targets, linkSources, links);
+                self, data.AzimuthTarget.ReadRootFrom, data.AzimuthTarget.LinkKey, targets, linkSources, links);
 
             var hasAzimuth = transforms.TryGetComponent(azimuthEntity, out var azimuthLtw);
             var azimuthPosition = hasAzimuth ? azimuthLtw.Position : landingPosition;
             var azimuthRotation = hasAzimuth ? Orientation(azimuthLtw) : quaternion.identity;
 
             var facingEntity = TeleportMath.ResolveTargetEntity(
-                self, data.FacingTarget, data.FacingTargetLinkKey, targets, linkSources, links);
+                self, data.FacingTarget.ReadRootFrom, data.FacingTarget.LinkKey, targets, linkSources, links);
 
             LocalToWorld facingLtw = default;
             var hasFacing = facingEntity != Entity.Null &&

@@ -1,6 +1,7 @@
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
+using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Drags;
 using NUnit.Framework;
@@ -83,7 +84,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 {
                     Linear = 1f,
                     Angular = 1f,
-                    Strength = new StatStrengthConfig { Stat = statKey, ReadFrom = Target.Self }
+                    Strength = new StatSource { Stat = statKey, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
                 }
             });
 

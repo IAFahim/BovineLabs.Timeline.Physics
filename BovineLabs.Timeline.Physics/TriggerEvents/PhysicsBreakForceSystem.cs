@@ -190,7 +190,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if (!PhysicsTriggerFiltering.IsValidTarget(self, other, in filter, in targets, LinkSources, Links))
                     return;
 
-                if (!PhysicsTriggerResolution.TryResolveLinkedTarget(cfg.ApplyTo, cfg.ApplyToLinkKey, self, other,
+                if (!PhysicsTriggerResolution.TryResolveLinkedTarget(cfg.ApplyTo.ReadRootFrom, cfg.ApplyTo.LinkKey, self, other,
                         targets, LinkSources, Links, out var victim))
                     return;
 

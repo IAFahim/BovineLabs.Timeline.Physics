@@ -154,8 +154,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (config.Condition == ConditionKey.Null) return;
 
-                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo, config.RouteLinkKey, self, other,
-                        targets, LinkSources, Links, out var target))
+                if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo.ReadRootFrom, config.RouteTo.LinkKey,
+                        self, other, targets, LinkSources, Links, out var target))
                     if (Writers.TryGet(target, out var writer))
                         writer.Trigger(config.Condition, config.Value);
             }

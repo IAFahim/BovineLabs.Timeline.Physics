@@ -77,7 +77,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 FalloffCurve = PhysicsTriggerFalloffCurve.Step,
                 FalloffStartRadius = 1f,
                 FalloffEndRadius = 5f,
-                ApplyTo = Target.Target
+                ApplyTo = new EntityLinkRef { ReadRootFrom = Target.Target }
             });
 
             Manager.AddComponentData(trigger, new PhysicsTriggerFilterData
@@ -128,7 +128,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 FalloffCurve = PhysicsTriggerFalloffCurve.Step,
                 FalloffStartRadius = 1f,
                 FalloffEndRadius = 5f,
-                ApplyTo = Target.Target
+                ApplyTo = new EntityLinkRef { ReadRootFrom = Target.Target }
             });
 
             Manager.AddComponentData(trigger, new PhysicsTriggerFilterData
@@ -187,7 +187,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 Direction = new float3(0f, 0f, 1f),
                 OriginMode = PhysicsTriggerPositionMode.MatchSelf,
                 FalloffCurve = PhysicsTriggerFalloffCurve.None,
-                ApplyTo = Target.Target
+                ApplyTo = new EntityLinkRef { ReadRootFrom = Target.Target }
             });
 
             Manager.AddComponentData(trigger, new PhysicsTriggerFilterData
@@ -244,7 +244,7 @@ namespace BovineLabs.Timeline.Physics.Tests
                 Direction = new float3(0, 0, 1),
                 OriginMode = PhysicsTriggerPositionMode.MatchSelf,
                 FalloffCurve = PhysicsTriggerFalloffCurve.None,
-                ApplyTo = Target.Target,
+                ApplyTo = new EntityLinkRef { ReadRootFrom = Target.Target },
             });
             Manager.AddComponentData(trigger, new PhysicsTriggerFilterData { IgnoreTarget = Target.None });
             Manager.AddComponentData(trigger, new ClipActive());

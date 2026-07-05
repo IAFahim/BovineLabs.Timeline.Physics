@@ -6,7 +6,6 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics.Splines
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
     [BurstCompile]

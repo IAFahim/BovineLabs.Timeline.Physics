@@ -43,7 +43,6 @@ namespace BovineLabs.Timeline.Physics.Debug
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
-    [UpdateAfter(typeof(PhysicsSystemGroup))]
     public partial struct PhysicsExternalVelocityGizmoSystem : ISystem
     {
         private EntityQuery _query;

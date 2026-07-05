@@ -8,7 +8,6 @@ using Unity.Entities;
 namespace BovineLabs.Timeline.Physics.Forces
 {
     [UpdateInGroup(typeof(TimelineComponentAnimationGroup))]
-    [UpdateAfter(typeof(EntityLinkTargetPatchSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
     [BurstCompile]

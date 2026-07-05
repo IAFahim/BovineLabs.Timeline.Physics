@@ -74,13 +74,13 @@ namespace BovineLabs.Timeline.Physics.Tests
         [Test]
         public void Hysteresis_KeepsLastCellNearBoundary()
         {
-            // A point just past the col 0/1 boundary, with last cell = 3 (mid-left), stays sticky within the margin.
-            PhysicsTriggerGridMath.ComputeCell(new float3(0.02f, 0f, 0f), Fwd, Up, false, 1.5f, 1.5f, 3, 3,
+            // The col 0/1 boundary is at x = -0.5 (u = 1/3). x = -0.48 sits JUST past it into col 1 (raw = cell 4),
+            // but within the sticky margin of the last cell (3 = mid-left), so it holds cell 3 — no chatter.
+            var raw = PhysicsTriggerGridMath.ComputeCell(new float3(-0.48f, 0f, 0f), Fwd, Up, false, 1.5f, 1.5f, 3, 3,
                 out var u, out var v);
-            var raw = PhysicsTriggerGridMath.ComputeCell(new float3(0.02f, 0f, 0f), Fwd, Up, false, 1.5f, 1.5f, 3, 3,
-                out _, out _);
+            Assert.AreEqual(4, raw); // raw quantization already crossed into col 1
             var stuck = PhysicsTriggerGridMath.ApplyHysteresis(raw, u, v, 3, 3, 3, 0.15f);
-            Assert.AreEqual(3, stuck); // held to the previous cell, no chatter
+            Assert.AreEqual(3, stuck); // held to the previous cell
         }
 
         [Test]

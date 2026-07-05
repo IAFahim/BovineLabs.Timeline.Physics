@@ -20,7 +20,6 @@ using Unity.Transforms;
 namespace BovineLabs.Timeline.Physics.TriggerEvents
 {
     [UpdateInGroup(typeof(PhysicsProducerGroup))]
-    [UpdateAfter(typeof(PhysicsForceTrackSystem))]
     [UpdateBefore(typeof(PhysicsProducerForceAccumulatorSystem))]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
                        WorldSystemFilterFlags.ServerSimulation)]

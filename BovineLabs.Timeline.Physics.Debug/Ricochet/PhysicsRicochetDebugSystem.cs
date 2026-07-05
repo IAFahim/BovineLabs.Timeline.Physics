@@ -82,7 +82,6 @@ namespace BovineLabs.Timeline.Physics.Debug
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ServerSimulation |
                        WorldSystemFilterFlags.ClientSimulation | WorldSystemFilterFlags.Editor)]
     [UpdateInGroup(typeof(DebugSystemGroup))]
-    [UpdateAfter(typeof(PhysicsSystemGroup))]
     [BurstCompile]
     public partial struct PhysicsRicochetGizmoSystem : ISystem
     {

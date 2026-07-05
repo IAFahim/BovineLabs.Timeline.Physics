@@ -35,6 +35,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private BufferLookup<Stat> _statLookup;
         private ConditionEventWriter.Lookup _writers;
+        private ConditionEventWriter.SingletonData _writersSingletonData;
 
         private EntityQuery _query;
 
@@ -50,6 +51,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
             _ltwLookup = state.GetUnsafeComponentLookup<LocalToWorld>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
+            _writersSingletonData.Create(ref state);
             _writers.Create(ref state);
 
             _query = SystemAPI.QueryBuilder()
@@ -73,7 +75,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
             _ltwLookup.Update(ref state);
             _colliderLookup.Update(ref state);
             _statLookup.Update(ref state);
-            _writers.Update(ref state);
+            _writers.Update(ref state, _writersSingletonData);
 
             var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
 

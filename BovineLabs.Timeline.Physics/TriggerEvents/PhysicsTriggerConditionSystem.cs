@@ -28,6 +28,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private UnsafeComponentLookup<PhysicsCollider> _colliderLookup;
         private ConditionEventWriter.Lookup _writers;
+        private ConditionEventWriter.SingletonData _writersSingletonData;
 
         private EntityQuery _query;
 
@@ -38,6 +39,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _colliderLookup = state.GetUnsafeComponentLookup<PhysicsCollider>(true);
+            _writersSingletonData.Create(ref state);
             _writers.Create(ref state);
 
             _query = SystemAPI.QueryBuilder()
@@ -52,7 +54,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _colliderLookup.Update(ref state);
-            _writers.Update(ref state);
+            _writers.Update(ref state, _writersSingletonData);
 
             var bindingType = SystemAPI.GetComponentTypeHandle<TrackBinding>(true);
             var configType = SystemAPI.GetComponentTypeHandle<PhysicsTriggerConditionData>(true);

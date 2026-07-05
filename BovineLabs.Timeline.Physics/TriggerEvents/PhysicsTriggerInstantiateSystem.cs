@@ -294,7 +294,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     out var transform);
 
                 var instance = ECB.Instantiate(chunkIndex, prefab);
-                var commands = new CommandBufferParallelCommands(ECB, chunkIndex, instance);
 
                 ECB.AddComponent(chunkIndex, instance, new Targets
                 {
@@ -310,11 +309,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var localMatrix = math.mul(math.inverse(parentLtw.Value), worldMatrix);
                     transform = LocalTransform.FromMatrix(localMatrix);
 
-                    var parentCache = EntityCache.Create(ChildLookup, parent);
-                    var childs = ChildLookup.TryGetBuffer(ref parentCache, out var parentChilds)
-                        ? parentChilds
-                        : default;
-                    TransformUtility.SetupParent(ref commands, parent, instance, parentLtw, transform, childs);
+                    // ponytail: SetupParent was removed from core; add Parent and let ParentSystem rebuild the child buffer next frame.
+                    ECB.AddComponent(chunkIndex, instance, new Parent { Value = parent });
                 }
 
                 ECB.SetComponent(chunkIndex, instance, transform);

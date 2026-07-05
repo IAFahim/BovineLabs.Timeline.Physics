@@ -51,6 +51,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
         private ComponentLookup<Targets> _targetsWriteLookup;
         private BufferLookup<TriggerQueryHit> _hitLookup;
         private ConditionEventWriter.Lookup _writers;
+        private ConditionEventWriter.SingletonData _writersSingletonData;
 
         private EntityQuery _query;
 
@@ -73,6 +74,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _statLookup = state.GetBufferLookup<Stat>(true);
             _targetsWriteLookup = state.GetComponentLookup<Targets>();
             _hitLookup = state.GetBufferLookup<TriggerQueryHit>();
+            _writersSingletonData.Create(ref state);
             _writers.Create(ref state);
 
             _query = SystemAPI.QueryBuilder()
@@ -102,7 +104,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             _statLookup.Update(ref state);
             _targetsWriteLookup.Update(ref state);
             _hitLookup.Update(ref state);
-            _writers.Update(ref state);
+            _writers.Update(ref state, _writersSingletonData);
 
             var hasCollisionWorld = SystemAPI.TryGetSingleton<PhysicsWorldSingleton>(out var physicsWorld);
 
@@ -1247,9 +1249,32 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     case PhysicsTriggerQueryValueMode.AggregateCentroid:
                         return config.FoundValue;
 
+                    case PhysicsTriggerQueryValueMode.PlanarGrid:
+                        return ComputeGridValue(in config, winner, selfPos, selfRot, ref queryState);
+
                     default:
                         return config.FoundValue;
                 }
+            }
+
+            private int ComputeGridValue(in PhysicsTriggerQueryData config, Entity winner, float3 selfPos,
+                quaternion selfRot, ref PhysicsTriggerQueryState queryState)
+            {
+                var offset = ResolveWinnerPos(winner, selfPos) - selfPos;
+
+                var fwd = config.SectorReference == PhysicsTriggerSectorReference.World
+                    ? new float3(0f, 0f, 1f)
+                    : math.rotate(selfRot, new float3(0f, 0f, 1f));
+                var up = ResolveSectorUp(in config, selfRot);
+                var ground = config.SectorPlane == PhysicsTriggerSectorPlane.XZ;
+
+                var raw = PhysicsTriggerGridMath.ComputeCell(offset, fwd, up, ground, config.GridHalfWidth,
+                    config.GridHalfHeight, config.GridCols, config.GridRows, out var u, out var v);
+                var cell = PhysicsTriggerGridMath.ApplyHysteresis(raw, u, v, queryState.LastSector, config.GridCols,
+                    config.GridRows, config.GridHysteresis);
+
+                queryState.LastSector = (sbyte)cell; // cells always land (clamped) — no sentinel to guard against
+                return cell;
             }
 
             private int ComputeSectorOnly(in PhysicsTriggerQueryData config, float3 offset, quaternion selfRot)

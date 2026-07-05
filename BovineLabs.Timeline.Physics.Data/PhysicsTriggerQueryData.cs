@@ -114,7 +114,12 @@ namespace BovineLabs.Timeline.Physics
 
         /// <summary> MULTI only: emit the DirectionSector of the survivor centroid (Σpos/count) as every survivor's
         /// value — the vortex that pulls into the swarm centre. Single-winner falls back to Constant. </summary>
-        AggregateCentroid
+        AggregateCentroid,
+
+        /// <summary> Bin the winner onto a GridCols×GridRows CARTESIAN grid → cell index (row-major, top-left = 0).
+        /// SectorPlane picks the plane: XZ = ground grid (rows = near/far), else = frontal wall (rows = height).
+        /// Out-of-bounds hits clamp to the edge cells. The cartesian cousin of DirectionSector. </summary>
+        PlanarGrid
     }
 
     /// <summary> Gating modes applied (AND'd) before selection. A bit mask so multiple gates chain. </summary>
@@ -271,6 +276,13 @@ namespace BovineLabs.Timeline.Physics
         public float3 SectorCustomUp;
         public float SectorHysteresis; // radians
         public BlobAssetReference<PhysicsTriggerDistanceBandBlob> DistanceBands; // ascending SQUARED thresholds
+
+        // PlanarGrid (cartesian tiles). Plane/basis reuse SectorPlane (XZ = ground, else frontal wall) + SectorReference.
+        public int GridCols; // >= 1 (3 for a 3×3)
+        public int GridRows; // >= 1
+        public float GridHalfWidth; // half the grid width along self-right (m)
+        public float GridHalfHeight; // half the grid height along the vertical axis (m)
+        public float GridHysteresis; // Schmitt deadband as a fraction of ONE cell (<= 0 = off)
 
         // ---- WAVE 1: ROUTE ----
         public PhysicsTriggerRouteSlot RouteSlot;

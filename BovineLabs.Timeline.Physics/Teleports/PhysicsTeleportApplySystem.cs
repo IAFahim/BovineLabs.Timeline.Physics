@@ -41,6 +41,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
         private UnsafeBufferLookup<EntityLinkEntry> _linkLookup;
         private BufferLookup<Stat> _statLookup;
         private ConditionEventWriter.Lookup _conditionWriters;
+        private ConditionEventWriter.SingletonData _conditionWritersSingletonData;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -65,6 +66,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
             _linkSourceLookup = state.GetUnsafeComponentLookup<EntityLinkSource>(true);
             _linkLookup = state.GetUnsafeBufferLookup<EntityLinkEntry>(true);
             _statLookup = state.GetBufferLookup<Stat>(true);
+            _conditionWritersSingletonData.Create(ref state);
             _conditionWriters.Create(ref state);
         }
 
@@ -84,7 +86,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
             _linkSourceLookup.Update(ref state);
             _linkLookup.Update(ref state);
             _statLookup.Update(ref state);
-            _conditionWriters.Update(ref state);
+            _conditionWriters.Update(ref state, _conditionWritersSingletonData);
 
             var collisionWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
             var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()

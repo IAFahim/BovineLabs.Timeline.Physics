@@ -76,6 +76,21 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("DistanceBand: ascending distance thresholds (metres). distSq is bucketed against their squares.")]
         public float[] distanceBands = Array.Empty<float>();
 
+        [Tooltip("PlanarGrid: columns × rows of the cartesian tile grid. 3×3 default. Cell index is row-major, top-left = 0. " +
+                 "SectorPlane picks the plane: XZ = ground grid (rows = near/far), else = frontal wall (rows = height).")]
+        public int gridCols = 3;
+
+        public int gridRows = 3;
+
+        [Tooltip("PlanarGrid: half the grid width along self-right (metres). Total width = 2×.")]
+        public float gridHalfWidth = 1.5f;
+
+        [Tooltip("PlanarGrid: half the grid height along the vertical axis (metres). Total height = 2×.")]
+        public float gridHalfHeight = 1.5f;
+
+        [Tooltip("PlanarGrid: Schmitt deadband as a fraction of one cell (0 = off). ~0.15 kills boundary chatter.")]
+        public float gridHysteresis = 0.15f;
+
         [Header("Conditions (Optional)")] public ConditionEventObject foundCondition;
         public int foundValue = 1;
         public ConditionEventObject lostCondition;
@@ -309,6 +324,14 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     SectorCustomUp = sectorCustomUp,
                     SectorHysteresis = resolvedHysteresis,
                     DistanceBands = distanceBandBlob,
+
+                    // Cell count is clamped so it fits the sbyte LastSector reused for cell-hysteresis (127 cells is
+                    // already absurd for gameplay zones — a hit-wall is 3×3 or 5×5). ponytail: sbyte cap, widen only if a real grid exceeds it.
+                    GridCols = math.clamp(gridCols, 1, 120),
+                    GridRows = math.clamp(gridRows, 1, 120 / math.max(gridCols, 1)),
+                    GridHalfWidth = math.max(gridHalfWidth, 0.001f),
+                    GridHalfHeight = math.max(gridHalfHeight, 0.001f),
+                    GridHysteresis = gridHysteresis,
 
                     RouteSlot = routeSlot,
                     WriteMode = writeMode,

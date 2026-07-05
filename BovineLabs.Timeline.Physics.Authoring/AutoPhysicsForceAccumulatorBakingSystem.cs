@@ -26,6 +26,13 @@ namespace BovineLabs.Timeline.Physics.Authoring
     /// (PendingExternalForce/ExternalVelocity) — a self-managed body receives neither, and knockback writers will skip
     /// it (their HasBuffer guard). Add the buffers yourself if an opted-out body should still take knockback.
     /// </summary>
+    /// <remarks>
+    /// [BakingType]: this is a bake-time-only opt-out marker — it is added by a Baker and read solely by the
+    /// baking system below (never at runtime). Marking it baking-only strips it from the entity scene, so the
+    /// player build does not need this editor-only type to deserialize scenes that contain opted-out bodies.
+    /// Without this, the whole subscene fails to load with "Cannot find TypeIndex for type hash ...".
+    /// </remarks>
+    [BakingType]
     public struct PhysicsForceAccumulatorOptOut : IComponentData
     {
     }

@@ -33,7 +33,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsFilterOverrideData Config { get; set; }
     }
 
-    public struct PhysicsFilterOverrideState : IComponentData
+    public struct PhysicsFilterOverrideState : IComponentData, IRestorableState
     {
         public bool Fired;
         public uint OriginalBelongsTo;
@@ -42,5 +42,7 @@ namespace BovineLabs.Timeline.Physics
         // Set once we've emitted the "shared collider, override skipped" diagnostic for this body, so the
         // warning fires once instead of every frame the clip is active.
         public bool WarnedShared;
+
+        public bool RestorePending => this.Fired;
     }
 }

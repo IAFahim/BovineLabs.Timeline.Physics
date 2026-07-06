@@ -116,6 +116,10 @@ namespace BovineLabs.Timeline.Physics.Drags
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, entity, targets, LinkSources,
                         Links, StatLookup);
 
+                    // A non-finite (NaN/Inf) stat must be skipped: math.max(0, NaN) = NaN slips past the <= eps gate
+                    // and exp(-drag·NaN·dt) permanently NaNs PhysicsVelocity. Treat non-finite as brakes-off.
+                    if (!math.isfinite(multiplier)) continue;
+
                     multiplier = math.max(0f, multiplier);
 
                     if (multiplier <= 0.00001f) continue;

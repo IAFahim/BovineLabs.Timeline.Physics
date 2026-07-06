@@ -9,7 +9,9 @@ namespace BovineLabs.Timeline.Physics.Data.Builders
         public void ApplyTo<T>(ref T builder)
             where T : struct, IEntityCommands
         {
-            builder.AddComponent(new PhysicsForceAnimated { AuthoredData = AuthoredData });
+            var authored = AuthoredData;
+            authored.Present = 1; // mark as a real authored clip so the mixer never treats it as an empty slot
+            builder.AddComponent(new PhysicsForceAnimated { AuthoredData = authored });
         }
     }
 }

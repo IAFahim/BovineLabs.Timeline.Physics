@@ -96,5 +96,42 @@ namespace BovineLabs.Timeline.Physics.Tests
             var pv = Manager.GetComponentData<PhysicsVelocity>(target);
             Assert.AreEqual(10.0f, pv.Linear.x, 0.001f, "Velocity should remain 10 when stat multiplier is 0");
         }
+
+        // Item 3: a non-finite (NaN) drag stat must be skipped. Without the guard, math.max(0, NaN) = NaN slips past
+        // the near-zero gate and exp(-drag * NaN * dt) permanently NaNs PhysicsVelocity.
+        [Test]
+        public void ApplyDrag_NaNStat_DoesNotPoisonVelocity()
+        {
+            var target = Manager.CreateEntity();
+            Manager.AddComponentData(target, LocalTransform.Identity);
+            Manager.AddComponentData(target, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(target, new PhysicsVelocity { Linear = new float3(10, 0, 0) });
+            Manager.AddComponentData(target,
+                new PhysicsMass { InverseMass = 1f, InverseInertia = new float3(1, 1, 1) });
+
+            var stats = Manager.AddBuffer<Stat>(target);
+            StatKey statKey = 999;
+            stats.Initialize();
+            stats.AsMap().Add(statKey, new StatValue { Added = 100, Multi = float.NaN }); // NaN multiplier
+
+            Manager.AddComponentData(target, new ActiveDrag
+            {
+                Config = new PhysicsDragData
+                {
+                    Linear = 1f,
+                    Angular = 1f,
+                    Strength = new StatSource { Stat = statKey, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
+                }
+            });
+
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var sys = World.GetOrCreateSystem<PhysicsDragApplySystem>();
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            var pv = Manager.GetComponentData<PhysicsVelocity>(target);
+            Assert.IsTrue(math.isfinite(pv.Linear.x), "A NaN drag stat must be skipped, never NaN the velocity");
+            Assert.AreEqual(10f, pv.Linear.x, 0.001f, "Velocity must be untouched when the drag stat is non-finite");
+        }
     }
 }

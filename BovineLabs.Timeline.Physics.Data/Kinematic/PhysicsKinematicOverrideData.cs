@@ -28,7 +28,7 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsKinematicOverrideData Config { get; set; }
     }
 
-    public struct PhysicsKinematicOverrideState : IComponentData
+    public struct PhysicsKinematicOverrideState : IComponentData, IRestorableState
     {
         public bool Fired;
         public float OriginalGravityScale;
@@ -36,5 +36,7 @@ namespace BovineLabs.Timeline.Physics
         public bool AddedGravityComponent;
         public bool AddedMassOverrideComponent;
         public byte OriginalIsKinematic;
+
+        public bool RestorePending => this.Fired;
     }
 }

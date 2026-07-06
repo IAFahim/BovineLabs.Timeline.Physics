@@ -11,7 +11,7 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
 {
     [BurstCompile]
     public struct ResetStateTrackJob<TState, TActive> : IJobChunk
-        where TState : unmanaged, IComponentData
+        where TState : unmanaged, IComponentData, IRestorableState
         where TActive : unmanaged, IComponentData, IEnableableComponent
     {
         [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
@@ -29,8 +29,17 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
                 var target = bindings[i].Value;
                 if (target == Entity.Null || !StateLookup.HasComponent(target)) continue;
 
-                if (!ActiveLookup.HasComponent(target) || !ActiveLookup.IsComponentEnabled(target))
-                    StateLookup[target] = ResetValue;
+                if (ActiveLookup.HasComponent(target) && ActiveLookup.IsComponentEnabled(target)) continue;
+
+                // Active is disabled: a true span start. But if the state still owes an exit restore (its OnExit
+                // hasn't run — a clip gap with zero fixed ticks between the old clip's disable and this new clip's
+                // reset), keep the captured original intact. Wiping it here would strand the override forever: the
+                // next OnEnter would re-capture the already-overridden value as "original" (gravity stuck at the
+                // override, body stuck kinematic, swapped collider blob lost). The eventual real exit restores it,
+                // and until then OnStay keeps overriding with the original still captured (the touching-clips case).
+                if (StateLookup[target].RestorePending) continue;
+
+                StateLookup[target] = ResetValue;
             }
         }
     }

@@ -46,8 +46,11 @@ namespace BovineLabs.Timeline.Physics.Teleports
             var parentPosition = parentLocalToWorld.Value.c3.xyz;
             var parentRotation = new quaternion(math.orthonormalize(new float3x3(parentLocalToWorld.Value)));
             var inverseParentRotation = math.conjugate(parentRotation);
+            var parentScale = math.length(parentLocalToWorld.Value.c0.xyz);
 
             var localPosition = math.mul(inverseParentRotation, worldTransform.Position - parentPosition);
+            if (parentScale > math.EPSILON)
+                localPosition /= parentScale;
             var localRotation = math.mul(inverseParentRotation, worldTransform.Rotation);
 
             var localTransform = LocalTransform.FromPositionRotation(localPosition, localRotation);

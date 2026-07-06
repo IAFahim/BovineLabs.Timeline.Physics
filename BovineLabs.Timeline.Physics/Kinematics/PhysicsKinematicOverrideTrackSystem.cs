@@ -13,13 +13,13 @@ namespace BovineLabs.Timeline.Physics.Kinematics
     [BurstCompile]
     public partial struct PhysicsKinematicOverrideTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsKinematicOverrideData, PhysicsKinematicOverrideAnimated, ActiveKinematicOverride,
+        private TrackBlendRestorableStateDriver<PhysicsKinematicOverrideData, PhysicsKinematicOverrideAnimated, ActiveKinematicOverride,
             DiscreteMixer<PhysicsKinematicOverrideData>, PhysicsKinematicOverrideState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+            _driver.OnCreate(ref state,
                 new PhysicsKinematicOverrideState
                 {
                     Fired = false, GravityCaptured = false, AddedGravityComponent = false,

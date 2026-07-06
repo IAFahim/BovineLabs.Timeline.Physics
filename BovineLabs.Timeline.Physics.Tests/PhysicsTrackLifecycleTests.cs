@@ -5,6 +5,7 @@ using BovineLabs.Timeline.Physics.Gravities;
 using NUnit.Framework;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Transforms;
 
 namespace BovineLabs.Timeline.Physics.Tests
@@ -99,6 +100,33 @@ namespace BovineLabs.Timeline.Physics.Tests
             var begin = World.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
             var track = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideTrackSystem));
 
+            // A true span start after the previous span fully exited: OnExit already ran (Fired = false) but left a
+            // stale captured original behind. The re-arm must scrub it back to the sentinel so the next OnEnter
+            // captures the real live value rather than the stale one.
+            var body = CreateGravityBody(false,
+                new PhysicsGravityOverrideState { Fired = false, OriginalGravityScale = 0.5f, AddedComponent = true });
+            CreateGravityClip(body);
+
+            track.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+            begin.Update();
+
+            var state = Manager.GetComponentData<PhysicsGravityOverrideState>(body);
+            Assert.IsFalse(state.Fired,
+                "At a true span start (Active disabled, no restore pending) the override re-arms to re-capture");
+            Assert.AreEqual(1f, state.OriginalGravityScale, 1e-6f,
+                "Re-arm resets the captured original to its sentinel so the next OnEnter captures the real value");
+        }
+
+        [Test]
+        public void GravityOverride_KeepsPendingRestore_OnZeroFixedTickGap()
+        {
+            var begin = World.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
+            var track = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideTrackSystem));
+
+            // The bug scenario: Active is disabled (clip vanished this render frame) but its OnExit has NOT run yet
+            // (Fired still set) — a clip gap with zero fixed ticks in it. The span-start reset for the next clip must
+            // NOT wipe the pending restore, or the captured original is stranded and the body's gravity sticks.
             var body = CreateGravityBody(false,
                 new PhysicsGravityOverrideState { Fired = true, OriginalGravityScale = 0.5f, AddedComponent = true });
             CreateGravityClip(body);
@@ -108,10 +136,53 @@ namespace BovineLabs.Timeline.Physics.Tests
             begin.Update();
 
             var state = Manager.GetComponentData<PhysicsGravityOverrideState>(body);
-            Assert.IsFalse(state.Fired,
-                "At a true span start (Active disabled after a gap) the override must re-arm to re-capture");
-            Assert.AreEqual(1f, state.OriginalGravityScale, 1e-6f,
-                "Re-arm resets the captured original to its sentinel so the next OnEnter captures the real value");
+            Assert.IsTrue(state.Fired,
+                "A pending exit restore must survive the span-start reset when no fixed tick ran OnExit in the gap");
+            Assert.AreEqual(0.5f, state.OriginalGravityScale, 1e-6f,
+                "The captured original must be kept intact so the eventual real exit can restore it");
+        }
+
+        [Test]
+        public void GravityOverride_ZeroFixedTickGap_StillRestoresOriginal_WhenClipTrulyEnds()
+        {
+            var begin = World.GetOrCreateSystemManaged<BeginSimulationEntityCommandBufferSystem>();
+            World.GetOrCreateSystemManaged<EndFixedStepSimulationEntityCommandBufferSystem>();
+            var track = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideTrackSystem));
+            var apply = World.GetOrCreateSystem(typeof(PhysicsGravityOverrideApplySystem));
+
+            // Mid-override: OnEnter already captured Original = 1 and drove the live factor to 0 (zero-G). Active is
+            // disabled this frame (clip A gone) with OnExit not yet run — the zero-fixed-tick gap — and a new clip B
+            // activates the same window, which is what fires the span-start reset.
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, LocalTransform.Identity);
+            Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(body, new PhysicsGravityFactor { Value = 0f });
+            Manager.AddComponentData(body, new ActiveGravityOverride());
+            Manager.SetComponentEnabled<ActiveGravityOverride>(body, false);
+            Manager.AddComponentData(body, new PhysicsGravityOverrideState
+                { Fired = true, OriginalGravityScale = 1f, AddedComponent = false });
+            CreateGravityClip(body);
+
+            track.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+            begin.Update();
+
+            var mid = Manager.GetComponentData<PhysicsGravityOverrideState>(body);
+            Assert.IsTrue(mid.Fired, "Zero-fixed-tick gap must not clear the pending restore");
+            Assert.AreEqual(1f, mid.OriginalGravityScale, 1e-6f, "Captured original must survive the gap");
+
+            // The clip truly ends now (Active disabled); the fixed-step apply's OnExit restores the pre-override value.
+            // Give the active config RestoreOnExit so the exit branch actually restores (the default clip data does not).
+            Manager.SetComponentData(body, new ActiveGravityOverride
+            {
+                Config = new PhysicsGravityOverrideData { GravityScale = 0f, RestoreOnExit = true, Present = 1 }
+            });
+            Manager.SetComponentEnabled<ActiveGravityOverride>(body, false);
+            apply.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(1f, Manager.GetComponentData<PhysicsGravityFactor>(body).Value, 1e-6f,
+                "Pre-override gravity must be restored; without the skip the reset would have stranded it at 0");
         }
 
         private Entity CreateForceBody()

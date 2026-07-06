@@ -339,6 +339,28 @@ namespace BovineLabs.Timeline.Physics.Tests
             Assert.AreEqual(2.5f, transform.Scale, 0.0001f);
         }
 
+        [Test]
+        public void Parented_UnderScaledParent_LandsAtCorrectWorldPosition()
+        {
+            var frame = CreateFrame();
+            var data = new PhysicsTeleportData { FacingMode = TeleportFacingMode.PreserveCurrent };
+            var parent = new LocalToWorld
+            {
+                Value = float4x4.TRS(new float3(1f, 2f, 3f), quaternion.identity, new float3(2f)),
+            };
+            var landing = new float3(3f, 4f, 5f);
+
+            var transform = TeleportPlacement.ComputeLocalTransform(
+                in frame, in data, landing, 1f, true, in parent);
+
+            // A uniform-scale-2 parent must not multiply the offset: reconstructing the world position from
+            // the parent transform must reproduce the requested landing, not 2x it.
+            var world = math.transform(parent.Value, transform.Position);
+            Assert.AreEqual(landing.x, world.x, 0.0001f);
+            Assert.AreEqual(landing.y, world.y, 0.0001f);
+            Assert.AreEqual(landing.z, world.z, 0.0001f);
+        }
+
         private static TeleportFrame CreateFrame()
         {
             return new TeleportFrame(

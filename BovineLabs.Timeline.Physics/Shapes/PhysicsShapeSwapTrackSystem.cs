@@ -13,13 +13,13 @@ namespace BovineLabs.Timeline.Physics.Shapes
     [BurstCompile]
     public partial struct PhysicsShapeSwapTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsShapeSwapData, PhysicsShapeSwapAnimated, ActiveShapeSwap,
+        private TrackBlendRestorableStateDriver<PhysicsShapeSwapData, PhysicsShapeSwapAnimated, ActiveShapeSwap,
             DiscreteMixer<PhysicsShapeSwapData>, PhysicsShapeSwapState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+            _driver.OnCreate(ref state,
                 new PhysicsShapeSwapState { Fired = false });
         }
 

@@ -3,6 +3,7 @@ using BovineLabs.Core.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;
+using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Data;
@@ -21,12 +22,27 @@ namespace BovineLabs.Timeline.Physics.Tests
     {
         private PhysicsWorld physicsWorld;
         private bool physicsWorldCreated;
+        private DoubleRewindableAllocators payloadAllocators;
 
         public override void Setup()
         {
             base.Setup();
             CreateDebugSingletons();
             CreatePhysicsWorldSingleton();
+
+            // ConditionEventWriter.Lookup resolves this allocator singleton, normally owned by
+            // ConditionEventWriteSystem, which this fixture does not create.
+            payloadAllocators = new DoubleRewindableAllocators(Allocator.Persistent, 16 * 1024);
+            Manager.AddComponentData(Manager.CreateEntity(),
+                new ConditionEventPayloadAllocator { Handle = payloadAllocators.Allocator.Handle });
+
+            // ConditionEventWriter also resolves the ConditionConfig blob (payload type per event key),
+            // normally baked from project settings. Provide a flat Int32-payload config so writes resolve.
+            CreateConditionConfigSingleton();
+
+            // The query system resolves the hit buffer's home entity at runtime and adds it via this ECB; creating the
+            // system here provides its Singleton (SystemAPI.GetSingleton in OnUpdate) and lets tests play it back.
+            World.GetOrCreateSystemManaged<EndFixedStepSimulationEntityCommandBufferSystem>();
         }
 
         public override void TearDown()
@@ -37,6 +53,8 @@ namespace BovineLabs.Timeline.Physics.Tests
                 physicsWorldCreated = false;
             }
 
+            payloadAllocators.Dispose();
+
             base.TearDown();
         }
 
@@ -46,6 +64,29 @@ namespace BovineLabs.Timeline.Physics.Tests
             physicsWorldCreated = true;
             var entity = Manager.CreateSingleton<PhysicsWorldSingleton>();
             Manager.SetComponentData(entity, new PhysicsWorldSingleton { PhysicsWorld = physicsWorld });
+        }
+
+        private void CreateConditionConfigSingleton()
+        {
+            const int maxEventKey = 600;
+
+            // Event condition type key (ConditionTypes.EventType == byte 0 in SetReset); hardcoded so the
+            // fixture does not depend on the KSettings asset being loaded into the test world.
+            const byte eventConditionType = 0;
+
+            var builder = new BlobBuilder(Allocator.Temp);
+            ref var root = ref builder.ConstructRoot<ConditionConfig.Data>();
+            var payloadTypeBuilder = builder.AllocateHashMap(ref root.PayloadTypes, maxEventKey + 1, 2);
+            for (var key = 0; key <= maxEventKey; key++)
+            {
+                payloadTypeBuilder.Add(new EventSubscriberKey(key, eventConditionType), ConditionPayloadType.Int32);
+            }
+
+            var blob = builder.CreateBlobAssetReference<ConditionConfig.Data>(Allocator.Persistent);
+            builder.Dispose();
+
+            Manager.AddComponentData(Manager.CreateEntity(), new ConditionConfig { Value = blob });
+            BlobAssetStore.TryAdd(ref blob);
         }
 
         private void CreateDebugSingletons()
@@ -117,6 +158,20 @@ namespace BovineLabs.Timeline.Physics.Tests
             var sys = World.GetOrCreateSystem<PhysicsTriggerQuerySystem>();
             sys.Update(WorldUnmanaged);
             Manager.CompleteAllTrackedJobs();
+        }
+
+        // Play back the structural changes the query queued (e.g. adding a TriggerQueryHit buffer to a routed entity).
+        private void PlaybackStructuralChanges()
+        {
+            World.GetOrCreateSystemManaged<EndFixedStepSimulationEntityCommandBufferSystem>().Update();
+            Manager.CompleteAllTrackedJobs();
+        }
+
+        private void SetFirstFrame(Entity clip, bool value)
+        {
+            var gate = Manager.GetComponentData<PhysicsClipGate>(clip);
+            gate.FirstFrame = (byte)(value ? 1 : 0);
+            Manager.SetComponentData(clip, gate);
         }
 
         [Test]
@@ -272,7 +327,6 @@ namespace BovineLabs.Timeline.Physics.Tests
                 SectorPlane = PhysicsTriggerSectorPlane.XZ,
                 SectorCustomUp = new float3(0, 1, 0)
             });
-            Manager.AddBuffer<TriggerQueryHit>(clip);
 
             var front = CreateCandidate(new float3(0, 0, 3)); // sector 0
             var right = CreateCandidate(new float3(3, 0, 0)); // sector 2
@@ -281,7 +335,15 @@ namespace BovineLabs.Timeline.Physics.Tests
             AddEvent(clip, right);
             AddEvent(clip, back);
 
+            // No hand-added buffer: the system must add TriggerQueryHit to the routed (Self) entity on demand. It
+            // appears next tick, so the hits land on the SECOND query.
             RunQuery();
+            PlaybackStructuralChanges();
+            Assert.IsTrue(Manager.HasComponent<TriggerQueryHit>(clip),
+                "the query added the hit buffer to the routed entity");
+
+            RunQuery();
+            PlaybackStructuralChanges();
 
             var hits = Manager.GetBuffer<TriggerQueryHit>(clip);
             Assert.AreEqual(3, hits.Length, "all three survivors emitted a hit");
@@ -305,12 +367,15 @@ namespace BovineLabs.Timeline.Physics.Tests
                 MaxTargets = 2,
                 WriteHitBuffer = true
             });
-            Manager.AddBuffer<TriggerQueryHit>(clip);
 
             for (var k = 0; k < 5; k++)
                 AddEvent(clip, CreateCandidate(new float3(0, 0, 2 + k)));
 
+            // First query adds the hit buffer (via ECB); the hits land on the second.
             RunQuery();
+            PlaybackStructuralChanges();
+            RunQuery();
+            PlaybackStructuralChanges();
 
             Assert.AreEqual(2, Manager.GetBuffer<TriggerQueryHit>(clip).Length, "survivors past the cap are dropped");
         }
@@ -340,6 +405,156 @@ namespace BovineLabs.Timeline.Physics.Tests
             RunQuery();
             Assert.AreEqual(Entity.Null, Manager.GetComponentData<Targets>(clip).Custom);
             Assert.AreEqual(Entity.Null, Manager.GetComponentData<PhysicsTriggerQueryState>(clip).LastWinner);
+        }
+
+        [Test]
+        public void AllSurvivorsFanout_EightCandidatesAtCapSeven_DoesNotOverflow()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
+                MaxTargets = 7,
+                WriteHitBuffer = true,
+            });
+
+            // Add farthest-first so each subsequent (nearer) candidate scores ABOVE the current worst and inserts
+            // while the winners list is full — the exact path that grew FixedList64Bytes<Entity> past its capacity
+            // of 7 before the fix. The 8th (best) survivor must evict the worst without overflowing.
+            for (var k = 0; k < 8; k++)
+                AddEvent(clip, CreateCandidate(new float3(0, 0, 9 - k))); // z = 9,8,...,2
+
+            RunQuery();
+            PlaybackStructuralChanges();
+            RunQuery();
+            PlaybackStructuralChanges();
+
+            Assert.AreEqual(7, Manager.GetBuffer<TriggerQueryHit>(clip).Length,
+                "cap 7 with 8 survivors: the worst is dropped, no overflow");
+        }
+
+        [Test]
+        public void MultiWinner_ClearOnLost_ClearsRoutedSlotOnLoss()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.AllSurvivorsFanout,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
+                RouteSlot = PhysicsTriggerRouteSlot.Custom,
+                MaxTargets = 4,
+                ClearOnLost = true,
+            });
+
+            var candidate = CreateCandidate(new float3(0, 0, 2));
+            AddEvent(clip, candidate);
+
+            RunQuery();
+            Assert.AreEqual(candidate, Manager.GetComponentData<Targets>(clip).Custom, "winner routed into Custom");
+
+            Manager.GetBuffer<StatefulTriggerEvent>(clip).Clear();
+
+            RunQuery();
+            Assert.AreEqual(Entity.Null, Manager.GetComponentData<Targets>(clip).Custom,
+                "multi-winner ClearOnLost must clear the routed slot on loss");
+        }
+
+        [Test]
+        public void GraceFrames_HoldsWinnerForExactlyGraceFrames()
+        {
+            const int grace = 2;
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.Nearest,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
+                ClearOnLost = true,
+                GraceFrames = grace,
+            });
+
+            var candidate = CreateCandidate(new float3(0, 0, 2));
+            AddEvent(clip, candidate);
+
+            RunQuery();
+            Assert.AreEqual(candidate, Manager.GetComponentData<Targets>(clip).Custom);
+
+            Manager.GetBuffer<StatefulTriggerEvent>(clip).Clear();
+
+            // The hold must last exactly GraceFrames query frames before the lost clear fires.
+            for (var f = 0; f < grace; f++)
+            {
+                RunQuery();
+                Assert.AreEqual(candidate, Manager.GetComponentData<Targets>(clip).Custom,
+                    $"winner held during grace frame {f + 1}");
+                Assert.AreEqual(candidate, Manager.GetComponentData<PhysicsTriggerQueryState>(clip).LastWinner);
+            }
+
+            RunQuery();
+            Assert.AreEqual(Entity.Null, Manager.GetComponentData<Targets>(clip).Custom,
+                "after GraceFrames holds, the lost clear fires");
+            Assert.AreEqual(Entity.Null, Manager.GetComponentData<PhysicsTriggerQueryState>(clip).LastWinner);
+        }
+
+        [Test]
+        public void TabCycle_HoldsWinnerAcrossStayFrames_AdvancesOnlyOnRefireEdge()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.TabCycle,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
+                SectorReference = PhysicsTriggerSectorReference.SelfForward,
+                SectorPlane = PhysicsTriggerSectorPlane.XZ,
+                SectorCustomUp = new float3(0, 1, 0),
+                SectorCount = 8,
+            });
+
+            var a = CreateCandidate(new float3(0, 0, 3)); // front (bearing 0)
+            var b = CreateCandidate(new float3(3, 0, 0)); // right (bearing ~pi/2)
+            AddEvent(clip, a);
+            AddEvent(clip, b);
+
+            RunQuery();
+            var first = Manager.GetComponentData<Targets>(clip).Custom;
+            Assert.AreNotEqual(Entity.Null, first);
+
+            // Continuously active (Stay, no re-fire edge): the winner must NOT round-robin frame to frame.
+            RunQuery();
+            Assert.AreEqual(first, Manager.GetComponentData<Targets>(clip).Custom, "held winner across a Stay frame");
+            RunQuery();
+            Assert.AreEqual(first, Manager.GetComponentData<Targets>(clip).Custom, "still held after another Stay frame");
+
+            // A re-fire edge (clip-activation FirstFrame) advances to the other survivor.
+            SetFirstFrame(clip, true);
+            RunQuery();
+            SetFirstFrame(clip, false);
+            Assert.AreNotEqual(first, Manager.GetComponentData<Targets>(clip).Custom,
+                "the re-fire edge advances TabCycle to the next survivor");
+        }
+
+        [Test]
+        public void FactionGate_ExcludesCandidatesWithoutFactionMember()
+        {
+            var clip = CreateQueryClip(new PhysicsTriggerQueryData
+            {
+                EventState = StatefulEventState.Stay,
+                Selection = PhysicsTriggerQuerySelection.Nearest,
+                RouteTo = new EntityLinkRef { ReadRootFrom = Target.Self },
+                Gates = PhysicsTriggerGateFlags.FactionGate,
+                FactionAllowMask = (1u << 0) | (1u << 1),
+            });
+
+            var untagged = CreateCandidate(new float3(0, 0, 2)); // nearest, but no FactionMember → excluded
+            var tagged = CreateCandidate(new float3(0, 0, 4));
+            Manager.AddComponentData(tagged, new FactionMember { Faction = 1 });
+            AddEvent(clip, untagged);
+            AddEvent(clip, tagged);
+
+            RunQuery();
+
+            Assert.AreEqual(tagged, Manager.GetComponentData<Targets>(clip).Custom,
+                "untagged candidate must be excluded even though the faction-0 bit is allowed");
         }
     }
 }

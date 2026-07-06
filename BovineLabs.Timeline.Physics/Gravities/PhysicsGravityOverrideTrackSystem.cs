@@ -12,13 +12,13 @@ namespace BovineLabs.Timeline.Physics.Gravities
     [BurstCompile]
     public partial struct PhysicsGravityOverrideTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated, ActiveGravityOverride,
+        private TrackBlendRestorableStateDriver<PhysicsGravityOverrideData, PhysicsGravityOverrideAnimated, ActiveGravityOverride,
             PhysicsGravityOverrideMixer, PhysicsGravityOverrideState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+            _driver.OnCreate(ref state,
                 new PhysicsGravityOverrideState { Fired = false, AddedComponent = false, OriginalGravityScale = 1f });
         }
 

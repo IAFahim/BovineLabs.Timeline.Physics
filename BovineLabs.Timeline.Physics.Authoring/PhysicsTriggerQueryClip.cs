@@ -147,7 +147,8 @@ namespace BovineLabs.Timeline.Physics.Authoring
         [Tooltip("MassBracket: include static bodies (no PhysicsMass → InverseMass 0).")]
         public bool massIncludeStatic;
 
-        [Tooltip("FactionGate: allowed (1 << faction) bits. Games bind FactionMember on their bodies.")]
+        [Tooltip("FactionGate: allowed (1 << faction) bits. Games bind FactionMember on their bodies. Candidates with "
+                 + "no FactionMember are excluded — the gate never admits untagged bodies via the faction-0 bit.")]
         public int factionAllowMask;
 
         [Header("Wave 2 — Selection (Threat)")]
@@ -318,7 +319,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     LostValue = lostValue,
 
                     ValueMode = valueMode,
-                    SectorCount = math.max(sectorCount, 1),
+                    // Clamp to 127: the runtime stores the DirectionSector result in an sbyte (LastSector), and the
+                    // degenerate sentinel is SectorCount itself — both must fit sbyte.
+                    SectorCount = math.clamp(sectorCount, 1, 127),
                     SectorReference = sectorReference,
                     SectorPlane = sectorPlane,
                     SectorCustomUp = sectorCustomUp,

@@ -53,7 +53,7 @@ namespace BovineLabs.Timeline.Physics.Chains
 
             _query = SystemAPI.QueryBuilder()
                 .WithAll<ChainLink, ChainGrabConfig, ChainGrabArmed>()
-                .WithAllRW<ChainLinkGrabbed>()
+                .WithDisabled<ChainLinkGrabbed>()
                 .Build();
         }
 
@@ -96,8 +96,8 @@ namespace BovineLabs.Timeline.Physics.Chains
             [ReadOnly] public EntityTypeHandle EntityHandle;
             [ReadOnly] public ComponentTypeHandle<ChainLink> LinkHandle;
             [ReadOnly] public ComponentTypeHandle<ChainGrabConfig> ConfigHandle;
-            public ComponentTypeHandle<ChainGrabArmed> ArmedHandle;
-            public ComponentTypeHandle<ChainLinkGrabbed> GrabbedHandle;
+            [ReadOnly] public ComponentTypeHandle<ChainGrabArmed> ArmedHandle;
+            [ReadOnly] public ComponentTypeHandle<ChainLinkGrabbed> GrabbedHandle;
 
             [ReadOnly] public UnsafeComponentLookup<LocalToWorld> LocalToWorldLookup;
             [ReadOnly] public UnsafeComponentLookup<PhysicsCollider> ColliderLookup;

@@ -33,12 +33,14 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsShapeSwapData Config { get; set; }
     }
 
-    public struct PhysicsShapeSwapState : IComponentData
+    public struct PhysicsShapeSwapState : IComponentData, IRestorableState
     {
         public bool Fired;
 
         /// <summary> The body's original collider blob, restored on exit. Swap is share-safe (it re-points the
         /// PhysicsCollider reference, never mutates the blob), so no Force Unique is required. </summary>
         public BlobAssetReference<Collider> Original;
+
+        public bool RestorePending => this.Fired;
     }
 }

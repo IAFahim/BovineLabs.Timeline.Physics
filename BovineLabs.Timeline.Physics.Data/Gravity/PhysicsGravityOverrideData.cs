@@ -10,6 +10,11 @@ namespace BovineLabs.Timeline.Physics
     {
         public float GravityScale;
         public bool RestoreOnExit;
+
+        // 1 for any authored clip, 0 for the default-fill the blend framework injects into empty slots. The neutral
+        // for a gravity SCALE is 1 (normal gravity), not the default 0 (zero-G); the mixer keys off this flag to
+        // blend an empty slot toward 1 instead of dragging the scale toward 0 at partial weight.
+        public byte Present;
     }
 
     public struct PhysicsGravityOverrideAnimated : IAnimatedComponent<PhysicsGravityOverrideData>, IPreparable
@@ -28,11 +33,13 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsGravityOverrideData Config { get; set; }
     }
 
-    public struct PhysicsGravityOverrideState : IComponentData
+    public struct PhysicsGravityOverrideState : IComponentData, IRestorableState
     {
         public bool Fired;
         public float OriginalGravityScale;
         public bool AddedComponent;
+
+        public bool RestorePending => this.Fired;
     }
 
     public struct PhysicsGravityOverrideMixer : IMixer<PhysicsGravityOverrideData>
@@ -40,16 +47,27 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsGravityOverrideData Lerp(in PhysicsGravityOverrideData a, in PhysicsGravityOverrideData b,
             in float s)
         {
+            // An empty slot means "no override" — neutral gravity, scale 1 — not zero-G (scale 0). Blend an empty
+            // slot's scale toward 1 so the effect vanishes toward normal gravity at partial weight, and take the
+            // discrete RestoreOnExit from the present side.
+            var aDefault = a.Present == 0;
+            var bDefault = b.Present == 0;
+
+            var aScale = aDefault ? 1f : a.GravityScale;
+            var bScale = bDefault ? 1f : b.GravityScale;
+            var restore = bDefault || (!aDefault && s < 0.5f) ? a.RestoreOnExit : b.RestoreOnExit;
+
             return new PhysicsGravityOverrideData
             {
-                GravityScale = math.lerp(a.GravityScale, b.GravityScale, s),
-                RestoreOnExit = s >= 0.5f ? b.RestoreOnExit : a.RestoreOnExit
+                GravityScale = math.lerp(aScale, bScale, s),
+                RestoreOnExit = restore,
+                Present = (byte)(a.Present | b.Present)
             };
         }
 
         public PhysicsGravityOverrideData Add(in PhysicsGravityOverrideData a, in PhysicsGravityOverrideData b)
         {
-            return b;
+            return b.Present != 0 ? b : a;
         }
     }
 }

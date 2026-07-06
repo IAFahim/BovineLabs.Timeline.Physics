@@ -20,7 +20,10 @@ namespace BovineLabs.Timeline.Physics.Kernels
         EveryActivation,
 
         /// <summary>Reset only at a true span start (Active disabled) — capture-restore overrides keep their
-        /// captured original across touching clips instead of re-capturing the overridden value.</summary>
+        /// captured original across touching clips instead of re-capturing the overridden value. Served by
+        /// <see cref="TrackBlendRestorableStateDriver{TData,TAnimated,TActive,TMixer,TState}"/>, because the
+        /// span-start reset is constrained to <see cref="IRestorableState"/> (which the fire-once states do not
+        /// implement) so a zero-fixed-tick gap never wipes a still-pending exit restore.</summary>
         SpanStart,
     }
 
@@ -161,16 +164,65 @@ namespace BovineLabs.Timeline.Physics.Kernels
                     }.ScheduleParallel(_resetQuery, state.Dependency);
                     break;
 
-                case RearmPolicy.SpanStart:
-                    state.Dependency = new ResetStateTrackJob<TState, TActive>
-                    {
-                        TrackBindingTypeHandle = _driver.BindingHandle,
-                        StateLookup = _stateLookup,
-                        ActiveLookup = _driver.ActiveLookup,
-                        ResetValue = _resetValue
-                    }.ScheduleParallel(_resetQuery, state.Dependency);
-                    break;
+                // RearmPolicy.SpanStart is served by TrackBlendRestorableStateDriver — its reset is constrained to
+                // IRestorableState so a zero-fixed-tick clip gap cannot wipe a pending exit restore.
             }
+
+            return _driver.OnUpdate(ref state, ecb);
+        }
+    }
+
+    /// <summary>
+    /// <see cref="TrackBlendStateDriver{TData,TAnimated,TActive,TMixer,TState}"/> for the capture-restore override
+    /// tracks (gravity/kinematic/filter/shape swap+resize): per-body state is re-armed only at a true span start
+    /// (Active disabled) AND never while a prior exit restore is still pending. Split from the general state driver
+    /// because the <see cref="ResetStateTrackJob{TState,TActive}"/> it schedules is constrained to
+    /// <see cref="IRestorableState"/>, which the fire-once (EveryActivation) states do not implement.
+    /// </summary>
+    public struct TrackBlendRestorableStateDriver<TData, TAnimated, TActive, TMixer, TState>
+        where TData : unmanaged
+        where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
+        where TActive : unmanaged, IActive<TData>
+        where TMixer : unmanaged, IMixer<TData>
+        where TState : unmanaged, IComponentData, IRestorableState
+    {
+        private TrackBlendDriver<TData, TAnimated, TActive, TMixer> _driver;
+        private ComponentLookup<TState> _stateLookup;
+        private EntityQuery _resetQuery;
+        private TState _resetValue;
+
+        public ComponentLookup<TState> StateLookup => _stateLookup;
+
+        public void OnCreate(ref SystemState state, TState resetValue = default)
+        {
+            _driver.OnCreate(ref state);
+            _stateLookup = state.GetComponentLookup<TState>();
+            _resetValue = resetValue;
+
+            using var reset = new EntityQueryBuilder(Allocator.Temp)
+                .WithAll<TrackBinding, TAnimated, ClipActive>()
+                .WithNone<ClipActivePrevious>();
+            _resetQuery = state.GetEntityQuery(reset);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            _driver.OnDestroy(ref state);
+        }
+
+        public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly OnUpdate(
+            ref SystemState state, EntityCommandBuffer.ParallelWriter ecb)
+        {
+            _stateLookup.Update(ref state);
+            _driver.UpdateLookups(ref state);
+
+            state.Dependency = new ResetStateTrackJob<TState, TActive>
+            {
+                TrackBindingTypeHandle = _driver.BindingHandle,
+                StateLookup = _stateLookup,
+                ActiveLookup = _driver.ActiveLookup,
+                ResetValue = _resetValue
+            }.ScheduleParallel(_resetQuery, state.Dependency);
 
             return _driver.OnUpdate(ref state, ecb);
         }

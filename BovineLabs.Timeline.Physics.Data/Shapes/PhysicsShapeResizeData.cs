@@ -38,7 +38,7 @@ namespace BovineLabs.Timeline.Physics
     /// never compounding) and exactly restorable. Packed to cover sphere/box/capsule/cylinder without a union:
     /// the meaning of each field depends on <see cref="Type"/>.
     /// </summary>
-    public struct PhysicsShapeResizeState : IComponentData
+    public struct PhysicsShapeResizeState : IComponentData, IRestorableState
     {
         public bool Fired;
 
@@ -60,5 +60,7 @@ namespace BovineLabs.Timeline.Physics
 
         /// <summary> box/cylinder Orientation. </summary>
         public quaternion OrigOrient;
+
+        public bool RestorePending => this.Fired;
     }
 }

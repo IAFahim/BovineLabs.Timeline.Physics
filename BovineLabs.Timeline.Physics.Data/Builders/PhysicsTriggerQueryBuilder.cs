@@ -16,10 +16,9 @@ namespace BovineLabs.Timeline.Physics.Data.Builders
             builder.AddComponent(default(PhysicsClipGate));
             builder.SetComponentEnabled<PhysicsClipGate>(false);
 
-            // Wave 2: AllSurvivorsFanout / TopK may emit a capped hit buffer on the routed entity.
-            // The query writes into the ROUTED entity's buffer; for Self-routing the clip itself needs it.
-            if (QueryData.WriteHitBuffer)
-                builder.AddBuffer<TriggerQueryHit>();
+            // Wave 2: AllSurvivorsFanout / TopK may emit a capped TriggerQueryHit buffer. It belongs on the ROUTED
+            // entity, which is resolved at runtime (Self/Owner/Source/Target/links) and is generally NOT this clip —
+            // so it can't be baked here. PhysicsTriggerQuerySystem.ApplyJob adds it to the routed entity on demand.
         }
     }
 }

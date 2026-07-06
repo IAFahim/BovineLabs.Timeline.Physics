@@ -13,13 +13,13 @@ namespace BovineLabs.Timeline.Physics.Filters
     [BurstCompile]
     public partial struct PhysicsFilterOverrideTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsFilterOverrideData, PhysicsFilterOverrideAnimated, ActiveFilterOverride,
+        private TrackBlendRestorableStateDriver<PhysicsFilterOverrideData, PhysicsFilterOverrideAnimated, ActiveFilterOverride,
             DiscreteMixer<PhysicsFilterOverrideData>, PhysicsFilterOverrideState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+            _driver.OnCreate(ref state,
                 new PhysicsFilterOverrideState { Fired = false });
         }
 

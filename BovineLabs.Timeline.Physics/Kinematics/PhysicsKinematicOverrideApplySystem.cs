@@ -21,6 +21,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
         private ComponentTypeHandle<PhysicsMassOverride> _massOverrideHandle;
         private ComponentTypeHandle<PhysicsGravityFactor> _gravityFactorHandle;
         private ComponentTypeHandle<PhysicsVelocity> _velocityHandle;
+        private ComponentTypeHandle<ExternalVelocity> _externalVelocityHandle;
+        private BufferTypeHandle<PendingExternalForce> _externalInboxHandle;
         private ComponentTypeHandle<ActiveGravityOverride> _activeGravityOverrideHandle;
 
         private EntityQuery _query;
@@ -33,6 +35,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _massOverrideHandle = state.GetComponentTypeHandle<PhysicsMassOverride>();
             _gravityFactorHandle = state.GetComponentTypeHandle<PhysicsGravityFactor>();
             _velocityHandle = state.GetComponentTypeHandle<PhysicsVelocity>();
+            _externalVelocityHandle = state.GetComponentTypeHandle<ExternalVelocity>();
+            _externalInboxHandle = state.GetBufferTypeHandle<PendingExternalForce>();
             _activeGravityOverrideHandle = state.GetComponentTypeHandle<ActiveGravityOverride>(true);
 
             _query = SystemAPI.QueryBuilder()
@@ -50,6 +54,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             _massOverrideHandle.Update(ref state);
             _gravityFactorHandle.Update(ref state);
             _velocityHandle.Update(ref state);
+            _externalVelocityHandle.Update(ref state);
+            _externalInboxHandle.Update(ref state);
             _activeGravityOverrideHandle.Update(ref state);
 
             var ecbSystem = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>();
@@ -63,6 +69,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 MassOverrideHandle = _massOverrideHandle,
                 GravityFactorHandle = _gravityFactorHandle,
                 VelocityHandle = _velocityHandle,
+                ExternalVelocityHandle = _externalVelocityHandle,
+                ExternalInboxHandle = _externalInboxHandle,
                 ActiveGravityOverrideHandle = _activeGravityOverrideHandle,
                 ECB = ecb
             }.ScheduleParallel(_query, state.Dependency);
@@ -77,6 +85,8 @@ namespace BovineLabs.Timeline.Physics.Kinematics
             public ComponentTypeHandle<PhysicsMassOverride> MassOverrideHandle;
             public ComponentTypeHandle<PhysicsGravityFactor> GravityFactorHandle;
             public ComponentTypeHandle<PhysicsVelocity> VelocityHandle;
+            public ComponentTypeHandle<ExternalVelocity> ExternalVelocityHandle;
+            public BufferTypeHandle<PendingExternalForce> ExternalInboxHandle;
             [ReadOnly] public ComponentTypeHandle<ActiveGravityOverride> ActiveGravityOverrideHandle;
             public EntityCommandBuffer.ParallelWriter ECB;
 
@@ -93,11 +103,17 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 {
                     HasMassOverride = chunk.Has(ref MassOverrideHandle),
                     HasGravityFactor = chunk.Has(ref GravityFactorHandle),
-                    HasVelocity = chunk.Has(ref VelocityHandle)
+                    HasVelocity = chunk.Has(ref VelocityHandle),
+                    HasExternalVelocity = chunk.Has(ref ExternalVelocityHandle),
+                    HasExternalInbox = chunk.Has(ref ExternalInboxHandle)
                 };
                 lanes.MassOverrides = lanes.HasMassOverride ? chunk.GetNativeArray(ref MassOverrideHandle) : default;
                 lanes.GravityFactors = lanes.HasGravityFactor ? chunk.GetNativeArray(ref GravityFactorHandle) : default;
                 lanes.Velocities = lanes.HasVelocity ? chunk.GetNativeArray(ref VelocityHandle) : default;
+                lanes.ExternalVelocities =
+                    lanes.HasExternalVelocity ? chunk.GetNativeArray(ref ExternalVelocityHandle) : default;
+                lanes.ExternalInbox =
+                    lanes.HasExternalInbox ? chunk.GetBufferAccessor(ref ExternalInboxHandle) : default;
 
                 var hasGravityOverride = chunk.Has(ref ActiveGravityOverrideHandle);
 
@@ -134,12 +150,29 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 in PhysicsKinematicOverrideData config, bool hasActiveGravityOverride, Entity entity, int chunkIndex,
                 int i)
             {
-                if (config.ZeroVelocityOnEnter && lanes.HasVelocity)
+                if (config.ZeroVelocityOnEnter)
                 {
-                    var vel = lanes.Velocities[i];
-                    vel.Linear = float3.zero;
-                    vel.Angular = float3.zero;
-                    lanes.Velocities[i] = vel;
+                    if (lanes.HasVelocity)
+                    {
+                        var vel = lanes.Velocities[i];
+                        vel.Linear = float3.zero;
+                        vel.Angular = float3.zero;
+                        lanes.Velocities[i] = vel;
+                    }
+
+                    // A frozen body must also lose its knockback: the External channel is re-added on top of
+                    // PhysicsVelocity every producer tick (PhysicsExternalVelocityComposeSystem), so zeroing only
+                    // PhysicsVelocity leaves the body sliding ~0.15s. Clear the standing channel AND its inbox so a
+                    // same-frame hit cannot resurrect it on the next compose.
+                    if (lanes.HasExternalVelocity)
+                    {
+                        lanes.ExternalVelocities[i] = default;
+                    }
+
+                    if (lanes.HasExternalInbox)
+                    {
+                        lanes.ExternalInbox[i].Clear();
+                    }
                 }
 
                 if (lanes.HasMassOverride)
@@ -271,9 +304,13 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                 public NativeArray<PhysicsMassOverride> MassOverrides;
                 public NativeArray<PhysicsGravityFactor> GravityFactors;
                 public NativeArray<PhysicsVelocity> Velocities;
+                public NativeArray<ExternalVelocity> ExternalVelocities;
+                public BufferAccessor<PendingExternalForce> ExternalInbox;
                 public bool HasMassOverride;
                 public bool HasGravityFactor;
                 public bool HasVelocity;
+                public bool HasExternalVelocity;
+                public bool HasExternalInbox;
             }
         }
     }

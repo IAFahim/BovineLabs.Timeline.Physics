@@ -20,4 +20,15 @@ namespace BovineLabs.Timeline.Physics.Data.Kernels
     {
         float ElapsedTime { get; set; }
     }
+
+    /// <summary>
+    /// A capture-restore track state that may be holding a pending exit restore (its OnExit has not run yet, so its
+    /// captured original is still owed back to the body). The SpanStart re-arm reset skips such states so a clip gap
+    /// with zero fixed ticks in it (common at high fps vs a 50/60Hz fixed step) never wipes the captured original
+    /// before the eventual real exit restores it. Implemented by returning the state's <c>Fired</c> flag.
+    /// </summary>
+    public interface IRestorableState
+    {
+        bool RestorePending { get; }
+    }
 }

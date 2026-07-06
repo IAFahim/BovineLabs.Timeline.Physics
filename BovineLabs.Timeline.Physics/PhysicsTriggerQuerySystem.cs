@@ -141,12 +141,16 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 ElapsedTime = (float)SystemAPI.Time.ElapsedTime
             }.ScheduleParallel(_query, state.Dependency);
 
+            var ecb = SystemAPI.GetSingleton<EndFixedStepSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+
             state.Dependency = new ApplyJob
             {
                 Events = events,
                 TargetsLookup = _targetsWriteLookup,
                 HitLookup = _hitLookup,
-                Writers = _writers
+                Writers = _writers,
+                Ecb = ecb
             }.Schedule(state.Dependency);
         }
 
@@ -229,8 +233,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     var isFirstFrame = gates[i].FirstFrame != 0;
                     if (isFirstFrame)
                     {
+                        // TabCycle advances only on this re-fire edge and needs the prior winner to know who the
+                        // "next" target is, so its LastWinner survives the per-activation reset.
+                        var preservedTabWinner = config.Selection == PhysicsTriggerQuerySelection.TabCycle
+                            ? queryState.LastWinner
+                            : Entity.Null;
                         queryState = default;
                         queryState.LastSector = -1;
+                        queryState.LastWinner = preservedTabWinner;
                     }
 
                     var isLastFrame = gates[i].LastFrame != 0;
@@ -380,7 +390,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 }
 
                 if (isTabCycle)
-                    winner = TabCycleSuccessor(in queryState, ref survivors, ref survivorKeys);
+                    winner = TabCycleSuccessor(in queryState, ctx.IsFirstFrame, ref survivors, ref survivorKeys);
 
                 if (winner != Entity.Null && config.PerTargetRefractoryFrames > 0 &&
                     IsInRefractory(in queryState, winner))
@@ -509,6 +519,18 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 if (insertAt >= cap)
                     return;
 
+                // Make room BEFORE inserting: winners is a FixedList64Bytes<Entity> whose capacity equals the
+                // max cap (7). Inserting into a full list would grow it past capacity and throw / corrupt, so drop
+                // the current worst (last) survivor first when the list is already at the cap.
+                if (winners.Length >= cap)
+                {
+                    winners.RemoveAt(winners.Length - 1);
+                    scores.RemoveAt(scores.Length - 1);
+                    sectors.RemoveAt(sectors.Length - 1);
+                    bands.RemoveAt(bands.Length - 1);
+                    values.RemoveAt(values.Length - 1);
+                }
+
                 winners.InsertRangeWithBeginEnd(insertAt, insertAt + 1);
                 scores.InsertRangeWithBeginEnd(insertAt, insertAt + 1);
                 sectors.InsertRangeWithBeginEnd(insertAt, insertAt + 1);
@@ -525,15 +547,6 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 bands[insertAt] = band;
                 values[insertAt] = ComputeValueFor(in ctx, in config, other, in collision, ctx.SelfPos, ctx.SelfRot,
                     ctx.SelfVel, sector, band, survivorCount, ref queryState, ref raycastsLeft);
-
-                while (winners.Length > cap)
-                {
-                    winners.RemoveAt(winners.Length - 1);
-                    scores.RemoveAt(scores.Length - 1);
-                    sectors.RemoveAt(sectors.Length - 1);
-                    bands.RemoveAt(bands.Length - 1);
-                    values.RemoveAt(values.Length - 1);
-                }
             }
 
             private void EmitMulti(in QueryContext ctx, in PhysicsTriggerQueryData config, in Targets targets,
@@ -578,6 +591,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     if (PhysicsTriggerResolution.TryResolveLinkedTarget(routeTo, routeLinkKey,
                             ctx.Self, w, targets, LinkSources, Links, out var routed))
+                    {
                         Events.Write(new TriggerQueryEvent
                         {
                             Routed = routed,
@@ -592,16 +606,21 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             Value = value,
                             Sector = sectors[k],
                             Band = bands[k],
-                            Score = (int)(scores[k] * 100f)
+                            Score = ClampScore(scores[k])
                         });
+
+                        // Only consume firstHit once a clear-carrying event is actually written; if winner 0 fails to
+                        // resolve, a later winner must still be the one that clears last frame's stale hit buffer.
+                        firstHit = false;
+                    }
 
                     if (config.PerTargetRefractoryFrames > 0)
                         SetRefractory(ref queryState, w, config.PerTargetRefractoryFrames);
-
-                    firstHit = false;
                 }
 
-                if (!config.LostCondition.Equals(ConditionKey.Null))
+                // Run the lost handling when EITHER a lost condition fires OR the routed slot must be cleared, so
+                // ClearOnLost works in multi-winner mode even without a LostCondition (matches the single path).
+                if (config.ClearOnLost || !config.LostCondition.Equals(ConditionKey.Null))
                     for (var k = 0; k < queryState.LastWinnerSet.Length; k++)
                     {
                         var prev = queryState.LastWinnerSet[k];
@@ -614,7 +633,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                             {
                                 Routed = lostRouted,
                                 Winner = Entity.Null,
-                                WriteSlot = false,
+                                // Mirror the single-winner lost path: clear the routed slot when ClearOnLost is set so
+                                // a fanned-out Targets slot doesn't keep a stale / destroyed winner.
+                                WriteSlot = config.ClearOnLost,
+                                Slot = config.RouteSlot,
+                                WriteMode = PhysicsTriggerWriteMode.ClearOnly,
                                 Condition = config.LostCondition,
                                 Value = config.LostValue
                             });
@@ -724,7 +747,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (FlagSet(config.Gates, PhysicsTriggerGateFlags.FactionGate))
                 {
-                    var faction = FactionLookup.TryGetComponent(other, out var fm) ? fm.Faction : 0;
+                    // Policy: a faction filter excludes candidates WITHOUT a FactionMember — untagged debris must not
+                    // slip through on the faction-0 bit. Only explicitly-tagged bodies are matched against the mask.
+                    if (!FactionLookup.TryGetComponent(other, out var fm)) return false;
+                    var faction = fm.Faction;
                     if (faction is >= 0 and < 32)
                     {
                         if ((config.FactionAllowMask & (1u << faction)) == 0) return false;
@@ -1078,10 +1104,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                 if (config.GraceFrames > 0)
                 {
+                    // Seed on the first frame of loss, then count one down per subsequent frame so the hold lasts
+                    // exactly GraceFrames query frames (graceFrames == 1 holds one frame). Decrementing on the seed
+                    // frame too would make the hold GraceFrames-1 frames (and 1 behave like 0).
                     if (queryState.GraceCountdown == 0)
                         queryState.GraceCountdown = config.GraceFrames;
+                    else
+                        queryState.GraceCountdown--;
 
-                    queryState.GraceCountdown--;
                     if (queryState.GraceCountdown > 0)
                         return;
                 }
@@ -1157,7 +1187,10 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         var s = ComputeSectorValue(in config, winner, selfPos, selfRot, ref queryState);
                         var off = ResolveWinnerPos(winner, selfPos) - selfPos;
                         var b = ComputeBand(in config, math.lengthsq(off));
-                        return b * config.SectorCount + s;
+                        // Encoding: value = band * (SectorCount + 1) + sector. The +1 stride reserves the top slot for
+                        // the degenerate-sector sentinel (s == SectorCount) so it can't alias band (b+1), sector 0.
+                        // Decode as: band = value / (SectorCount + 1), sector = value % (SectorCount + 1).
+                        return b * (config.SectorCount + 1) + s;
                     }
 
                     case PhysicsTriggerQueryValueMode.OverlapCount:
@@ -1348,6 +1381,21 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                 return a.Index != b.Index ? a.Index < b.Index : a.Version < b.Version;
             }
 
+            /// <summary>
+            /// ×100 fixed-point pack of a candidate score, saturated to a range a float→int cast can represent.
+            /// Distance-based scores (-distSq, unbounded when MaxDistance == 0) and the ±Infinity sentinels
+            /// (TauntOverride / WeakestTarget) would otherwise overflow int — undefined behaviour in Burst.
+            /// </summary>
+            private static int ClampScore(float score)
+            {
+                var scaled = score * 100f;
+                if (!math.isfinite(scaled))
+                    return scaled > 0f ? int.MaxValue : int.MinValue;
+
+                // ±2.1e9 stays inside [int.MinValue, int.MaxValue] and is exactly representable as a float.
+                return (int)math.clamp(scaled, -2.1e9f, 2.1e9f);
+            }
+
             /// <summary> The stable TabCycle ordering key: the planar bearing angle [0, 2π). Ties broken by index. </summary>
             private float TabCycleKey(in QueryContext ctx, in PhysicsTriggerQueryData config, float3 offset)
             {
@@ -1360,11 +1408,13 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             }
 
             /// <summary>
-            /// Pick the successor of LastWinner in the stable (angle, index) ordering of the live survivors. On the
-            /// re-fire edge (LastWinner still present) advance to the next; if LastWinner is gone or null, start at the
-            /// head. The cycle restarts if the survivor set changes mid-cycle (the ordering is rebuilt each frame).
+            /// Pick a winner from the stable (angle, index) ordering of the live survivors. Only ADVANCE on the
+            /// re-fire edge (<paramref name="advance"/> — the clip-activation FirstFrame): when LastWinner is still
+            /// present, step to the next; if it is gone or null, start at the head. Off the edge the current winner is
+            /// held (LastWinner if still present, else the head) so a continuously-active clip does not round-robin at
+            /// frame rate and spam the found condition. The ordering is rebuilt each frame.
             /// </summary>
-            private static Entity TabCycleSuccessor(in PhysicsTriggerQueryState queryState,
+            private static Entity TabCycleSuccessor(in PhysicsTriggerQueryState queryState, bool advance,
                 ref FixedList64Bytes<Entity> survivors, ref FixedList128Bytes<float> keys)
             {
                 if (survivors.Length == 0) return Entity.Null;
@@ -1393,7 +1443,11 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                         break;
                     }
 
-                var pick = lastIdx < 0 ? 0 : (lastIdx + 1) % survivors.Length;
+                if (lastIdx < 0)
+                    return survivors[0]; // LastWinner gone / null — start (or restart) at the head
+
+                // Advance to the next only on the re-fire edge; otherwise hold the current winner.
+                var pick = advance ? (lastIdx + 1) % survivors.Length : lastIdx;
                 return survivors[pick];
             }
 
@@ -1410,9 +1464,14 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             public ComponentLookup<Targets> TargetsLookup;
             public BufferLookup<TriggerQueryHit> HitLookup;
             public ConditionEventWriter.Lookup Writers;
+            public EntityCommandBuffer Ecb;
 
             public void Execute()
             {
+                // Routed entities are resolved at runtime (Self/Owner/Source/Target/links) and generally are NOT the
+                // clip entity, so the hit buffer can't be baked onto the clip. Track which routed entities we've
+                // already issued an AddBuffer for this playback to avoid duplicate structural commands on one entity.
+                var bufferAdds = new NativeHashSet<Entity>(16, Allocator.Temp);
                 var reader = Events.AsReader();
                 for (var i = 0; i < reader.ForEachCount; i++)
                 {
@@ -1436,18 +1495,27 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                                 TargetsLookup[evt.Winner] = winnerTargets;
                         }
 
-                        if (evt.WriteHit && HitLookup.HasBuffer(evt.Routed))
+                        if (evt.WriteHit)
                         {
-                            var hits = HitLookup[evt.Routed];
-                            if (evt.ClearHitBuffer) hits.Clear();
-                            if (evt.Winner != Entity.Null && hits.Length < 8)
-                                hits.Add(new TriggerQueryHit
-                                {
-                                    Entity = evt.Winner,
-                                    Sector = evt.Sector,
-                                    Band = evt.Band,
-                                    Score = evt.Score
-                                });
+                            if (HitLookup.HasBuffer(evt.Routed))
+                            {
+                                var hits = HitLookup[evt.Routed];
+                                if (evt.ClearHitBuffer) hits.Clear();
+                                if (evt.Winner != Entity.Null && hits.Length < 8)
+                                    hits.Add(new TriggerQueryHit
+                                    {
+                                        Entity = evt.Winner,
+                                        Sector = evt.Sector,
+                                        Band = evt.Band,
+                                        Score = evt.Score
+                                    });
+                            }
+                            else if (evt.Routed != Entity.Null && bufferAdds.Add(evt.Routed))
+                            {
+                                // The routed entity has no hit buffer yet — add it structurally. It appears next tick,
+                                // so this frame's hits are skipped and the first hits land on the following query.
+                                Ecb.AddBuffer<TriggerQueryHit>(evt.Routed);
+                            }
                         }
 
                         if (!evt.Condition.Equals(ConditionKey.Null) && Writers.TryGet(evt.Routed, out var writer))
@@ -1456,6 +1524,8 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
 
                     reader.EndForEachIndex();
                 }
+
+                bufferAdds.Dispose();
             }
 
             private static bool TryWriteSlot(ref Targets targets, PhysicsTriggerRouteSlot slot, Entity winner,

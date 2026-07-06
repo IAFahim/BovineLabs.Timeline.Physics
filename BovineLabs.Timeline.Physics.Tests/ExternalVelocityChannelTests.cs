@@ -2,6 +2,7 @@ using BovineLabs.Testing;
 using BovineLabs.Timeline.Physics.Data;
 using BovineLabs.Timeline.Physics.Drags;
 using BovineLabs.Timeline.Physics.Forces;
+using BovineLabs.Timeline.Physics.Kinematics;
 using NUnit.Framework;
 using Unity.Core;
 using Unity.Entities;
@@ -229,6 +230,43 @@ namespace BovineLabs.Timeline.Physics.Tests
                 "A plain reset must NOT eat the knockback channel");
             Assert.AreEqual(0f, Manager.GetComponentData<ExternalVelocity>(b).Linear.z, 1e-4f,
                 "An External-flagged reset MUST clear the knockback channel");
+        }
+
+        // Item 4: a kinematic override with ZeroVelocityOnEnter freezes the body — but the external (knockback) channel
+        // is re-added on top of PhysicsVelocity every producer tick, so zeroing only PhysicsVelocity leaves the body
+        // sliding. The override must also clear ExternalVelocity AND its inbox so a frozen body actually stops.
+        [Test]
+        public void KinematicFreeze_ZeroVelocityOnEnter_ClearsExternalChannelAndInbox()
+        {
+            World.GetOrCreateSystemManaged<EndFixedStepSimulationEntityCommandBufferSystem>();
+            World.SetTime(new TimeData(0.1, 0.1f));
+
+            var body = CreateBody(float3.zero);
+            Manager.SetComponentData(body, new ExternalVelocity { Linear = new float3(0, 0, 10) }); // standing knockback
+            Manager.GetBuffer<PendingExternalForce>(body)
+                .Add(new PendingExternalForce { Linear = new float3(0, 0, 5) }); // fresh same-frame hit
+
+            // Give it PhysicsMassOverride so the override's OnEnter uses the in-place mass lane (no ECB playback needed).
+            Manager.AddComponentData(body, new PhysicsMassOverride { IsKinematic = 0 });
+            Manager.AddComponentData(body, new ActiveKinematicOverride
+            {
+                Config = new PhysicsKinematicOverrideData
+                    { IsKinematic = true, ZeroVelocityOnEnter = true, ZeroGravity = false }
+            });
+            Manager.SetComponentEnabled<ActiveKinematicOverride>(body, true);
+            Manager.AddComponentData(body, default(PhysicsKinematicOverrideState));
+
+            World.GetOrCreateSystem<PhysicsKinematicOverrideApplySystem>().Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0f, Manager.GetComponentData<ExternalVelocity>(body).Linear.z, 1e-4f,
+                "Freeze must clear the standing external (knockback) channel");
+            Assert.AreEqual(0, Manager.GetBuffer<PendingExternalForce>(body).Length,
+                "Freeze must clear the external inbox so a same-frame hit is not composed in next tick");
+
+            RunCompose(); // next producer tick: nothing should re-apply
+            Assert.AreEqual(0f, Manager.GetComponentData<PhysicsVelocity>(body).Linear.z, 1e-4f,
+                "A frozen body must not keep sliding via the external channel");
         }
     }
 }

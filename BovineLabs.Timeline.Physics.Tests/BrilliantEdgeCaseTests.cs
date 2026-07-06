@@ -10,6 +10,7 @@ using BovineLabs.Timeline.Physics.Data.Mixers;
 using BovineLabs.Timeline.Physics.Drags;
 using BovineLabs.Timeline.Physics.Forces;
 using BovineLabs.Timeline.Physics.Kinematics;
+using BovineLabs.Timeline.Physics.Sockets;
 using BovineLabs.Timeline.Physics.TriggerEvents;
 using BovineLabs.Timeline.Physics.VelocityOverrides;
 using NUnit.Framework;
@@ -253,6 +254,150 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Assert.AreEqual(0u, result.BelongsToOverride,
                 "The dominant all-zero phase-through override must win the blend, not be treated as an empty slot.");
+        }
+
+        // Item 1: an eased velocity-clamp clip blends against the empty-slot default. In the kernel a max speed of 0
+        // is the STRONGEST clamp (freeze), so lerping toward the zeroed default froze the body at the blend edges
+        // (lerp(0, 10, 0.1) = 1). With the Present marker the empty slot relaxes the clamp by weight (max / weight):
+        // near-authored at high weight, rising toward "no clamp" as the clip fades to 0.
+        [Test]
+        public void VelocityClampMixer_PartialWeightAgainstEmpty_RelaxesInsteadOfFreezing()
+        {
+            var clip = new PhysicsVelocityClampData { MaxLinearSpeed = 10f, MaxAngularSpeed = 5f, Present = 1 };
+            var empty = default(PhysicsVelocityClampData); // Present == 0
+
+            // High clip weight (single-clip partial fold hands the clip as a, default as b with s = default weight).
+            var highWeight = new PhysicsVelocityClampMixer().Lerp(clip, empty, 0.1f);
+            Assert.AreEqual(10f / 0.9f, highWeight.MaxLinearSpeed, 1e-3f,
+                "At 90% clip weight the clamp is near its authored max, not frozen toward 0.");
+
+            // Low clip weight -> the clamp relaxes far past the authored max (effect vanishes at the blend edge).
+            var lowWeight = new PhysicsVelocityClampMixer().Lerp(clip, empty, 0.9f);
+            Assert.Greater(lowWeight.MaxLinearSpeed, highWeight.MaxLinearSpeed,
+                "Lower clip weight must relax the clamp further (higher max speed), never drag it toward the freeze.");
+
+            // Empty as slot a (the 2-clip fold hands the default as a with a low s = present weight).
+            var emptyAsA = new PhysicsVelocityClampMixer().Lerp(empty, clip, 0.1f);
+            Assert.Greater(emptyAsA.MaxLinearSpeed, 10f,
+                "The empty slot must relax the clamp regardless of which argument it lands in.");
+
+            Assert.AreEqual(1, lowWeight.Present, "Present must propagate through the blend.");
+        }
+
+        [Test]
+        public void VelocityClampMixer_BothPresent_LerpsNormallyAndKeepsAuthoredFreeze()
+        {
+            var slow = new PhysicsVelocityClampData { MaxLinearSpeed = 10f, MaxAngularSpeed = 4f, Present = 1 };
+            var fast = new PhysicsVelocityClampData { MaxLinearSpeed = 20f, MaxAngularSpeed = 8f, Present = 1 };
+
+            var mid = new PhysicsVelocityClampMixer().Lerp(slow, fast, 0.5f);
+            Assert.AreEqual(15f, mid.MaxLinearSpeed, 1e-4f, "Two present clips must still lerp normally.");
+
+            // An authored freeze (max 0, Present = 1) is a real value and must survive against another authored clip.
+            var freeze = new PhysicsVelocityClampData { MaxLinearSpeed = 0f, MaxAngularSpeed = 0f, Present = 1 };
+            var freezeBlend = new PhysicsVelocityClampMixer().Lerp(freeze, freeze, 0.5f);
+            Assert.AreEqual(0f, freezeBlend.MaxLinearSpeed, "An authored freeze between two present clips is preserved.");
+        }
+
+        // Item 2: an eased Impulse force clip blends against the empty-slot default. Without the Present marker the
+        // default's discrete Mode (Continuous) won at s >= 0.5, so the clip integrated a spurious continuous force
+        // during its low-weight prelude. The discrete fields must always come from the present side.
+        [Test]
+        public void ForceMixer_EasedImpulseAgainstEmpty_KeepsImpulseDiscreteFields()
+        {
+            var impulse = new PhysicsForceData
+            {
+                Mode = PhysicsForceMode.Impulse,
+                DirectionMode = PhysicsForceDirectionMode.TowardTarget,
+                Magnitude = 100f,
+                Present = 1,
+            };
+            var empty = default(PhysicsForceData); // Present == 0, Mode == Continuous
+
+            // Low clip weight -> high default weight (s), the exact prelude the bug corrupted.
+            var prelude = new PhysicsForceMixer().Lerp(impulse, empty, 0.9f);
+            Assert.AreEqual(PhysicsForceMode.Impulse, prelude.Mode,
+                "The present Impulse clip must keep its Mode; the empty default must never inject Continuous.");
+            Assert.AreEqual(PhysicsForceDirectionMode.TowardTarget, prelude.DirectionMode,
+                "Discrete DirectionMode must come from the present side.");
+            Assert.AreEqual(1, prelude.Present, "Present must propagate.");
+
+            // Empty as slot a with low s (the 2-clip fold order).
+            var emptyAsA = new PhysicsForceMixer().Lerp(empty, impulse, 0.1f);
+            Assert.AreEqual(PhysicsForceMode.Impulse, emptyAsA.Mode,
+                "The present side wins the discrete Mode regardless of argument order.");
+        }
+
+        [Test]
+        public void ForceMixer_AdditiveWithEmptyDefault_TakesPresentDiscreteFields()
+        {
+            // The additive fold calls Add(defaultValue, result) with the empty default in slot a.
+            var empty = default(PhysicsForceData);
+            var result = new PhysicsForceData { Mode = PhysicsForceMode.Impulse, Magnitude = 50f, Present = 1 };
+
+            var added = new PhysicsForceMixer().Add(empty, result);
+            Assert.AreEqual(PhysicsForceMode.Impulse, added.Mode,
+                "Add must pull discrete fields from the present side, not the empty default in slot a.");
+            Assert.AreEqual(50f, added.Magnitude, 1e-4f, "Numeric fields still sum (empty contributes 0).");
+        }
+
+        // Item 3: PhysicsVelocityMixer previously dropped the Present flag from its outputs, so a mixed intermediate
+        // read as an empty slot in a 3+ clip fold and lost its discrete fields.
+        [Test]
+        public void VelocityMixer_Outputs_PreservePresentFlag()
+        {
+            var a = new PhysicsVelocityData { Mode = PhysicsVelocityMode.SetInstant, Present = 1 };
+            var b = new PhysicsVelocityData { Mode = PhysicsVelocityMode.AddContinuous, Present = 1 };
+
+            Assert.AreEqual(1, new PhysicsVelocityMixer().Lerp(a, b, 0.5f).Present,
+                "Lerp must propagate Present so the intermediate isn't mistaken for an empty slot.");
+            Assert.AreEqual(1, new PhysicsVelocityMixer().Add(a, b).Present,
+                "Add must propagate Present as well.");
+        }
+
+        // Item 4: gravity-override blending used the wrong neutral. The neutral for a gravity SCALE is 1 (normal
+        // gravity), so an empty slot must pull the scale toward 1, not toward the default 0 (zero-G).
+        [Test]
+        public void GravityOverrideMixer_PartialWeightAgainstEmpty_BlendsTowardOne()
+        {
+            var heavy = new PhysicsGravityOverrideData { GravityScale = 2f, RestoreOnExit = true, Present = 1 };
+            var empty = default(PhysicsGravityOverrideData); // Present == 0, GravityScale == 0
+
+            var mostlyEmpty = new PhysicsGravityOverrideMixer().Lerp(heavy, empty, 0.9f);
+            Assert.AreEqual(1.1f, mostlyEmpty.GravityScale, 1e-4f,
+                "A mostly-empty blend must ease toward normal gravity (1), not toward zero-G (0).");
+            Assert.IsTrue(mostlyEmpty.RestoreOnExit, "RestoreOnExit must come from the present side.");
+
+            var emptyAsA = new PhysicsGravityOverrideMixer().Lerp(empty, heavy, 0.1f);
+            Assert.AreEqual(1.1f, emptyAsA.GravityScale, 1e-4f,
+                "Neutral-toward-1 must hold regardless of which argument is the empty slot.");
+        }
+
+        // Item 5: SocketReturnMixer slerped LocalRotation against the zero quaternion at partial weight, producing a
+        // non-unit rotation goal, and lerped the halflives/attach distance toward 0 (max stiffness / unreachable).
+        [Test]
+        public void SocketReturnMixer_PartialWeightAgainstEmpty_KeepsUnitRotationAndPositiveHalflife()
+        {
+            var clip = new SocketReturnData
+            {
+                Socket = Target.Owner,
+                LocalRotation = quaternion.AxisAngle(math.up(), 1.2f),
+                PositionHalflife = 0.2f,
+                RotationHalflife = 0.15f,
+                AttachDistance = 0.5f,
+                Present = 1,
+            };
+            var empty = default(SocketReturnData); // Present == 0, zero quaternion
+
+            var blend = new SocketReturnMixer().Lerp(clip, empty, 0.5f);
+
+            Assert.AreEqual(1f, math.length(blend.LocalRotation.value), 1e-4f,
+                "The rotation goal must stay unit-length, never slerp toward the zero quaternion.");
+            Assert.AreEqual(0.2f, blend.PositionHalflife, 1e-4f,
+                "An empty slot must fall back to the present halflife, not drag it toward 0 (infinite stiffness).");
+            Assert.AreEqual(0.5f, blend.AttachDistance, 1e-4f,
+                "AttachDistance must fall back to the present value, not lerp toward an unreachable 0.");
+            Assert.AreEqual(1, blend.Present, "Present must propagate.");
         }
 
         #endregion

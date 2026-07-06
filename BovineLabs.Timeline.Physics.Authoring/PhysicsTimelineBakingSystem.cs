@@ -11,6 +11,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
     /// Single source of truth for the runtime components a physics-track TARGET needs: per track type, the
     /// Active/State pair (Active added disabled), plus the shared accumulation buffers where the track produces
     /// motion. Add one <see cref="Ensure{TAnimated,TActive,TState}"/> line per new track.
+    /// Deliberate exceptions: ChainFollow and SocketReturn are NOT ensured here — their Active/State only make
+    /// sense on a rig provisioned by <c>ChainWeaponAuthoring</c> / <c>WeaponRecallAuthoring</c>; a clip bound to
+    /// an entity without that rig is intentionally a no-op.
     /// </summary>
     [WorldSystemFilter(WorldSystemFilterFlags.BakingSystem)]
     public partial struct PhysicsTimelineBakingSystem : ISystem

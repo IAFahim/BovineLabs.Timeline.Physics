@@ -131,8 +131,11 @@ namespace BovineLabs.Timeline.Physics.Sockets
                         TargetsLookup.TryGetComponent(body, out var targets))
                         socketEntity = targets.Get(config.Socket, body);
 
-                    PhysicsMath.ResolveTransform(socketEntity, in LocalTransformLookup, in LocalToWorldLookup,
-                        in ParentLookup, out var socketPosition, out var socketRotation);
+                    // An unpopulated socket slot resolves to Entity.Null; springing toward the swallowed
+                    // origin would accelerate the body at the world origin, so leave it untouched this frame.
+                    if (!PhysicsMath.TryResolveTransform(socketEntity, in LocalTransformLookup, in LocalToWorldLookup,
+                            in ParentLookup, out var socketPosition, out var socketRotation))
+                        continue;
 
                     var goalPosition = socketPosition + math.rotate(socketRotation, config.LocalPosition);
                     var goalRotation = math.mul(socketRotation, config.LocalRotation);

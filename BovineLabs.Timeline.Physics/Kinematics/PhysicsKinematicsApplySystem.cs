@@ -219,7 +219,10 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
-                    if (math.abs(multiplier) < 1e-5f)
+                    // A non-finite (NaN/Inf) stat is treated as skip — never fold it into a force, or PhysicsVelocity
+                    // is permanently poisoned. For continuous modes still advance AppliedTime so no time backlog
+                    // builds while the stat is bad (mirrors the near-zero-multiplier skip below).
+                    if (!math.isfinite(multiplier) || math.abs(multiplier) < 1e-5f)
                     {
                         if (config.Mode != PhysicsForceMode.Impulse)
                         {
@@ -466,7 +469,20 @@ namespace BovineLabs.Timeline.Physics.Kinematics
                     var multiplier = StatStrengthUtility.Resolve(in config.Strength, body, targets,
                         LinkSources, Links, StatLookup);
 
-                    if (math.abs(multiplier) < 1e-5f) continue;
+                    // Skip a zeroed OR non-finite (NaN/Inf) stat, but for AddContinuous still advance AppliedTime so
+                    // the un-consumed time is not banked into a Δv spike when the stat later un-zeroes/recovers.
+                    // Without this, ElapsedTime keeps accumulating while the multiplier is ~0 and the whole backlog
+                    // (timeScale = ElapsedTime - AppliedTime) is delivered as one impulse the frame the stat returns.
+                    if (!math.isfinite(multiplier) || math.abs(multiplier) < 1e-5f)
+                    {
+                        if (!isInstant)
+                        {
+                            state.AppliedTime = state.ElapsedTime;
+                            states[i] = state;
+                        }
+
+                        continue;
+                    }
 
                     PhysicsMath.ResolveSpaceVector(config.Space, config.Linear, body, in TargetsLookup,
                         in LocalTransformLookup, in LocalToWorldLookup, in ParentLookup, out var linVel);

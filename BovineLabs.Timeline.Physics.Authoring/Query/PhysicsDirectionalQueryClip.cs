@@ -85,7 +85,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             {
                 Selection = selection,
                 ValueMode = valueMode,
-                SectorCount = math.max(sectorCount, 1),
+                // Clamp to 127: the runtime stores the DirectionSector result in an sbyte (LastSector), and the
+                // degenerate sentinel is SectorCount itself — both must fit sbyte.
+                SectorCount = math.clamp(sectorCount, 1, 127),
                 SectorReference = sectorReference,
                 SectorPlane = sectorPlane,
                 SectorCustomUp = sectorCustomUp,

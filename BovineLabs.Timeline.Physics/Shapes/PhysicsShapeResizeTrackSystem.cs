@@ -13,13 +13,13 @@ namespace BovineLabs.Timeline.Physics.Shapes
     [BurstCompile]
     public partial struct PhysicsShapeResizeTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsShapeResizeData, PhysicsShapeResizeAnimated, ActiveShapeResize,
+        private TrackBlendRestorableStateDriver<PhysicsShapeResizeData, PhysicsShapeResizeAnimated, ActiveShapeResize,
             DiscreteMixer<PhysicsShapeResizeData>, PhysicsShapeResizeState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.SpanStart,
+            _driver.OnCreate(ref state,
                 new PhysicsShapeResizeState { Fired = false });
         }
 

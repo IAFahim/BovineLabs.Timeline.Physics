@@ -17,7 +17,11 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
                 Angular = math.lerp(a.Angular, b.Angular, s),
                 Space = discrete.Space,
                 ResetVelocityOnFire = discrete.ResetVelocityOnFire,
-                Strength = discrete.Strength
+                Strength = discrete.Strength,
+
+                // Propagate presence so a mixed intermediate isn't mistaken for an empty slot in a multi-fold blend
+                // (3+ overlapping clips) — otherwise the newest clip's discrete fields would win at any weight.
+                Present = (byte)(a.Present | b.Present)
             };
         }
 
@@ -30,8 +34,13 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
 
         public PhysicsVelocityData Add(in PhysicsVelocityData a, in PhysicsVelocityData b)
         {
-            var aWins = (byte)a.Mode < (byte)b.Mode ||
-                        ((byte)a.Mode == (byte)b.Mode && (byte)a.Space >= (byte)b.Space);
+            // The additive fold calls Add(defaultValue, result) with an empty defaultValue in slot a; guard so the
+            // empty slot never wins the discrete fields via the Mode/Space tie-break.
+            var aDefault = IsDefault(a);
+            var bDefault = IsDefault(b);
+            var aWins = bDefault ||
+                        (!aDefault && ((byte)a.Mode < (byte)b.Mode ||
+                                       ((byte)a.Mode == (byte)b.Mode && (byte)a.Space >= (byte)b.Space)));
             var dominant = aWins ? a : b;
 
             return new PhysicsVelocityData
@@ -41,7 +50,8 @@ namespace BovineLabs.Timeline.Physics.Data.Mixers
                 Angular = a.Angular + b.Angular,
                 Space = dominant.Space,
                 ResetVelocityOnFire = dominant.ResetVelocityOnFire,
-                Strength = dominant.Strength
+                Strength = dominant.Strength,
+                Present = (byte)(a.Present | b.Present)
             };
         }
     }

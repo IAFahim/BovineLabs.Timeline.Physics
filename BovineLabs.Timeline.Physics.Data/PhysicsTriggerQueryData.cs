@@ -146,7 +146,8 @@ namespace BovineLabs.Timeline.Physics
         /// <summary> Invert the line-of-sight test: keep only OCCLUDED candidates (flush-them-out). </summary>
         RequireOccluded = 1 << 5,
 
-        /// <summary> Keep only candidates whose FactionMember.Faction is in FactionAllowMask. </summary>
+        /// <summary> Keep only candidates whose FactionMember.Faction is in FactionAllowMask. Candidates WITHOUT a
+        /// FactionMember are EXCLUDED (a faction filter never admits untagged bodies via the faction-0 bit). </summary>
         FactionGate = 1 << 6,
 
         // ---- WAVE 3 ----

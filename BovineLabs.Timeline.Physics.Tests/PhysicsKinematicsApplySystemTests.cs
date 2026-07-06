@@ -1,3 +1,4 @@
+using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.EntityLinks.Data;
@@ -154,6 +155,142 @@ namespace BovineLabs.Timeline.Physics.Tests
 
             Assert.AreEqual(force * clipDuration, totalFewSteps, 1e-4f, "total must be force × duration");
             Assert.AreEqual(totalFewSteps, totalManySteps, 1e-4f, "total must not depend on fixed-step count");
+        }
+
+        // Item 2: while a stat gates the multiplier to ~0, ElapsedTime keeps accruing but AppliedTime must advance in
+        // lockstep — otherwise the un-consumed span is banked and delivered as one Δv spike the frame the stat recovers.
+        [Test]
+        public void AddContinuous_StatGatedToZeroThenRecovers_DeliversNoBacklogSpike()
+        {
+            StatKey statKey = 4242;
+
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, LocalTransform.Identity);
+            Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(body, new PhysicsVelocityState { Fired = false, ElapsedTime = 0f, AppliedTime = 0f });
+            Manager.AddBuffer<PendingVelocity>(body);
+
+            var stats = Manager.AddBuffer<Stat>(body);
+            stats.Initialize();
+            stats.AsMap().Add(statKey, new StatValue { Added = 0, Multi = 0f }); // multiplier 0
+
+            Manager.AddComponentData(body, new ActiveVelocity
+            {
+                Config = new PhysicsVelocityData
+                {
+                    Mode = PhysicsVelocityMode.AddContinuous,
+                    Linear = new float3(0, 5, 0),
+                    Space = Target.None,
+                    Strength = new StatSource
+                        { Stat = statKey, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
+                }
+            });
+
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+
+            // Frame 1: 0.1s of clip time accrues, but the zeroed stat gates the add. AppliedTime must still advance.
+            var s = Manager.GetComponentData<PhysicsVelocityState>(body);
+            s.ElapsedTime = 0.1f;
+            Manager.SetComponentData(body, s);
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0, Manager.GetBuffer<PendingVelocity>(body).Length, "Zeroed stat must append nothing");
+            Assert.AreEqual(0.1f, Manager.GetComponentData<PhysicsVelocityState>(body).AppliedTime, 1e-5f,
+                "AppliedTime must advance while the stat gates the force to zero, so no backlog is banked");
+
+            // Frame 2: stat recovers to 1.0 and another 0.1s elapses. Only that fresh 0.1s may be delivered.
+            var statMap = Manager.GetBuffer<Stat>(body).AsMap();
+            statMap[statKey] = new StatValue { Added = 100, Multi = 1f };
+            s = Manager.GetComponentData<PhysicsVelocityState>(body);
+            s.ElapsedTime = 0.2f;
+            Manager.SetComponentData(body, s);
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            var pendings = Manager.GetBuffer<PendingVelocity>(body);
+            Assert.AreEqual(1, pendings.Length);
+            Assert.AreEqual(5f * 0.1f, pendings[0].Linear.y, 1e-4f,
+                "Only the time since the stat recovered may be delivered — not the whole ElapsedTime backlog (would be 5 * 0.2)");
+        }
+
+        // Item 3: a non-finite (NaN) stat must be treated as skip on the velocity-add path, never appended (a NaN
+        // PendingVelocity would permanently poison PhysicsVelocity downstream), and AppliedTime must still advance.
+        [Test]
+        public void AddContinuous_NaNStat_AppendsNothing_AndAdvancesAppliedTime()
+        {
+            StatKey statKey = 7;
+
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, LocalTransform.Identity);
+            Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(body, new PhysicsVelocityState { Fired = false, ElapsedTime = 0.1f, AppliedTime = 0f });
+            Manager.AddBuffer<PendingVelocity>(body);
+
+            var stats = Manager.AddBuffer<Stat>(body);
+            stats.Initialize();
+            stats.AsMap().Add(statKey, new StatValue { Added = 100, Multi = float.NaN }); // multiplier NaN
+
+            Manager.AddComponentData(body, new ActiveVelocity
+            {
+                Config = new PhysicsVelocityData
+                {
+                    Mode = PhysicsVelocityMode.AddContinuous,
+                    Linear = new float3(0, 5, 0),
+                    Space = Target.None,
+                    Strength = new StatSource
+                        { Stat = statKey, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
+                }
+            });
+
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0, Manager.GetBuffer<PendingVelocity>(body).Length, "A NaN stat must append no velocity");
+            Assert.AreEqual(0.1f, Manager.GetComponentData<PhysicsVelocityState>(body).AppliedTime, 1e-5f,
+                "AppliedTime must advance past the bad-stat span so no backlog spike builds up");
+        }
+
+        // Item 3: same guard on the force path — a NaN stat must not fold into a PendingForce.
+        [Test]
+        public void Continuous_NaNStat_AppendsNoForce_AndAdvancesAppliedTime()
+        {
+            StatKey statKey = 9;
+
+            var body = Manager.CreateEntity();
+            Manager.AddComponentData(body, LocalTransform.Identity);
+            Manager.AddComponentData(body, new LocalToWorld { Value = float4x4.identity });
+            Manager.AddComponentData(body, new PhysicsForceState { Fired = false, ElapsedTime = 0.1f, AppliedTime = 0f });
+            Manager.AddBuffer<PendingForce>(body);
+
+            var stats = Manager.AddBuffer<Stat>(body);
+            stats.Initialize();
+            stats.AsMap().Add(statKey, new StatValue { Added = 100, Multi = float.NaN }); // multiplier NaN
+
+            Manager.AddComponentData(body, new ActiveForce
+            {
+                Config = new PhysicsForceData
+                {
+                    Mode = PhysicsForceMode.Continuous,
+                    DirectionMode = PhysicsForceDirectionMode.FixedVector,
+                    Linear = new float3(10, 0, 0),
+                    Space = Target.None,
+                    Strength = new StatSource
+                        { Stat = statKey, Link = new EntityLinkRef { ReadRootFrom = Target.Self } }
+                }
+            });
+
+            World.SetTime(new TimeData(0.1, 0.1f));
+            var sys = World.GetOrCreateSystem<PhysicsKinematicsApplySystem>();
+            sys.Update(WorldUnmanaged);
+            Manager.CompleteAllTrackedJobs();
+
+            Assert.AreEqual(0, Manager.GetBuffer<PendingForce>(body).Length, "A NaN stat must append no force");
+            Assert.AreEqual(0.1f, Manager.GetComponentData<PhysicsForceState>(body).AppliedTime, 1e-5f,
+                "AppliedTime must advance past the bad-stat span so no backlog spike builds up");
         }
 
         private float SumContinuousForceX(float force, float clipDuration, int steps)

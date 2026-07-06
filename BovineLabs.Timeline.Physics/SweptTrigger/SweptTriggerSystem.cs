@@ -133,6 +133,26 @@ namespace BovineLabs.Timeline.Physics.SweptTrigger
                     }
 
                     castHits.Dispose();
+
+                    // Hysteresis retain. Acquire is tight (penetration at distance 0, or the swept cast), but a
+                    // target already in contact last frame is KEPT while it stays within one blade-thickness of the
+                    // collider — even on a frame where it stopped penetrating and the near-zero-length cast of a
+                    // dwelling/slow weapon could not re-report it. Without this the target drops out of `current`
+                    // for a frame, so the producer emits a spurious Exit then Enter next frame; with per-tick-only
+                    // dedup downstream, that re-fires once-per-hit consumers (instantiate/force/condition) every
+                    // few frames — the "swept trigger instantiate is always active / fires for all attacks" report.
+                    if (prevHits.Length > 0)
+                    {
+                        var keep = new NativeList<DistanceHit>(16, Allocator.Temp);
+                        var keepInput = new ColliderDistanceInput(
+                            config.Collider, config.Thickness, new RigidTransform(curRot, curPos));
+                        if (CollisionWorld.CalculateDistance(keepInput, ref keep))
+                            for (var h = 0; h < keep.Length; h++)
+                                if (ContainsBuffer(in prevHits, keep[h].Entity))
+                                    Accumulate(ref current, keep[h].Entity, entity);
+
+                        keep.Dispose();
+                    }
                 }
 
                 events.Clear();

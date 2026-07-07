@@ -46,7 +46,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     EventState = triggerState,
                     CollidesWithMask = collidesWith.Value,
-                    Condition = condition ? condition.Key : ConditionKey.Null,
+                    Condition = condition ? new ConditionKey(condition.Key) : ConditionKey.Null,
                     Value = value,
                     RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo)
                 },

@@ -13,14 +13,13 @@ namespace BovineLabs.Timeline.Physics.Forces
     [BurstCompile]
     public partial struct PhysicsForceTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsForceData, PhysicsForceAnimated, ActiveForce,
+        private TrackBlendDrainableStateDriver<PhysicsForceData, PhysicsForceAnimated, ActiveForce,
             PhysicsForceMixer, PhysicsForceState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.EveryActivation,
-                new PhysicsForceState { Fired = false });
+            _driver.OnCreate(ref state, new PhysicsForceState { Fired = false });
         }
 
         [BurstCompile]

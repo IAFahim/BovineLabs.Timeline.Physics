@@ -153,7 +153,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     !seenRoots.Add(PhysicsTriggerFiltering.ResolveRoot(other, LinkSources)))
                     return;
 
-                if (config.Condition == ConditionKey.Null) return;
+                if (config.Condition.Equals(ConditionKey.Null)) return;
 
                 if (PhysicsTriggerResolution.TryResolveLinkedTarget(config.RouteTo.ReadRootFrom, config.RouteTo.LinkKey,
                         self, other, targets, LinkSources, Links, out var target))

@@ -203,7 +203,7 @@ namespace BovineLabs.Timeline.Physics.Teleports
             private void FireFailure(Entity selfEntity, Entity targetEntity, in PhysicsTeleportData config,
                 in Targets targets)
             {
-                if (config.FailureCondition == ConditionKey.Null) return;
+                if (config.FailureCondition.Equals(ConditionKey.Null)) return;
 
                 if (!PhysicsTriggerResolution.TryResolveLinkedTarget(
                         config.FailureRouteTo.ReadRootFrom, config.FailureRouteTo.LinkKey,

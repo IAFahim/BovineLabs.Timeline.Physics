@@ -16,14 +16,13 @@ namespace BovineLabs.Timeline.Physics.VelocityOverrides
     [BurstCompile]
     public partial struct PhysicsVelocityTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsVelocityData, PhysicsVelocityAnimated, ActiveVelocity,
+        private TrackBlendDrainableStateDriver<PhysicsVelocityData, PhysicsVelocityAnimated, ActiveVelocity,
             PhysicsVelocityMixer, PhysicsVelocityState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.EveryActivation,
-                new PhysicsVelocityState { Fired = false });
+            _driver.OnCreate(ref state, new PhysicsVelocityState { Fired = false });
         }
 
         [BurstCompile]

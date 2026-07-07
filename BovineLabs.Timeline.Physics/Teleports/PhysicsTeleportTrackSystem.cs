@@ -12,14 +12,13 @@ namespace BovineLabs.Timeline.Physics.Teleports
     [BurstCompile]
     public partial struct PhysicsTeleportTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsTeleportData, PhysicsTeleportAnimated, ActiveTeleport,
+        private TrackBlendDrainableStateDriver<PhysicsTeleportData, PhysicsTeleportAnimated, ActiveTeleport,
             PhysicsTeleportMixer, PhysicsTeleportState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.EveryActivation,
-                new PhysicsTeleportState { Fired = false });
+            _driver.OnCreate(ref state, new PhysicsTeleportState { Fired = false });
         }
 
         [BurstCompile]

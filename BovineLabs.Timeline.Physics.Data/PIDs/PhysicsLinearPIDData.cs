@@ -36,9 +36,30 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsLinearPIDData Config { get; set; }
     }
 
-    public struct PhysicsLinearPIDState : IComponentData
+    public struct PhysicsLinearPIDState : IComponentData, IDrainableLatchState<PhysicsLinearPIDData>
     {
         public PidStateData State;
+
+        /// <summary>
+        /// Fixed-step drain gate: set when the render-side stale-disable lingers this latch enabled so a PID clip
+        /// whose enable window straddled no fixed tick still gets one control tick before it is disabled. Mirrors
+        /// PhysicsForceState.
+        /// </summary>
+        public bool Orphaned;
+
+        bool IOrphanedLatch.Orphaned
+        {
+            get => Orphaned;
+            set => Orphaned = value;
+        }
+
+        // A PID controller has no one-shot terminal state and no accumulated tail: it just needs to be observed by at
+        // least one fixed tick. Report never-drained so an orphaned latch always lingers exactly one fixed tick (the
+        // drain-finalize then disables it), guaranteeing a short PID clip is never a silent no-op.
+        public bool IsDrained(in PhysicsLinearPIDData config)
+        {
+            return false;
+        }
     }
 
     public readonly struct PhysicsLinearPIDMixer : IMixer<PhysicsLinearPIDData>

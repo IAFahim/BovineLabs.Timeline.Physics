@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
+using BovineLabs.Timeline.Core;
 using BovineLabs.Timeline.EntityLinks;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;
@@ -19,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Stats
             in UnsafeBufferLookup<EntityLinkEntry> linkEntries,
             in BufferLookup<Stat> statLookup)
         {
-            if (config.Stat.Value == 0)
+            if (config.Stat.Value.IsNull())
                 return 1f;
 
             var statEntity = config.Link.LinkKey == 0

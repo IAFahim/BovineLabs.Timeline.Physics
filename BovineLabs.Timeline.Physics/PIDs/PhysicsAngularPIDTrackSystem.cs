@@ -12,13 +12,13 @@ namespace BovineLabs.Timeline.Physics.PIDs
     [BurstCompile]
     public partial struct PhysicsAngularPIDTrackSystem : ISystem
     {
-        private TrackBlendStateDriver<PhysicsAngularPIDData, PhysicsAngularPIDAnimated, ActiveAngularPid,
+        private TrackBlendDrainableStateDriver<PhysicsAngularPIDData, PhysicsAngularPIDAnimated, ActiveAngularPid,
             PhysicsAngularPIDMixer, PhysicsAngularPIDState> _driver;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
-            _driver.OnCreate(ref state, RearmPolicy.EveryActivation);
+            _driver.OnCreate(ref state);
         }
 
         [BurstCompile]

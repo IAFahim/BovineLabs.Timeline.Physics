@@ -1,0 +1,23 @@
+{
+  "name": "BovineLabs.Timeline.Physics.Bindings.Authoring",
+  "rootNamespace": "",
+  "references": [
+    "BovineLabs.Timeline.Physics.Bindings",
+    "BovineLabs.Timeline.Physics.Data",
+    "Unity.Collections",
+    "Unity.Entities",
+    "Unity.Entities.Hybrid",
+    "Unity.Mathematics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "UNITY_EDITOR"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

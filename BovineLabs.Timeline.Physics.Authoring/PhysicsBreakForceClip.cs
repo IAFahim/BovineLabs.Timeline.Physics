@@ -75,7 +75,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Elevation = math.radians(elevation),
                     Strength = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     },
                     ApplyTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, applyToLink, applyTo)

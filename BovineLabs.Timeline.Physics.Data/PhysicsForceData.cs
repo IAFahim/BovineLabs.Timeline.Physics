@@ -70,7 +70,7 @@ namespace BovineLabs.Timeline.Physics
         public byte Present;
     }
 
-    public struct PhysicsForceState : IComponentData, IElapsedTimeState
+    public struct PhysicsForceState : IComponentData, IElapsedTimeState, IDrainableLatchState<PhysicsForceData>
     {
         public bool Fired;
         public bool ResetApplied;
@@ -84,16 +84,49 @@ namespace BovineLabs.Timeline.Physics
         /// a Continuous force is force × fixedDt × (fixed-steps-in-window), and that step count jitters run-to-run
         /// (the fixed-step group ticks a variable number of times per rendered frame) — making continuous dashes
         /// non-deterministic while impulse (a one-shot latch) stays reliable.
+        /// <para>
+        /// Determinism, honestly: the <em>total</em> delivered impulse equals force × clip-active-duration. The
+        /// tail that a fixed-step-less clip-end used to discard (the unconsumed <c>ElapsedTime - AppliedTime</c>
+        /// remainder) is now drained by the fixed-step linger (see <see cref="Orphaned"/> /
+        /// <see cref="IDrainableLatchState{TData}"/>), so the sum is no longer truncated. What remains phase-dependent
+        /// is the <em>distribution</em> of that impulse across fixed steps — where the clip edges fall inside a fixed
+        /// step varies by up to one step, so the intermediate velocity/position trajectory carries bounded
+        /// (≤ ~1 fixed-step) phase dependence. The seam is inherent to the render-rate → fixed-step crossing; only
+        /// the running total is made exact, not the per-step placement.
+        /// </para>
         /// </summary>
         public float ElapsedTime;
 
         /// <summary>The portion of <see cref="ElapsedTime"/> already converted to impulse by the consumer.</summary>
         public float AppliedTime;
 
+        /// <summary>
+        /// Fixed-step drain gate: set when the render-side stale-disable lingers this latch enabled because it still
+        /// owes fixed-step work (an unfired impulse, or an unconsumed continuous tail), so the fixed clock gets one
+        /// apply tick to service it before the drain-finalize disables it. Closes the render→fixed enable-miss and
+        /// continuous-tail seam. See <see cref="IDrainableLatchState{TData}"/>.
+        /// </summary>
+        public bool Orphaned;
+
         float IElapsedTimeState.ElapsedTime
         {
             get => ElapsedTime;
             set => ElapsedTime = value;
+        }
+
+        bool IOrphanedLatch.Orphaned
+        {
+            get => Orphaned;
+            set => Orphaned = value;
+        }
+
+        public bool IsDrained(in PhysicsForceData config)
+        {
+            // Impulse is done once it has fired; a Continuous force is done once the integrator has caught AppliedTime
+            // up to the render-accumulated ElapsedTime (which stops growing the moment the clip stops driving it).
+            return config.Mode == PhysicsForceMode.Impulse
+                ? Fired
+                : AppliedTime + 1e-6f >= ElapsedTime;
         }
     }
 

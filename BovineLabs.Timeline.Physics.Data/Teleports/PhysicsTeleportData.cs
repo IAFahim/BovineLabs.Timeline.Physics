@@ -61,9 +61,29 @@ namespace BovineLabs.Timeline.Physics
         public StatSource Strength;
     }
 
-    public struct PhysicsTeleportState : IComponentData
+    public struct PhysicsTeleportState : IComponentData, IDrainableLatchState<PhysicsTeleportData>
     {
         public bool Fired;
+
+        /// <summary>
+        /// Fixed-step drain gate: set when the render-side stale-disable lingers this latch enabled because it has not
+        /// fired yet (a short teleport clip whose enable window straddled no fixed tick), so the fixed clock gets one
+        /// apply tick to teleport before the drain-finalize disables it. Mirrors PhysicsForceState.
+        /// </summary>
+        public bool Orphaned;
+
+        bool IOrphanedLatch.Orphaned
+        {
+            get => Orphaned;
+            set => Orphaned = value;
+        }
+
+        // A teleport is a pure one-shot: drained once fired. An unfired latch must linger so a clip that never met a
+        // fixed tick still teleports instead of silently doing nothing.
+        public bool IsDrained(in PhysicsTeleportData config)
+        {
+            return Fired;
+        }
     }
 
     public struct PhysicsTeleportAnimated : IAnimatedComponent<PhysicsTeleportData>, IPreparable

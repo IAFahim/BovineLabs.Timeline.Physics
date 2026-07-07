@@ -159,6 +159,13 @@ Continuous force/velocity integrates against the **delta of clip-active time**, 
 Total impulse = force × active-duration, independent of how render frames straddle fixed steps.
 Any state that needs this implements `IElapsedTimeState` and gets the shared `AdvanceElapsedTimeJob`.
 
+The clip-end tail (the last `ElapsedTime − AppliedTime` remainder, which a fixed-step-less clip-end used to discard)
+is drained by the **fixed-step latch linger** (§6.1): the stale-disable keeps an undrained latch enabled until one
+fixed tick consumes the frozen remainder. So the **total** is exact (`force × clip-active-duration`, never truncated).
+What stays phase-dependent is only the **distribution** of that impulse across fixed steps — where the clip edges fall
+inside a fixed step varies by up to one step (§6.2), so the intermediate velocity/position trajectory carries bounded
+(≤ ~1 fixed-step) phase dependence. Honest claim: the running total is deterministic; the per-step placement is not.
+
 ### 3.5 The two motion channels
 
 ```
@@ -205,12 +212,19 @@ Pick wrong and you get either double-fires or the override-leak — `PhysicsTrac
 
 ### 6. Stupidities & sharp edges (deliberate ceilings — know them before "fixing" them)
 
-1. **One frame of activation latency, zero of deactivation.** WRITE goes through the BeginSimulation ECB
-   (lands next frame); DISABLE writes the enable bit directly (immediate). A clip's effect starts one
-   render frame late and stops on time. Consequence: a 1-frame clip can be a no-op for the Active-latch
-   families. The trigger family dodges this with `PhysicsClipGate` (crossing-aware); the latch families
-   just eat it. If this ever bites a designer, the fix is gate-style crossing detection, not "make the
-   ECB immediate."
+1. **One frame of activation latency; deactivation is now drain-aware.** WRITE goes through the BeginSimulation
+   ECB (lands next frame); the effect starts one render frame late. The DISABLE *used* to be immediate, which meant
+   a clip whose active window straddled no fixed tick inside that delayed enable window was dropped (impulse never
+   fired, teleport never happened) and a continuous force lost its unconsumed tail. Fixed for the Force / Velocity /
+   PID / Teleport families by the **fixed-step latch linger** (the promised "gate-style crossing detection, not
+   make-the-ECB-immediate"): `DisableAbsentDrainableTrackJob` only disables a latch that is already
+   `IDrainableLatchState.IsDrained`; otherwise it keeps it enabled and marks it `Orphaned`, and the fixed-step
+   `PhysicsLatchDrainFinalizeSystem` (Modifier group, OrderLast) disables it only *after* an apply has serviced it.
+   Every disable is therefore preceded, in the same fixed tick, by an apply that observed the latch → no
+   `Active*`-driven effect is dropped, and the continuous tail is drained rather than truncated. A drained latch
+   still disables immediately (zero deactivation latency for the common path). The trigger family keeps its own
+   per-clip `PhysicsClipGate`; the capture-restore families (Gravity/Kinematic/Filter/Shape) deliberately keep the
+   plain immediate disable because their disable *is* the OnExit-restore edge.
 2. **Clip edges jitter by up to one fixed step.** Enabled toggles at render rate; fixed steps sample it.
    Where inside a fixed step a clip boundary lands varies run to run. The elapsed-time bridge makes the
    *total* deterministic; the *edge placement* is not. Accepted ceiling.

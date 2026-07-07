@@ -1,5 +1,6 @@
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;
+using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Data.Kernels;
 using Unity.Entities;
@@ -15,7 +16,7 @@ namespace BovineLabs.Timeline.Physics
         public uint RicochetMask;
         public uint TerminalHitMask;
 
-        public ushort HitConditionKey;
+        public ConditionKey HitConditionKey;
         public EntityLinkRef HitRouteTo;
 
         public EntityLinkRef RayOrigin;

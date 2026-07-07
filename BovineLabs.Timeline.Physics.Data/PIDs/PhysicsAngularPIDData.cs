@@ -36,9 +36,29 @@ namespace BovineLabs.Timeline.Physics
         public PhysicsAngularPIDData Config { get; set; }
     }
 
-    public struct PhysicsAngularPIDState : IComponentData
+    public struct PhysicsAngularPIDState : IComponentData, IDrainableLatchState<PhysicsAngularPIDData>
     {
         public PidStateData State;
+
+        /// <summary>
+        /// Fixed-step drain gate: set when the render-side stale-disable lingers this latch enabled so a PID clip
+        /// whose enable window straddled no fixed tick still gets one control tick before it is disabled. Mirrors
+        /// PhysicsForceState.
+        /// </summary>
+        public bool Orphaned;
+
+        bool IOrphanedLatch.Orphaned
+        {
+            get => Orphaned;
+            set => Orphaned = value;
+        }
+
+        // See PhysicsLinearPIDState.IsDrained: a controller is never one-shot-done, so an orphaned latch lingers
+        // exactly one fixed tick to guarantee a short clip is never a silent no-op.
+        public bool IsDrained(in PhysicsAngularPIDData config)
+        {
+            return false;
+        }
     }
 
     public readonly struct PhysicsAngularPIDMixer : IMixer<PhysicsAngularPIDData>

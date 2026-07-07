@@ -98,6 +98,103 @@ namespace BovineLabs.Timeline.Physics.Infrastructure
         }
     }
 
+    /// <summary>
+    /// Drain-aware variant of <see cref="DisableAbsentTrackJob{TData,TActive}"/> for the fire-once / continuous-motion
+    /// latch families (Force, Velocity, PID, Teleport). Same stale-disable role, but it must not drop a latch that
+    /// still owes the fixed clock work: the render-rate enable is delayed one frame (next-frame ECB) and the disable is
+    /// immediate, so a clip whose active window straddled no fixed tick inside that delayed enable window would be
+    /// dropped, and a continuous force/velocity would lose its unconsumed tail. When the body is no longer driven by
+    /// any clip this frame, this disables the latch only if the per-activation state is already
+    /// <see cref="IDrainableLatchState{TData}.IsDrained"/> (the common path — zero deactivation latency); otherwise it
+    /// LINGERS the latch enabled and marks it <see cref="IOrphanedLatch.Orphaned"/> so the fixed-step apply is
+    /// guaranteed at least one tick to fire/drain it. <see cref="LatchDrainFinalizeJob{TActive,TState}"/> then disables
+    /// the serviced orphan. Runs single-threaded (multiple clips can bind one body) like the non-drain variant.
+    /// </summary>
+    [BurstCompile]
+    public struct DisableAbsentDrainableTrackJob<TData, TActive, TState> : IJobChunk
+        where TData : unmanaged
+        where TActive : unmanaged, IComponentData, IEnableableComponent, IActive<TData>
+        where TState : unmanaged, IComponentData, IDrainableLatchState<TData>
+    {
+        [ReadOnly] public ComponentTypeHandle<TrackBinding> TrackBindingTypeHandle;
+        [ReadOnly] public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly BlendData;
+        [NativeDisableParallelForRestriction] public ComponentLookup<TActive> ActiveLookup;
+        [NativeDisableParallelForRestriction] public ComponentLookup<TState> StateLookup;
+
+        public JobHandle ScheduleParallel(EntityQuery query, JobHandle dependsOn)
+        {
+            return this.Schedule(query, dependsOn);
+        }
+
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            in v128 chunkEnabledMask)
+        {
+            var bindings = chunk.GetNativeArray(ref TrackBindingTypeHandle);
+            var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+            while (enumerator.NextEntityIndex(out var i))
+            {
+                var target = bindings[i].Value;
+                if (target == Entity.Null) continue;
+                if (!ActiveLookup.HasComponent(target)) continue;
+                if (BlendData.ContainsKey(target)) continue; // still driven by a clip this frame
+                if (!ActiveLookup.IsComponentEnabled(target)) continue; // already disabled
+
+                // No state to consult (defensive) — behave like the plain stale-disable.
+                if (!StateLookup.HasComponent(target))
+                {
+                    ActiveLookup.SetComponentEnabled(target, false);
+                    continue;
+                }
+
+                var state = StateLookup[target];
+                if (state.IsDrained(ActiveLookup[target].Config))
+                {
+                    // Effect already delivered this activation: disable now (zero deactivation latency, common path).
+                    ActiveLookup.SetComponentEnabled(target, false);
+                }
+                else
+                {
+                    // Owes fixed-step work: keep enabled and let the fixed clock service it before disabling.
+                    state.Orphaned = true;
+                    StateLookup[target] = state;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fixed-step tail of the drain gate. Runs after every apply in the fixed step (see
+    /// <c>PhysicsLatchDrainFinalizeSystem</c>): for each body whose latch is enabled and
+    /// <see cref="IOrphanedLatch.Orphaned"/>, the apply has now serviced it this tick (fired the impulse, drained the
+    /// continuous tail, or applied the missed control step), so disable the latch and clear the flag. Every disable is
+    /// therefore preceded — in the same fixed tick — by an apply that observed the enabled latch, which is what
+    /// guarantees no <c>Active*</c>-driven effect is dropped across the render→fixed seam.
+    /// </summary>
+    [BurstCompile]
+    public struct LatchDrainFinalizeJob<TActive, TState> : IJobChunk
+        where TActive : unmanaged, IComponentData, IEnableableComponent
+        where TState : unmanaged, IComponentData, IOrphanedLatch
+    {
+        public ComponentTypeHandle<TActive> ActiveHandle;
+        public ComponentTypeHandle<TState> StateHandle;
+
+        public void Execute(in ArchetypeChunk chunk, int unfilteredChunkIndex, bool useEnabledMask,
+            in v128 chunkEnabledMask)
+        {
+            var states = chunk.GetNativeArray(ref StateHandle);
+            var enumerator = new ChunkEntityEnumerator(useEnabledMask, chunkEnabledMask, chunk.Count);
+            while (enumerator.NextEntityIndex(out var i))
+            {
+                var state = states[i];
+                if (!state.Orphaned) continue;
+
+                chunk.SetComponentEnabled(ref ActiveHandle, i, false);
+                state.Orphaned = false;
+                states[i] = state;
+            }
+        }
+    }
+
     [BurstCompile]
     public struct PrepareAnimatedJob<TData, TAnimated> : IJobChunk
         where TData : unmanaged

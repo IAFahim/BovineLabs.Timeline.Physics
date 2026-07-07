@@ -173,6 +173,116 @@ namespace BovineLabs.Timeline.Physics.Kernels
     }
 
     /// <summary>
+    /// <see cref="TrackBlendStateDriver{TData,TAnimated,TActive,TMixer,TState}"/> for the fire-once / continuous-motion
+    /// families whose effect is consumed on the fixed-step clock (Force, Velocity, PID, Teleport). Identical render-side
+    /// pipeline (EveryActivation re-arm, prepare, blend, write) but the stale-disable is the drain-aware
+    /// <see cref="DisableAbsentDrainableTrackJob{TData,TActive,TState}"/>: instead of dropping a latch the moment its
+    /// clip ends (which loses a short clip whose window straddled no fixed tick, and truncates a continuous tail), it
+    /// lingers an undrained latch enabled so the fixed clock is guaranteed one apply tick to service it. Pairs with the
+    /// fixed-step <c>PhysicsLatchDrainFinalizeSystem</c>, which disables the serviced orphan. Split from
+    /// <see cref="TrackBlendStateDriver{TData,TAnimated,TActive,TMixer,TState}"/> because the disable job it schedules is
+    /// constrained to <see cref="IDrainableLatchState{TData}"/>, which the other EveryActivation states do not implement.
+    /// </summary>
+    public struct TrackBlendDrainableStateDriver<TData, TAnimated, TActive, TMixer, TState>
+        where TData : unmanaged
+        where TAnimated : unmanaged, IAnimatedComponent<TData>, IPreparable
+        where TActive : unmanaged, IActive<TData>
+        where TMixer : unmanaged, IMixer<TData>
+        where TState : unmanaged, IComponentData, IDrainableLatchState<TData>
+    {
+        private TrackBlendImpl<TData, TAnimated> _blendImpl;
+        private ComponentLookup<TActive> _activeLookup;
+        private ComponentLookup<TState> _stateLookup;
+        private ComponentTypeHandle<TAnimated> _animatedHandle;
+        private ComponentTypeHandle<TrackBinding> _bindingHandle;
+        private EntityQuery _prepareQuery;
+        private EntityQuery _disableStaleQuery;
+        private EntityQuery _resetQuery;
+        private TState _resetValue;
+
+        public ComponentLookup<TState> StateLookup => _stateLookup;
+
+        public void OnCreate(ref SystemState state, TState resetValue = default)
+        {
+            _blendImpl.OnCreate(ref state);
+            _activeLookup = state.GetComponentLookup<TActive>();
+            _stateLookup = state.GetComponentLookup<TState>();
+            _animatedHandle = state.GetComponentTypeHandle<TAnimated>();
+            _bindingHandle = state.GetComponentTypeHandle<TrackBinding>(true);
+            _resetValue = resetValue;
+
+            using (var prepare = new EntityQueryBuilder(Allocator.Temp)
+                       .WithAllRW<TAnimated>()
+                       .WithAll<ClipActive>())
+            {
+                _prepareQuery = state.GetEntityQuery(prepare);
+            }
+
+            using (var stale = new EntityQueryBuilder(Allocator.Temp)
+                       .WithAll<TrackBinding, ClipActivePrevious, TAnimated>()
+                       .WithNone<ClipActive>())
+            {
+                _disableStaleQuery = state.GetEntityQuery(stale);
+            }
+
+            using (var reset = new EntityQueryBuilder(Allocator.Temp)
+                       .WithAll<TrackBinding, TAnimated, ClipActive>()
+                       .WithNone<ClipActivePrevious>())
+            {
+                _resetQuery = state.GetEntityQuery(reset);
+            }
+
+            state.RequireForUpdate<TAnimated>();
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            _blendImpl.OnDestroy(ref state);
+        }
+
+        public NativeParallelHashMap<Entity, MixData<TData>>.ReadOnly OnUpdate(
+            ref SystemState state, EntityCommandBuffer.ParallelWriter ecb)
+        {
+            _activeLookup.Update(ref state);
+            _stateLookup.Update(ref state);
+            _animatedHandle.Update(ref state);
+            _bindingHandle.Update(ref state);
+
+            // EveryActivation re-arm (also scrubs the Orphaned linger flag via the default-ish ResetValue).
+            state.Dependency = new ResetStateAlwaysTrackJob<TState>
+            {
+                TrackBindingTypeHandle = _bindingHandle,
+                StateLookup = _stateLookup,
+                ResetValue = _resetValue
+            }.ScheduleParallel(_resetQuery, state.Dependency);
+
+            state.Dependency = new PrepareAnimatedJob<TData, TAnimated>
+            {
+                AnimatedHandle = _animatedHandle
+            }.ScheduleParallel(_prepareQuery, state.Dependency);
+
+            var blendData = _blendImpl.Update(ref state);
+
+            state.Dependency = new DisableAbsentDrainableTrackJob<TData, TActive, TState>
+            {
+                TrackBindingTypeHandle = _bindingHandle,
+                BlendData = blendData,
+                ActiveLookup = _activeLookup,
+                StateLookup = _stateLookup
+            }.ScheduleParallel(_disableStaleQuery, state.Dependency);
+
+            state.Dependency = new WriteActiveJob<TData, TActive, TMixer>
+            {
+                BlendData = blendData,
+                ActiveLookup = _activeLookup,
+                ECB = ecb
+            }.ScheduleParallel(blendData, 64, state.Dependency);
+
+            return blendData;
+        }
+    }
+
+    /// <summary>
     /// <see cref="TrackBlendStateDriver{TData,TAnimated,TActive,TMixer,TState}"/> for the capture-restore override
     /// tracks (gravity/kinematic/filter/shape swap+resize): per-body state is re-armed only at a true span start
     /// (Active disabled) AND never while a prior exit restore is still pending. Split from the general state driver

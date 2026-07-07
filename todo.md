@@ -3,7 +3,8 @@
 Fresh full-package review pass 2026-07-06 (3 parallel reviewers over runtime, trigger/query, and authoring/data/baking; top findings re-verified by hand), fixed 2026-07-07.
 
 **Status: fixed and verified — full `BovineLabs.Timeline.Physics.Tests` EditMode suite green at 184/184.**
-Two structural items are deferred (see the bottom section); everything else below is done.
+The two deferred structural items were completed on 2026-07-07 in a dedicated fixed-step drain pass (see the bottom
+section); everything below is done.
 
 ## High Priority — all fixed
 
@@ -51,10 +52,10 @@ Two structural items are deferred (see the bottom section); everything else belo
 - [x] ChainFollow / SocketReturn have no Ensure entry in `PhysicsTimelineBakingSystem` — confirmed intentional (Active is useless without the `ChainWeaponAuthoring` / `WeaponRecallAuthoring` rig); documented as a deliberate exception in the baking system's summary comment.
 - [x] Deleted `fix_refs.py` (+ `.meta`) — one-off migration script, not package content.
 
-## Deferred (structural — not attempted this pass)
+## Deferred (structural) — fixed 2026-07-07 (dedicated fixed-step drain pass)
 
-- [ ] Active*-driven fixed-step effects can still be dropped when no fixed tick lands inside the one-frame-delayed enable window — the crossing-aware `PhysicsClipGate` currently covers only the trigger family. Extending it to the Force/Velocity/PID/Teleport apply paths (`SharedTrackJobs` `WriteActiveJob` enables via a next-frame ECB) is the same defect class the gate fixed for triggers, but it is a larger architectural change and is left for a dedicated pass.
-- [ ] Continuous force/velocity tail is truncated at clip end — the unconsumed `ElapsedTime - AppliedTime` remainder (up to ~1 render frame + fixed-step phase) is discarded, so total impulse remains boundedly phase-dependent. Inherent to the render-rate → fixed-step seam; the determinism note in `PhysicsForceData` should be softened rather than claiming exactness. Left for the same fixed-step pass as the item above.
+- [x] Active*-driven fixed-step effects dropped when no fixed tick lands inside the one-frame-delayed enable window — the crossing-aware gate now extends to the Force/Velocity/PID/Teleport apply paths. `PhysicsForceState`/`PhysicsVelocityState`/`PhysicsTeleportState`/`Physics{Linear,Angular}PIDState` implement `IDrainableLatchState<TData>`; the new `TrackBlendDrainableStateDriver` runs a drain-aware `DisableAbsentDrainableTrackJob` that, when a clip stops driving a body, LINGERS an undrained latch enabled (`Orphaned`) instead of dropping it, and the fixed-step `PhysicsLatchDrainFinalizeSystem` (`LatchDrainFinalizeJob`, `PhysicsModifierGroup`/OrderLast) disables it only after the apply has serviced it. Guarantees every disable is preceded by one apply tick that observed the latch → impulse/instant/teleport never silently no-op and a short PID clip still applies. Drained latches still disable immediately (zero deactivation latency preserved). AssemblyInfo registrations added for the two new generic jobs ×5 families. 7 EditMode tests added (`PhysicsLatchDrainTests`).
+- [x] Continuous force/velocity tail truncated at clip end — the unconsumed `ElapsedTime - AppliedTime` remainder is now consumed by the same linger: an undrained continuous latch stays enabled until a fixed tick drains the frozen remainder, so total impulse = force × clip-active-duration exactly (no truncation). Only the *distribution* across fixed steps keeps bounded (≤ ~1 fixed-step) phase dependence; the determinism note in `PhysicsForceData`/`PhysicsVelocityData` and the README §3.4 were softened accordingly (total exact, per-step placement not).
 
 ## Verified clean this pass (no action)
 

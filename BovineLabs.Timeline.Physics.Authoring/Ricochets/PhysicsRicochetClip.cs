@@ -1,5 +1,6 @@
 using BovineLabs.Core.Authoring.EntityCommands;
 using BovineLabs.Essence.Authoring;
+using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
@@ -56,13 +57,13 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                     MinGrazingAngle = math.radians(minGrazingAngle),
                     RicochetMask = ricochetSurfaces.Value,
                     TerminalHitMask = terminalHitSurfaces.Value,
-                    HitConditionKey = hitCondition != null ? (ushort)hitCondition.Key : (ushort)0,
+                    HitConditionKey = hitCondition != null ? new ConditionKey(hitCondition.Key) : ConditionKey.Null,
                     HitRouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, hitRouteLink, hitRouteTo),
                     RayOrigin = EntityLinkAuthoringUtility.BakeRef(context.Baker, rayOriginLink, rayOrigin),
                     RayDirection = EntityLinkAuthoringUtility.BakeRef(context.Baker, rayDirectionLink, rayDirection),
                     Strength = new StatSource
                     {
-                        Stat = strengthStat != null ? (ushort)strengthStat.Key : default,
+                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }

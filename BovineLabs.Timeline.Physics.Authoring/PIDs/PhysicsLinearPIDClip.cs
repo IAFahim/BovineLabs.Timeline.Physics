@@ -58,7 +58,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.PIDs
                     Strength = strength,
                     StrengthStat = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }

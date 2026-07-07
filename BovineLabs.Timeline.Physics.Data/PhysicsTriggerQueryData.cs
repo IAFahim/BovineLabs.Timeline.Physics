@@ -444,7 +444,9 @@ namespace BovineLabs.Timeline.Physics
 
     /// <summary>
     /// Generic enableable tag the ZoneStateGate reads (Frozen / OnFire / Wet / InZone — game-defined meaning).
-    /// This package only defines the MECHANISM; games enable/disable it on their bodies. TODO external zone binding.
+    /// This package only defines the MECHANISM; games enable/disable it on their bodies. The optional
+    /// BovineLabs.Timeline.Physics.Bindings assembly ships a reference driver (TriggerQueryZoneVolumeSystem) that
+    /// toggles it from stateful-trigger zone-volume membership; a game may use or replace that.
     /// </summary>
     public struct TriggerQueryZoneTag : IComponentData, IEnableableComponent
     {
@@ -452,7 +454,9 @@ namespace BovineLabs.Timeline.Physics
 
     /// <summary>
     /// Generic external-illumination value the LightExposureGate reads. Games drive Value from their light system.
-    /// TODO external light system binding — this package only defines the field a downstream system writes.
+    /// This package only defines the field a downstream system writes; the optional
+    /// BovineLabs.Timeline.Physics.Bindings assembly ships a reference driver (TriggerQueryExposureSystem) that sums
+    /// authored TriggerExposureSource lights with distance falloff, which a game may use or replace.
     /// </summary>
     public struct TriggerQueryExposure : IComponentData
     {
@@ -461,7 +465,10 @@ namespace BovineLabs.Timeline.Physics
 
     /// <summary>
     /// Generic taunt marker the TauntOverride selection reads: a candidate whose UntilTime is still in the future
-    /// instantly wins, locked. Games set UntilTime to the world time the taunt expires. TODO game taunt binding.
+    /// instantly wins, locked. Games set UntilTime to the world time the taunt expires (the fixed-step
+    /// SystemAPI.Time.ElapsedTime this system compares against). This package only defines the mechanism; the
+    /// optional BovineLabs.Timeline.Physics.Bindings assembly ships a reference driver (TriggerQueryTauntSystem) that
+    /// stamps UntilTime from an enableable TriggerQueryTauntRequest on that exact clock — a game may use or replace it.
     /// </summary>
     public struct TriggerQueryTaunt : IComponentData
     {

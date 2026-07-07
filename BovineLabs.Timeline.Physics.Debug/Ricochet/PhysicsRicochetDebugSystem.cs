@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || BL_DEBUG
 using System.Diagnostics.CodeAnalysis;
+using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
@@ -237,7 +238,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                             Drawer.Text32(stepResult.HitPosition + new float3(0f, 0.4f, 0f),
                                 (FixedString32Bytes)"Terminal Hit", TerminalColor, 12f);
 
-                        if (d.HitConditionKey != 0)
+                        if (!d.HitConditionKey.Equals(ConditionKey.Null))
                         {
                             var routeTarget = ResolveTarget(entity, d.HitRouteTo.ReadRootFrom, targets);
                             if (routeTarget != Entity.Null &&

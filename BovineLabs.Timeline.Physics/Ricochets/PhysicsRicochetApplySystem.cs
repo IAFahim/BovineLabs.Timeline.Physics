@@ -3,6 +3,7 @@ using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Conditions;
+using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks.Data;
 using BovineLabs.Timeline.Physics.Infrastructure;
@@ -210,7 +211,7 @@ namespace BovineLabs.Timeline.Physics.Ricochets
             private void HandleTerminalHit(in PhysicsRicochetData config, Entity entity,
                 in PhysicsMath.RicochetStepResult stepResult, int bounceCount)
             {
-                if (config.HitConditionKey == 0) return;
+                if (config.HitConditionKey.Equals(ConditionKey.Null)) return;
 
                 var hitEntity = stepResult.HitEntity;
                 var hitTargets = TargetsLookup.TryGetComponent(hitEntity, out var ht) ? ht : default;

@@ -41,7 +41,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Angular = angularDrag,
                     Strength = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key : default,
+                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }

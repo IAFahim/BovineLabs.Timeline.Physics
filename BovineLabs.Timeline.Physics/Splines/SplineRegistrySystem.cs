@@ -8,7 +8,7 @@ namespace BovineLabs.Timeline.Physics.Splines
 {
     [UpdateInGroup(typeof(PhysicsProducerGroup), OrderFirst = true)]
     [WorldSystemFilter(WorldSystemFilterFlags.LocalSimulation | WorldSystemFilterFlags.ClientSimulation |
-                       WorldSystemFilterFlags.ServerSimulation | WorldSystemFilterFlags.Editor)]
+                       WorldSystemFilterFlags.ServerSimulation)]
     [BurstCompile]
     public partial struct SplineRegistrySystem : ISystem
     {

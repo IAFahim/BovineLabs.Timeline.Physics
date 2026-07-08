@@ -10,7 +10,7 @@ namespace Vex.Knockback.Editor
     using UnityEngine.SceneManagement;
     using Material = UnityEngine.Material;
     using Collider = UnityEngine.Collider;
-    using TriggerAuthoring = BovineLabs.Core.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
+    using TriggerAuthoring = BovineLabs.Nerve.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
 
     /// <summary>
     /// Builds a self-contained showcase scene for directional knockback: a body ringed by eight overlapping

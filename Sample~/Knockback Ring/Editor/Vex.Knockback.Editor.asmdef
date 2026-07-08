@@ -10,7 +10,9 @@
         "Unity.Mathematics",
         "Unity.Entities",
         "Unity.Collections",
-        "Unity.Scenes"
+        "Unity.Scenes",
+        "BovineLabs.Nerve.Authoring",
+        "BovineLabs.Nerve"
     ],
     "includePlatforms": [
         "Editor"

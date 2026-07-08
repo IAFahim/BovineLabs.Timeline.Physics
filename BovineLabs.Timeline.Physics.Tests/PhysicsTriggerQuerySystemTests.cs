@@ -1,6 +1,6 @@
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.ObjectManagement;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.ObjectManagement;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;
@@ -80,7 +80,7 @@ namespace BovineLabs.Timeline.Physics.Tests
             var payloadTypeBuilder = builder.AllocateHashMap(ref root.PayloadTypes, maxEventKey + 1, 2);
             for (var key = 0; key <= maxEventKey; key++)
             {
-                payloadTypeBuilder.Add(new EventSubscriberKey(key, eventConditionType), ConditionPayloadType.Int32);
+                payloadTypeBuilder.Add(new EventSubscriberKey(new BovineLabs.Core.BLId(key), eventConditionType), ConditionPayloadType.Int32);
             }
 
             var blob = builder.CreateBlobAssetReference<ConditionConfig.Data>(Allocator.Persistent);

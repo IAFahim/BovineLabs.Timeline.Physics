@@ -12,7 +12,8 @@
         "Unity.Collections",
         "Unity.Mathematics",
         "Unity.Physics",
-        "Unity.Transforms"
+        "Unity.Transforms",
+        "BovineLabs.Nerve"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -1,7 +1,7 @@
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;

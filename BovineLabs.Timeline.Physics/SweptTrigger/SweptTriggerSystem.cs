@@ -1,4 +1,4 @@
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Timeline.Data;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using BovineLabs.Timeline.Physics.TriggerEvents;

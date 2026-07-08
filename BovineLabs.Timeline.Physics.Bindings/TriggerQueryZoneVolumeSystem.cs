@@ -1,6 +1,6 @@
 namespace BovineLabs.Timeline.Physics.Bindings
 {
-    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Nerve.PhysicsStates;
     using BovineLabs.Timeline.Physics.Infrastructure;
     using BovineLabs.Timeline.Physics.TriggerEvents;
     using Unity.Burst;

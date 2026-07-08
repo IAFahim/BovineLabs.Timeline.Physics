@@ -1,43 +1,44 @@
 {
-  "name": "BovineLabs.Timeline.Physics",
-  "rootNamespace": "",
-  "references": [
-    "BovineLabs.Core",
-    "BovineLabs.Core.Extensions",
-    "BovineLabs.Core.PhysicsStates",
-    "BovineLabs.Quill",
-    "BovineLabs.Reaction",
-    "BovineLabs.Reaction.Data",
-    "BovineLabs.Timeline",
-    "BovineLabs.Timeline.Core",
-    "BovineLabs.Timeline.Data",
-    "BovineLabs.Timeline.Physics.Data",
-    "Unity.Burst",
-    "Unity.Collections",
-    "Unity.Entities",
-    "Unity.Mathematics",
-    "Unity.Physics",
-    "Unity.Transforms",
-    "Unity.Entities.Hybrid",
-    "Unity.Splines",
-    "BovineLabs.Timeline.EntityLinks",
-    "BovineLabs.Timeline.EntityLinks.Data",
-    "BovineLabs.Essence.Data",
-    "BovineLabs.Essence.Authoring"
-  ],
-  "includePlatforms": [],
-  "excludePlatforms": [],
-  "allowUnsafeCode": true,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": false,
-  "defineConstraints": [],
-  "versionDefines": [
-    {
-      "name": "com.bovinelabs.quill",
-      "expression": "",
-      "define": "BL_QUILL"
-    }
-  ],
-  "noEngineReferences": false
+    "name": "BovineLabs.Timeline.Physics",
+    "rootNamespace": "",
+    "references": [
+        "BovineLabs.Core",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Core.PhysicsStates",
+        "BovineLabs.Quill",
+        "BovineLabs.Reaction",
+        "BovineLabs.Reaction.Data",
+        "BovineLabs.Timeline",
+        "BovineLabs.Timeline.Core",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Timeline.Physics.Data",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Entities",
+        "Unity.Mathematics",
+        "Unity.Physics",
+        "Unity.Transforms",
+        "Unity.Entities.Hybrid",
+        "Unity.Splines",
+        "BovineLabs.Timeline.EntityLinks",
+        "BovineLabs.Timeline.EntityLinks.Data",
+        "BovineLabs.Essence.Data",
+        "BovineLabs.Essence.Authoring",
+        "BovineLabs.Nerve"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.bovinelabs.quill",
+            "expression": "",
+            "define": "BL_QUILL"
+        }
+    ],
+    "noEngineReferences": false
 }

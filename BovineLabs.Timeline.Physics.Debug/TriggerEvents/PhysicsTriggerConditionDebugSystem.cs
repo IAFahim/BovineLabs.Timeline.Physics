@@ -4,7 +4,7 @@ using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Quill;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Core;
@@ -154,7 +154,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     var readout = new FixedString128Bytes();
                     readout.Append((FixedString32Bytes)"cond ");
-                    readout.Append(config.Condition.Value);
+                    readout.Append(config.Condition.Value.RawValue);
                     readout.Append((FixedString32Bytes)"  on ");
                     if (config.EventState == StatefulEventState.Enter)
                         readout.Append((FixedString32Bytes)"Enter");

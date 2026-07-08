@@ -2,7 +2,7 @@ using BovineLabs.Core;
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Data;

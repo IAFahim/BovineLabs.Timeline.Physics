@@ -57,7 +57,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Ricochets
                     MinGrazingAngle = math.radians(minGrazingAngle),
                     RicochetMask = ricochetSurfaces.Value,
                     TerminalHitMask = terminalHitSurfaces.Value,
-                    HitConditionKey = hitCondition != null ? (ConditionKey)hitCondition.Key : ConditionKey.Null,
+                    HitConditionKey = hitCondition != null ? new ConditionKey(hitCondition.Key) : ConditionKey.Null,
                     HitRouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, hitRouteLink, hitRouteTo),
                     RayOrigin = EntityLinkAuthoringUtility.BakeRef(context.Baker, rayOriginLink, rayOrigin),
                     RayDirection = EntityLinkAuthoringUtility.BakeRef(context.Baker, rayDirectionLink, rayDirection),

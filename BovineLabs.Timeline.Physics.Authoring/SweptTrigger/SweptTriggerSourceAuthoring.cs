@@ -1,4 +1,4 @@
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;

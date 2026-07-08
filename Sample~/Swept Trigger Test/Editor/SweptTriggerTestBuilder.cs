@@ -11,11 +11,11 @@ using UnityEngine.SceneManagement;
 using UnityEngine.Timeline;
 using Material = UnityEngine.Material;
 using Collider = UnityEngine.Collider;
-using ObjectDefinition = BovineLabs.Core.Authoring.ObjectManagement.ObjectDefinition;
+using ObjectDefinition = BovineLabs.Nerve.Authoring.ObjectManagement.ObjectDefinition;
 using ConditionEventObject = BovineLabs.Reaction.Authoring.Conditions.ConditionEventObject;
 using TargetsAuthoring = BovineLabs.Reaction.Authoring.Core.TargetsAuthoring;
 using TargetSlot = BovineLabs.Reaction.Data.Core.Target;
-using LifeCycleAuthoring = BovineLabs.Core.Authoring.LifeCycle.LifeCycleAuthoring;
+using LifeCycleAuthoring = BovineLabs.Nerve.Authoring.LifeCycle.LifeCycleAuthoring;
 using TimelineBeginAuthoring = BovineLabs.Timeline.Core.Authoring.TimelineBeginAuthoring;
 using TimelineBeginMode = BovineLabs.Timeline.Core.Authoring.TimelineBeginMode;
 using PositionTrack = BovineLabs.Timeline.Transform.Authoring.TransformPositionTrack;
@@ -31,7 +31,7 @@ using ForceType = BovineLabs.Timeline.Physics.PhysicsTriggerForceType;
 using PhysForceMode = BovineLabs.Timeline.Physics.PhysicsForceMode;
 using QuerySelection = BovineLabs.Timeline.Physics.PhysicsTriggerQuerySelection;
 using PositionMode = BovineLabs.Timeline.Physics.PhysicsTriggerPositionMode;
-using StatefulEventState = BovineLabs.Core.PhysicsStates.StatefulEventState;
+using StatefulEventState = BovineLabs.Nerve.PhysicsStates.StatefulEventState;
 
 // Builds a self-contained, deterministic Swept Trigger verification rig in its OWN dedicated scene pair
 // (parent + baked SubScene), exactly like every other Showcase builder — it never touches the shared

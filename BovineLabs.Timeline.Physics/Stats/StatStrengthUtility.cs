@@ -20,7 +20,7 @@ namespace BovineLabs.Timeline.Physics.Stats
             in UnsafeBufferLookup<EntityLinkEntry> linkEntries,
             in BufferLookup<Stat> statLookup)
         {
-            if (config.Stat.Value.IsNull())
+            if (config.Stat.Value.IsNull)
                 return 1f;
 
             var statEntity = config.Link.LinkKey == 0

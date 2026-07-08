@@ -1,5 +1,5 @@
-using BovineLabs.Core.ObjectManagement;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.ObjectManagement;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.EntityLinks.Data;
 using Unity.Entities;

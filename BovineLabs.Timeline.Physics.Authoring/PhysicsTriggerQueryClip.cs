@@ -1,6 +1,6 @@
 using System;
 using BovineLabs.Core.Authoring.EntityCommands;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Essence.Authoring;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
@@ -313,9 +313,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Selection = selection,
                     RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                     ClearOnLost = clearOnLost,
-                    FoundCondition = foundCondition ? (ConditionKey)foundCondition.Key : ConditionKey.Null,
+                    FoundCondition = foundCondition ? new ConditionKey(foundCondition.Key) : ConditionKey.Null,
                     FoundValue = foundValue,
-                    LostCondition = lostCondition ? (ConditionKey)lostCondition.Key : ConditionKey.Null,
+                    LostCondition = lostCondition ? new ConditionKey(lostCondition.Key) : ConditionKey.Null,
                     LostValue = lostValue,
 
                     ValueMode = valueMode,

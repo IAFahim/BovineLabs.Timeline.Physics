@@ -1,4 +1,4 @@
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Testing;
 using BovineLabs.Timeline.Physics.Chains;
 using NUnit.Framework;

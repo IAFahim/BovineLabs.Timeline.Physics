@@ -1,7 +1,7 @@
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Physics.Infrastructure;
 using Unity.Burst;

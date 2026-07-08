@@ -1,6 +1,6 @@
 namespace BovineLabs.Timeline.Physics.Tests
 {
-    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Nerve.PhysicsStates;
     using BovineLabs.Testing;
     using BovineLabs.Timeline.Physics.Bindings;
     using NUnit.Framework;

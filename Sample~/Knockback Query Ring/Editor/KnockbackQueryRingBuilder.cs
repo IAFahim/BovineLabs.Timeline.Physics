@@ -1,3 +1,4 @@
+using BovineLabs.Core.Asset;
 using System;
 using System.Reflection;
 using Unity.Mathematics;
@@ -10,7 +11,7 @@ using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.SceneManagement;
 using UnityEngine.Timeline;
-using BovineLabs.Core.Authoring.LifeCycle;
+using BovineLabs.Nerve.Authoring.LifeCycle;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Authoring.Core;
 using EventWriterAuthoring = BovineLabs.Reaction.Authoring.Conditions.EventWriterAuthoring;
@@ -21,8 +22,8 @@ using Material = UnityEngine.Material;
 using Collider = UnityEngine.Collider;
 using Target = BovineLabs.Reaction.Data.Core.Target;
 using TargetsAuthoring = BovineLabs.Reaction.Authoring.Core.TargetsAuthoring;
-using TriggerAuthoring = BovineLabs.Core.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
-using EventState = BovineLabs.Core.PhysicsStates.StatefulEventState;
+using TriggerAuthoring = BovineLabs.Nerve.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
+using EventState = BovineLabs.Nerve.PhysicsStates.StatefulEventState;
 using ForceMode = BovineLabs.Timeline.Physics.PhysicsForceMode;
 using ForceDir = BovineLabs.Timeline.Physics.PhysicsForceDirectionMode;
 
@@ -173,7 +174,7 @@ public static class KnockbackQueryRingBuilder
         Type procType = null;
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
-            procType = asm.GetType("BovineLabs.Core.Editor.ObjectManagement.ObjectManagementProcessor");
+            procType = asm.GetType("BovineLabs.Nerve.Editor.ObjectManagement.ObjectManagementProcessor");
             if (procType != null)
                 break;
         }

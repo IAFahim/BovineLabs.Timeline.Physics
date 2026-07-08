@@ -1,6 +1,6 @@
 namespace Vex.Knockback
 {
-    using BovineLabs.Core.PhysicsStates;
+    using BovineLabs.Nerve.PhysicsStates;
     using BovineLabs.Timeline.Physics;                 // PendingExternalForce
     using BovineLabs.Timeline.Physics.Forces;          // PhysicsProducerForceAccumulatorSystem
     using BovineLabs.Timeline.Physics.Infrastructure;  // PhysicsProducerGroup

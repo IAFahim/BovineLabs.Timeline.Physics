@@ -1,7 +1,7 @@
 using BovineLabs.Core.ConfigVars;
 using BovineLabs.Core.Extensions;
 using BovineLabs.Core.Iterators;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Reaction.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
@@ -958,7 +958,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
             private bool TryReadStatRaw(in PhysicsTriggerQueryData config, Entity other, out float value)
             {
                 value = 0f;
-                if (config.ThreatStat.Stat.Value.IsNull()) return false;
+                if (config.ThreatStat.Stat.Value.IsNull) return false;
                 if (!StatLookup.TryGetBuffer(other, out var stats)) return false;
                 value = stats.AsMap().GetValueFloat(config.ThreatStat.Stat, 0f);
                 return true;
@@ -1229,7 +1229,7 @@ namespace BovineLabs.Timeline.Physics.TriggerEvents
                     case PhysicsTriggerQueryValueMode.ScaledMagnitude:
                     {
                         var scalar = 0f;
-                        if (!config.ScaledMagnitudeStat.Stat.Value.IsNull() &&
+                        if (!config.ScaledMagnitudeStat.Stat.Value.IsNull &&
                             StatLookup.TryGetBuffer(winner, out var stats))
                             scalar = stats.AsMap().GetValueFloat(config.ScaledMagnitudeStat.Stat, 0f);
 

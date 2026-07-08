@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using BovineLabs.Core.Authoring.PhysicsStates;
+using BovineLabs.Nerve.Authoring.PhysicsStates;
 using BovineLabs.Timeline.Authoring;
 using UnityEngine.Timeline;
 

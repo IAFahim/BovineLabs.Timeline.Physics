@@ -1,7 +1,7 @@
 using System;
 using BovineLabs.Core.Authoring.EntityCommands;
-using BovineLabs.Core.Authoring.ObjectManagement;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.Authoring.ObjectManagement;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Reaction.Data.Core;
 using BovineLabs.Timeline.Authoring;
 using BovineLabs.Timeline.EntityLinks.Authoring;

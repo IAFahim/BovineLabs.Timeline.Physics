@@ -1,5 +1,5 @@
 using System.Runtime.CompilerServices;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Quill;
 using Unity.Entities;
 using Unity.Mathematics;

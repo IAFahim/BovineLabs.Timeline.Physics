@@ -138,7 +138,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                     LineOfSightOffset = lineOfSightOffset,
                     ResetVelocity = resetVelocity,
 
-                    FailureCondition = failureCondition ? (ConditionKey)failureCondition.Key : ConditionKey.Null,
+                    FailureCondition = failureCondition ? new ConditionKey(failureCondition.Key) : ConditionKey.Null,
                     FailureValue = failureValue,
                     FailureRouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, failureRouteLink, failureRouteTo),
 

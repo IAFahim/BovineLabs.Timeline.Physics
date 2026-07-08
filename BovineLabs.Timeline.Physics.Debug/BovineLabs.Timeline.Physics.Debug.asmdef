@@ -1,36 +1,37 @@
 {
-  "name": "BovineLabs.Timeline.Physics.Debug",
-  "rootNamespace": "",
-  "references": [
-    "BovineLabs.Core",
-    "BovineLabs.Core.Extensions",
-    "BovineLabs.Timeline.Core",
-    "BovineLabs.Timeline.Core.Debug",
-    "BovineLabs.Timeline.Data",
-    "BovineLabs.Timeline.Physics",
-    "BovineLabs.Timeline.Physics.Data",
-    "BovineLabs.Quill",
-    "Unity.Burst",
-    "Unity.Collections",
-    "Unity.Entities",
-    "Unity.Mathematics",
-    "Unity.Physics",
-    "Unity.Transforms",
-    "BovineLabs.Reaction.Data",
-    "BovineLabs.Essence.Data",
-    "BovineLabs.Timeline.EntityLinks.Data"
-  ],
-  "includePlatforms": [
-    "Editor"
-  ],
-  "excludePlatforms": [],
-  "allowUnsafeCode": true,
-  "overrideReferences": false,
-  "precompiledReferences": [],
-  "autoReferenced": false,
-  "defineConstraints": [
-    "UNITY_EDITOR || BL_DEBUG"
-  ],
-  "versionDefines": [],
-  "noEngineReferences": false
+    "name": "BovineLabs.Timeline.Physics.Debug",
+    "rootNamespace": "",
+    "references": [
+        "BovineLabs.Core",
+        "BovineLabs.Core.Extensions",
+        "BovineLabs.Timeline.Core",
+        "BovineLabs.Timeline.Core.Debug",
+        "BovineLabs.Timeline.Data",
+        "BovineLabs.Timeline.Physics",
+        "BovineLabs.Timeline.Physics.Data",
+        "BovineLabs.Quill",
+        "Unity.Burst",
+        "Unity.Collections",
+        "Unity.Entities",
+        "Unity.Mathematics",
+        "Unity.Physics",
+        "Unity.Transforms",
+        "BovineLabs.Reaction.Data",
+        "BovineLabs.Essence.Data",
+        "BovineLabs.Timeline.EntityLinks.Data",
+        "BovineLabs.Nerve"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_EDITOR || BL_DEBUG"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
 }

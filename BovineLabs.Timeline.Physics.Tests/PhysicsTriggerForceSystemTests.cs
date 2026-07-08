@@ -1,5 +1,5 @@
 using BovineLabs.Core.Collections;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Essence.Data;
 using BovineLabs.Essence.Debug;
 using BovineLabs.Quill;

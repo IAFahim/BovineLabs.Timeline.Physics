@@ -13,7 +13,7 @@ using UnityEngine.Timeline;
 using Space = BovineLabs.Reaction.Data.Core.Target;
 using TargetSlot = BovineLabs.Reaction.Data.Core.Target;
 using TargetsAuthoring = BovineLabs.Reaction.Authoring.Core.TargetsAuthoring;
-using TriggerAuthoring = BovineLabs.Core.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
+using TriggerAuthoring = BovineLabs.Nerve.Authoring.PhysicsStates.StatefulTriggerEventAuthoring;
 using ForceTrack = BovineLabs.Timeline.Physics.Authoring.PhysicsForceTrack;
 using ForceClip = BovineLabs.Timeline.Physics.Authoring.PhysicsForceClip;
 using ForceMode = BovineLabs.Timeline.Physics.PhysicsForceMode;
@@ -47,7 +47,7 @@ using TriggerConditionClip = BovineLabs.Timeline.Physics.Authoring.PhysicsTrigge
 using TriggerQueryClip = BovineLabs.Timeline.Physics.Authoring.PhysicsTriggerQueryClip;
 using TriggerForceType = BovineLabs.Timeline.Physics.PhysicsTriggerForceType;
 using TriggerSelection = BovineLabs.Timeline.Physics.PhysicsTriggerQuerySelection;
-using EventState = BovineLabs.Core.PhysicsStates.StatefulEventState;
+using EventState = BovineLabs.Nerve.PhysicsStates.StatefulEventState;
 
 public static class PhysicsShowcaseBuilder
 {

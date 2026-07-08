@@ -1,6 +1,6 @@
 using System;
 using BovineLabs.Core.Authoring.EntityCommands;
-using BovineLabs.Core.PhysicsStates;
+using BovineLabs.Nerve.PhysicsStates;
 using BovineLabs.Reaction.Authoring.Conditions;
 using BovineLabs.Reaction.Data.Conditions;
 using BovineLabs.Reaction.Data.Core;
@@ -46,7 +46,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                 {
                     EventState = triggerState,
                     CollidesWithMask = collidesWith.Value,
-                    Condition = condition ? (ConditionKey)condition.Key : ConditionKey.Null,
+                    Condition = condition ? new ConditionKey(condition.Key) : ConditionKey.Null,
                     Value = value,
                     RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo)
                 },

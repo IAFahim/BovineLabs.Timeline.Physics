@@ -70,7 +70,7 @@ namespace BovineLabs.Timeline.Physics.Authoring.Splines
                     Strength = strength,
                     StrengthStat = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
+                        Stat = strengthStat != null ? strengthStat.Key : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }

@@ -313,9 +313,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     Selection = selection,
                     RouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, routeLink, routeTo),
                     ClearOnLost = clearOnLost,
-                    FoundCondition = foundCondition ? new ConditionKey(foundCondition.Key) : ConditionKey.Null,
+                    FoundCondition = foundCondition ? (ConditionKey)foundCondition.Key : ConditionKey.Null,
                     FoundValue = foundValue,
-                    LostCondition = lostCondition ? new ConditionKey(lostCondition.Key) : ConditionKey.Null,
+                    LostCondition = lostCondition ? (ConditionKey)lostCondition.Key : ConditionKey.Null,
                     LostValue = lostValue,
 
                     ValueMode = valueMode,
@@ -362,7 +362,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     // ---- WAVE 2: SELECTION ----
                     ThreatStat = new StatSource
                     {
-                        Stat = threatStat != null ? threatStat.Key.ID : default,
+                        Stat = threatStat != null ? threatStat.Key : default,
                         Link = new EntityLinkRef { ReadRootFrom = Target.Self },
                     },
                     ThreatWeightDist = threatWeightDist,
@@ -379,7 +379,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     // ---- WAVE 2: VALUE ----
                     ScaledMagnitudeStat = new StatSource
                     {
-                        Stat = scaledMagnitudeStat != null ? scaledMagnitudeStat.Key.ID : default,
+                        Stat = scaledMagnitudeStat != null ? scaledMagnitudeStat.Key : default,
                         Link = new EntityLinkRef { ReadRootFrom = Target.Self },
                     },
                     MagnitudeBands = magnitudeBandBlob,

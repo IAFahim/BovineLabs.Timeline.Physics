@@ -154,7 +154,7 @@ namespace BovineLabs.Timeline.Physics.Debug
                 {
                     var readout = new FixedString128Bytes();
                     readout.Append((FixedString32Bytes)"cond ");
-                    readout.Append(config.Condition.Value.ID);
+                    readout.Append(config.Condition.Value);
                     readout.Append((FixedString32Bytes)"  on ");
                     if (config.EventState == StatefulEventState.Enter)
                         readout.Append((FixedString32Bytes)"Enter");

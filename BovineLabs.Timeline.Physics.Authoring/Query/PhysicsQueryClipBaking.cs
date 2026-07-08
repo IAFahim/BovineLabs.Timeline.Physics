@@ -52,9 +52,9 @@ namespace BovineLabs.Timeline.Physics.Authoring
             data.WriteMode = c.WriteMode;
             data.ClearOnLost = c.ClearOnLost;
             data.GraceFrames = (ushort)math.clamp(c.GraceFrames, 0, ushort.MaxValue);
-            data.FoundCondition = c.FoundCondition ? new ConditionKey(c.FoundCondition.Key) : ConditionKey.Null;
+            data.FoundCondition = c.FoundCondition ? (ConditionKey)c.FoundCondition.Key : ConditionKey.Null;
             data.FoundValue = c.FoundValue;
-            data.LostCondition = c.LostCondition ? new ConditionKey(c.LostCondition.Key) : ConditionKey.Null;
+            data.LostCondition = c.LostCondition ? (ConditionKey)c.LostCondition.Key : ConditionKey.Null;
             data.LostValue = c.LostValue;
 
             return new PhysicsTriggerQueryBuilder

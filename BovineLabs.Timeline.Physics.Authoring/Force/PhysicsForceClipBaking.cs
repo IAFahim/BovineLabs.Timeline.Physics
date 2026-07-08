@@ -50,7 +50,7 @@ namespace BovineLabs.Timeline.Physics.Authoring
                     FalloffEndRadius = falloffEndRadius,
                     Strength = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
+                        Stat = strengthStat != null ? strengthStat.Key : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     },
                     ApplyTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, applyToLink, applyTo),

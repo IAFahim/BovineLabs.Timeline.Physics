@@ -138,13 +138,13 @@ namespace BovineLabs.Timeline.Physics.Authoring.Teleports
                     LineOfSightOffset = lineOfSightOffset,
                     ResetVelocity = resetVelocity,
 
-                    FailureCondition = failureCondition ? new ConditionKey(failureCondition.Key) : ConditionKey.Null,
+                    FailureCondition = failureCondition ? (ConditionKey)failureCondition.Key : ConditionKey.Null,
                     FailureValue = failureValue,
                     FailureRouteTo = EntityLinkAuthoringUtility.BakeRef(context.Baker, failureRouteLink, failureRouteTo),
 
                     Strength = new StatSource
                     {
-                        Stat = strengthStat != null ? strengthStat.Key.ID : default,
+                        Stat = strengthStat != null ? strengthStat.Key : default,
                         Link = EntityLinkAuthoringUtility.BakeRef(context.Baker, readStatLink, readStatFrom),
                     }
                 }

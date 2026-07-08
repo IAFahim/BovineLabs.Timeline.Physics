@@ -115,8 +115,6 @@ namespace BovineLabs.Timeline.Physics.Debug
             public void Execute(Entity entity, [ChunkIndexInQuery] int chunkIndex, in TrackBinding binding,
                 in PhysicsTriggerConditionData config)
             {
-                var isFirstFrame =
-                    false;
 
                 var triggerEntity = binding.Value;
                 if (!TransformLookup.TryGetComponent(triggerEntity, out var triggerLtw))
